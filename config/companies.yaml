@@ -890,6 +890,29 @@ companies:
     selectors:
       job_list: null
       job_item: null
+- name: Buildots
+  website: https://buildots.com
+  careers_url: https://www.comeet.com/jobs/buildots/36.004
+  industry: Construction Technology
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Tel-Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL,
+  scraping_config:
+    scraper_type: api
+    api_endpoint: https://www.comeet.co/careers-api/2.0/company/36.004/positions
+    api_params:
+      token: 6342538634037D42B6C129C18D0129CC68
+    api_format: comeet
+    pagination_type: none
 - name: Apple
   website: https://www.apple.com
   careers_url: https://jobs.apple.com/en-us/search?location=israel-ISR

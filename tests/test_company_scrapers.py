@@ -599,6 +599,61 @@ class CompanyScraperTests:
         finally:
             await scraper.teardown()
     
+    async def test_buildots_scraper(self):
+        """Test Buildots scraper using Comeet API."""
+        logger.info("=" * 80)
+        logger.info("Testing Buildots Scraper (Comeet API)")
+        logger.info("=" * 80)
+
+        # Load config from companies.yaml
+        location_filter, scraping_config = self.load_company_config('Buildots')
+
+        company_config = {
+            "name": "Buildots",
+            "website": "https://buildots.com",
+            "careers_url": "https://www.comeet.com/jobs/buildots/36.004",
+            "industry": "Construction Technology"
+        }
+
+        scraper = PlaywrightScraper(
+            company_config=company_config,
+            location_filter=location_filter,
+            scraping_config=scraping_config
+        )
+
+        try:
+            await scraper.setup()
+            jobs = await scraper.scrape()
+            
+            success = len(jobs) > 0
+            self.results['Buildots'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+            
+            if success:
+                logger.success(f"✓ Buildots: Found {len(jobs)} jobs in Israel")
+                logger.info("=== Sample Jobs ===")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Buildots: No jobs found")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"✗ Buildots test failed: {e}")
+            self.results['Buildots'] = {
+                'success': False,
+                'jobs_count': 0,
+                'sample_jobs': []
+            }
+            return False
+            
+        finally:
+            await scraper.teardown()
+
     async def test_datadog_scraper(self):
         """Test Datadog scraper using Greenhouse API."""
         logger.info("=" * 80)
