@@ -25,7 +25,6 @@ class CompanyScraperTests:
 
     def load_company_config(self, company_name: str):
         """Load company configuration from companies.yaml file."""
-        import yaml
         
         with open('config/companies.yaml', 'r') as f:
             config = yaml.safe_load(f)
@@ -1925,22 +1924,407 @@ class CompanyScraperTests:
             }
             return False
 
+        # Load config from companies.yaml
+        location_filter, scraping_config = self.load_company_config('Conifers')
+
+        company_config = {
+            "name": "Conifers",
+            "website": "https://conifers.ai",
+            "careers_url": "https://www.comeet.com/jobs/conifers_ai/8A.005",
+            "industry": "Security"
+        }
+
+        scraper = PlaywrightScraper(
+            company_config=company_config,
+            location_filter=location_filter,
+            scraping_config=scraping_config
+        )
+
+        try:
+            await scraper.setup()
+            jobs = await scraper.scrape()
+            
+            success = len(jobs) > 0
+            self.results['Conifers'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+            
+            if success:
+                logger.success(f"✓ Conifers: Found {len(jobs)} jobs")
+                logger.info("=== Sample Jobs ===")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Conifers: No jobs found")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"✗ Conifers test failed: {e}")
+            self.results['Conifers'] = {
+                'success': False,
+                'jobs_count': 0,
+                'sample_jobs': []
+            }
+            return False
+            
+        finally:
+            await scraper.teardown()
+
+
+    async def test_torq_scraper(self):
+        """Test Torq scraper using Greenhouse API."""
+        logger.info("=" * 80)
+        logger.info("Testing Torq Scraper (Greenhouse API)")
+        logger.info("=" * 80)
+
+        # Load config from companies.yaml
+        location_filter, scraping_config = self.load_company_config('Torq')
+
+        company_config = {
+            "name": "Torq",
+            "website": "https://torq.io",
+            "careers_url": "https://job-boards.greenhouse.io/torq",
+            "industry": "Security Automation"
+        }
+
+        scraper = PlaywrightScraper(
+            company_config=company_config,
+            location_filter=location_filter,
+            scraping_config=scraping_config
+        )
+
+        try:
+            await scraper.setup()
+            jobs = await scraper.scrape()
+            
+            success = len(jobs) > 0
+            self.results['Torq'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+            
+            if success:
+                logger.success(f"✓ Torq: Found {len(jobs)} jobs")
+                logger.info("=== Sample Jobs ===")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Torq: No jobs found")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"✗ Torq test failed: {e}")
+            self.results['Torq'] = {
+                'success': False,
+                'jobs_count': 0,
+                'sample_jobs': []
+            }
+            return False
+            
+        finally:
+            await scraper.teardown()
+
+
+    async def test_crowdstrike_scraper(self):
+        """Test CrowdStrike scraper using Workday API."""
+        logger.info("=" * 80)
+        logger.info("Testing CrowdStrike Scraper (Workday API)")
+        logger.info("=" * 80)
+
+        # Load config from companies.yaml
+        location_filter, scraping_config = self.load_company_config('CrowdStrike')
+
+        company_config = {
+            "name": "CrowdStrike",
+            "website": "https://www.crowdstrike.com",
+            "careers_url": "https://crowdstrike.wd5.myworkdayjobs.com/crowdstrikecareers",
+            "industry": "Cybersecurity"
+        }
+
+        scraper = PlaywrightScraper(
+            company_config=company_config,
+            location_filter=location_filter,
+            scraping_config=scraping_config
+        )
+
+        try:
+            await scraper.setup()
+            jobs = await scraper.scrape()
+            
+            success = len(jobs) > 0
+            self.results['CrowdStrike'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+            
+            if success:
+                logger.success(f"✓ CrowdStrike: Found {len(jobs)} jobs")
+                logger.info("=== Sample Jobs ===")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ CrowdStrike: No jobs found")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"✗ CrowdStrike test failed: {e}")
+            self.results['CrowdStrike'] = {
+                'success': False,
+                'jobs_count': 0,
+                'sample_jobs': []
+            }
+            return False
+            
+        finally:
+            await scraper.teardown()
+
+
+    async def test_noma_security_scraper(self):
+        """Test Noma Security scraper using Playwright."""
+        logger.info("=" * 80)
+        logger.info("Testing Noma Security Scraper (Playwright)")
+        logger.info("=" * 80)
+
+        # Load config from companies.yaml
+        location_filter, scraping_config = self.load_company_config('Noma Security')
+
+        company_config = {
+            "name": "Noma Security",
+            "website": "https://noma.security",
+            "careers_url": "https://noma.security/careers/",
+            "industry": "AI Security"
+        }
+
+        scraper = PlaywrightScraper(
+            company_config=company_config,
+            location_filter=location_filter,
+            scraping_config=scraping_config
+        )
+
+        try:
+            await scraper.setup()
+            jobs = await scraper.scrape()
+            
+            success = len(jobs) > 0
+            self.results['Noma Security'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+            
+            if success:
+                logger.success(f"✓ Noma Security: Found {len(jobs)} jobs")
+                logger.info("=== Sample Jobs ===")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Noma Security: No jobs found")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"✗ Noma Security test failed: {e}")
+            self.results['Noma Security'] = {
+                'success': False,
+                'jobs_count': 0,
+                'sample_jobs': []
+            }
+            return False
+            
+        finally:
+            await scraper.teardown()
+
+
+    async def test_trigo_vision_scraper(self):
+        """Test Trigo Vision scraper using Playwright."""
+        logger.info("=" * 80)
+        logger.info("Testing Trigo Vision Scraper (Playwright)")
+        logger.info("=" * 80)
+
+        # Load config from companies.yaml
+        location_filter, scraping_config = self.load_company_config('Trigo Vision')
+
+        company_config = {
+            "name": "Trigo Vision",
+            "website": "https://www.trigoretail.com",
+            "careers_url": "https://www.trigoretail.com/career/",
+            "industry": "Retail Technology"
+        }
+
+        scraper = PlaywrightScraper(
+            company_config=company_config,
+            location_filter=location_filter,
+            scraping_config=scraping_config
+        )
+
+        try:
+            await scraper.setup()
+            jobs = await scraper.scrape()
+            
+            success = len(jobs) > 0
+            self.results['Trigo Vision'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+            
+            if success:
+                logger.success(f"✓ Trigo Vision: Found {len(jobs)} jobs")
+                logger.info("=== Sample Jobs ===")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Trigo Vision: No jobs found")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"✗ Trigo Vision test failed: {e}")
+            self.results['Trigo Vision'] = {
+                'success': False,
+                'jobs_count': 0,
+                'sample_jobs': []
+            }
+            return False
+            
+        finally:
+            await scraper.teardown()
+
+
+    async def test_eleos_health_scraper(self):
+        """Test Eleos Health scraper using Playwright."""
+        logger.info("=" * 80)
+        logger.info("Testing Eleos Health Scraper (Playwright)")
+        logger.info("=" * 80)
+
+        # Load config from companies.yaml
+        location_filter, scraping_config = self.load_company_config('Eleos Health')
+
+        company_config = {
+            "name": "Eleos Health",
+            "website": "https://eleos.health",
+            "careers_url": "https://apply.workable.com/eleos-health/",
+            "industry": "Healthcare AI"
+        }
+
+        scraper = PlaywrightScraper(
+            company_config=company_config,
+            location_filter=location_filter,
+            scraping_config=scraping_config
+        )
+
+        try:
+            await scraper.setup()
+            jobs = await scraper.scrape()
+            
+            success = len(jobs) > 0
+            self.results['Eleos Health'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+            
+            if success:
+                logger.success(f"✓ Eleos Health: Found {len(jobs)} jobs")
+                logger.info("=== Sample Jobs ===")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Eleos Health: No jobs found")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"✗ Eleos Health test failed: {e}")
+            self.results['Eleos Health'] = {
+                'success': False,
+                'jobs_count': 0,
+                'sample_jobs': []
+            }
+            return False
+            
+        finally:
+            await scraper.teardown()
+
+
+    async def test_blink_ops_scraper(self):
+        """Test Blink Ops scraper using Comeet API."""
+        logger.info("=" * 80)
+        logger.info("Testing Blink Ops Scraper (Comeet API)")
+        logger.info("=" * 80)
+
+        # Load config from companies.yaml
+        location_filter, scraping_config = self.load_company_config('Blink Ops')
+
+        company_config = {
+            "name": "Blink Ops",
+            "website": "https://www.blinkops.com",
+            "careers_url": "https://www.blinkops.com/careers",
+            "industry": "Security Automation"
+        }
+
+        scraper = PlaywrightScraper(
+            company_config=company_config,
+            location_filter=location_filter,
+            scraping_config=scraping_config
+        )
+
+        try:
+            await scraper.setup()
+            jobs = await scraper.scrape()
+            
+            success = len(jobs) > 0
+            self.results['Blink Ops'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+            
+            if success:
+                logger.success(f"✓ Blink Ops: Found {len(jobs)} jobs")
+                logger.info("=== Sample Jobs ===")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Blink Ops: No jobs found")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"✗ Blink Ops test failed: {e}")
+            self.results['Blink Ops'] = {
+                'success': False,
+                'jobs_count': 0,
+                'sample_jobs': []
+            }
+            return False
+            
+        finally:
+            await scraper.teardown()
+
+
     async def test_servicenow_scraper(self):
         """Test ServiceNow scraper (Custom platform)."""
         logger.info("\n" + "=" * 80)
         logger.info("Testing ServiceNow Scraper (Custom Platform)")
-        logger.info("=" * 80)
-        
+
         try:
             # Load company config
             with open('config/companies.yaml', 'r') as f:
                 config = yaml.safe_load(f)
-            
+
             servicenow_config = next(
                 (c for c in config['companies'] if c['name'] == 'ServiceNow'),
                 None
             )
-            
+
             if not servicenow_config:
                 logger.error("ServiceNow configuration not found")
                 self.results['ServiceNow'] = {
@@ -1949,53 +2333,55 @@ class CompanyScraperTests:
                     'filtered_count': 0
                 }
                 return False
-            
+
             logger.info(f"Scraping: {servicenow_config['careers_url']}")
-            
             # Create scraper
             scraper = PlaywrightScraper(
                 company_config=servicenow_config,
                 scraping_config=servicenow_config['scraping_config']
             )
-            
+
+
             # Setup and scrape jobs
             await scraper.setup()
             jobs = await scraper.scrape()
             await scraper.teardown()
-            
+
+
             # Filter for Israel and US
             israel_jobs = [
-                job for job in jobs 
-                if any(keyword.lower() in job.get('location', '').lower() 
-                      for keyword in ['israel', 'tel aviv', 'petah tikva'])
+                job for job in jobs
+                if any(keyword.lower() in job.get('location', '').lower()
+                       for keyword in ['israel', 'tel aviv', 'petah tikva'])
             ]
-            
+
             us_jobs = [
-                job for job in jobs 
-                if any(keyword.lower() in job.get('location', '').lower() 
-                      for keyword in ['united states', 'california', 'new york', 'texas', 'remote'])
-            ]
-            
+                job for job in jobs
+                if any(keyword.lower() in job.get('location', '').lower()
+                       for keyword in ['united states', 'california', 'new york', 'texas', 'remote'])]
+
             logger.info(f"Total jobs found: {len(jobs)}")
             logger.info(f"Israel jobs found: {len(israel_jobs)}")
             logger.info(f"US jobs found: {len(us_jobs)}")
-            
+
             success = len(jobs) > 0
+
             self.results['ServiceNow'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'filtered_count': len(israel_jobs) + len(us_jobs)
             }
-            
+
             if israel_jobs:
                 logger.info("\nSample Israel jobs:")
                 for i, job in enumerate(israel_jobs[:5], 1):
                     logger.info(f"{i}. {job.get('title', 'N/A')}")
                     logger.info(f"   Location: {job.get('location', 'N/A')}")
                     logger.info(f"   URL: {job.get('job_url', 'N/A')}")
-            
+
             return success
-            
+
+
         except Exception as e:
             logger.error(f"ServiceNow scraper failed: {str(e)}")
             import traceback
@@ -2012,7 +2398,7 @@ class CompanyScraperTests:
         logger.info("\n" + "=" * 80)
         logger.info("RUNNING ALL COMPANY SCRAPER TESTS")
         logger.info("=" * 80 + "\n")
-        
+
         # Run all tests
         monday_result = await self.test_monday_scraper()
         wiz_result = await self.test_wiz_scraper()
@@ -2048,39 +2434,37 @@ class CompanyScraperTests:
         # Print summary
         logger.info("\n" + "=" * 80)
         logger.info("TEST RESULTS SUMMARY")
-        logger.info("=" * 80)
-        
         total_jobs = 0
+
         for company, result in self.results.items():
             status = "✓ PASS" if result['success'] else "✗ FAIL"
             logger.info(f"{company:15} {status:10} - {result['jobs_count']} jobs")
             total_jobs += result['jobs_count']
-        
+
         logger.info("=" * 80)
         logger.info(f"Total jobs scraped: {total_jobs}")
-        
+
         all_passed = all([
-            monday_result, wiz_result, island_result, eon_result, 
+            monday_result, wiz_result, island_result, eon_result,
             palo_alto_result, amazon_result, meta_result, nvidia_result,
             wix_result, salesforce_result, datadog_result, unity_result, appsflyer_result,
-            jfrog_result, riskified_result, papaya_gaming_result, checkpoint_result, lumen_result, gong_result,\
+            jfrog_result, riskified_result, papaya_gaming_result, checkpoint_result, lumen_result, gong_result,
             booking_result, apple_result, microsoft_result, google_result, intel_result,
-        sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result, buildots_result])
-        
+            sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result, buildots_result])
+
         if all_passed:
             logger.success("\n✓ ALL TESTS PASSED")
         else:
             logger.error("\n✗ SOME TESTS FAILED")
-        
+
         return all_passed
 
 async def main():
     """Main function."""
     test_suite = CompanyScraperTests()
     all_passed = await test_suite.run_all_tests()
-    
-    return 0 if all_passed else 1
 
+    return 0 if all_passed else 1
 
 if __name__ == "__main__":
     exit_code = asyncio.run(main())
