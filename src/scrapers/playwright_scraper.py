@@ -1034,6 +1034,21 @@ class PlaywrightScraper(BaseScraper):
         logger.info(f"Total jobs scraped: {len(all_jobs)} across {page} pages")
         return all_jobs
 
+    def _extract_nested_value(self, data: Dict[str, Any], key_path: str) -> Any:
+        """Extract value from nested dictionary using dot notation (e.g., 'data.positions')."""
+        if not key_path:
+            return None
+
+        keys = key_path.split('.')
+        value = data
+
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return None
+
+        return value
 
     async def _scrape_workday(self) -> List[Dict[str, Any]]:
         """Scrape jobs from Workday API with pagination support (e.g., Salesforce)."""

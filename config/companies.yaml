@@ -168,7 +168,7 @@ companies:
     - Haifa
     - Jerusalem
     - IL,
-  scraping:
+  scraping_config:
     scraper_type: rss
     rss_url: https://jobs.paloaltonetworks.com/en/rss
     wait_time: 2
@@ -190,7 +190,7 @@ companies:
     - Haifa
     - Jerusalem
     - IL,
-  scraping:
+  scraping_config:
     scraper_type: api
     api_endpoint: https://www.amazon.jobs/en/search.json?country=ISR
     api_method: GET
@@ -253,7 +253,7 @@ companies:
     - Haifa
     - Jerusalem
     - IL,
-  scraping:
+  scraping_config:
     scraper_type: meta_graphql
     wait_time: 5
     search_url: https://www.metacareers.com/jobs?offices[0]=Tel%20Aviv%2C%20Israel
@@ -275,7 +275,7 @@ companies:
     - Beer Sheva
     - Yokneam
     - IL,
-  scraping:
+  scraping_config:
     scraper_type: api
     api_endpoint: https://nvidia.eightfold.ai/api/pcsx/search
     api_method: GET
@@ -335,7 +335,7 @@ companies:
     - Jerusalem
     - Beer Sheva
     - IL,
-  scraping:
+  scraping_config:
     scraper_type: api
     api_endpoint: https://api.smartrecruiters.com/v1/companies/Wix2/postings
     api_method: GET
@@ -390,7 +390,7 @@ companies:
     - Haifa
     - Jerusalem
     - IL,
-  scraping:
+  scraping_config:
     scraper_type: workday
     api_endpoint: https://salesforce.wd12.myworkdayjobs.com/wday/cxs/salesforce/External_Career_Site/jobs
     api_method: POST
@@ -510,7 +510,7 @@ companies:
     - Haifa
     - Jerusalem
     - IL,
-  scraping:
+  scraping_config:
     scraper_type: api
     pagination_type: none
     api_endpoint: https://boards-api.greenhouse.io/v1/boards/datadog/jobs
@@ -552,7 +552,7 @@ companies:
     - Haifa
     - Jerusalem
     - IL,
-  scraping:
+  scraping_config:
     scraper_type: api
     pagination_type: none
     api_endpoint: https://boards-api.greenhouse.io/v1/boards/unity3d/jobs
@@ -596,7 +596,7 @@ companies:
     - Raanana
     - Beer Sheva
     - IL,
-  scraping:
+  scraping_config:
     scraper_type: api
     api_endpoint: https://boards-api.greenhouse.io/v1/boards/appsflyer/jobs
     api_method: GET
