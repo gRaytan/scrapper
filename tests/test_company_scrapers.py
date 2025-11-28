@@ -2043,6 +2043,7 @@ class CompanyScraperTests:
         samsung_result = await self.test_samsung_scraper()
         intuit_result = await self.test_intuit_scraper()
         servicenow_result = await self.test_servicenow_scraper()
+        buildots_result = await self.test_buildots_scraper()
 
         # Print summary
         logger.info("\n" + "=" * 80)
@@ -2064,7 +2065,7 @@ class CompanyScraperTests:
             wix_result, salesforce_result, datadog_result, unity_result, appsflyer_result,
             jfrog_result, riskified_result, papaya_gaming_result, checkpoint_result, lumen_result, gong_result,\
             booking_result, apple_result, microsoft_result, google_result, intel_result,
-        sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result])
+        sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result, buildots_result])
         
         if all_passed:
             logger.success("\n✓ ALL TESTS PASSED")
