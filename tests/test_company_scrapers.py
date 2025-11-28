@@ -2317,6 +2317,61 @@ class CompanyScraperTests:
             await scraper.teardown()
 
 
+
+    async def test_lusha_scraper(self):
+        """Test Lusha scraper using Playwright."""
+        logger.info("=" * 80)
+        logger.info("Testing Lusha Scraper (Playwright)")
+        logger.info("=" * 80)
+
+        # Load config from companies.yaml
+        location_filter, scraping_config = self.load_company_config('Lusha')
+
+        company_config = {
+            "name": "Lusha",
+            "website": "https://www.lusha.com",
+            "careers_url": "https://www.lusha.com/careers/",
+            "industry": "Sales Intelligence / B2B Data"
+        }
+
+        scraper = PlaywrightScraper(
+            company_config=company_config,
+            location_filter=location_filter,
+            scraping_config=scraping_config
+        )
+
+        try:
+            await scraper.setup()
+            jobs = await scraper.scrape()
+            
+            success = len(jobs) > 0
+            self.results['Lusha'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+            
+            if success:
+                logger.success(f"✓ Lusha: Found {len(jobs)} jobs")
+                logger.info("=== Sample Jobs ===")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Lusha: No jobs found")
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"✗ Lusha test failed: {e}")
+            self.results['Lusha'] = {
+                'success': False,
+                'jobs_count': 0,
+                'sample_jobs': []
+            }
+            return False
+            
+        finally:
+            await scraper.teardown()
     async def test_servicenow_scraper(self):
         """Test ServiceNow scraper (Custom platform)."""
         logger.info("\n" + "=" * 80)
@@ -2441,6 +2496,7 @@ class CompanyScraperTests:
         torq_result = await self.test_torq_scraper()
         crowdstrike_result = await self.test_crowdstrike_scraper()
         blink_ops_result = await self.test_blink_ops_scraper()
+        lusha_result = await self.test_lusha_scraper()
 
         # Print summary
         logger.info("\n" + "=" * 80)
@@ -2462,7 +2518,7 @@ class CompanyScraperTests:
             jfrog_result, riskified_result, papaya_gaming_result, checkpoint_result, lumen_result, gong_result,
             booking_result, apple_result, microsoft_result, google_result, intel_result,
             sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result, buildots_result,
-            conifers_result, blink_ops_result, torq_result, crowdstrike_result
+            conifers_result, blink_ops_result, torq_result, crowdstrike_result, lusha_result
         ])
 
         if all_passed:

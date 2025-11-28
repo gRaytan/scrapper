@@ -767,33 +767,27 @@ companies:
       job_item: null
 - name: Check Point
   website: https://www.checkpoint.com
-  careers_url: https://careers.checkpoint.com/
+  careers_url: https://careers.checkpoint.com/index.php?q=&module=cpcareers&a=search&sort=&start=0
   industry: Cybersecurity
   size: 5000+
   location: Tel Aviv, Israel / Worldwide
   scraping_config:
     scraper_type: playwright
     requires_js: true
-    careers_url: https://careers.checkpoint.com/index.php?m=cpcareers&a=search
     wait_time: 3
-    location_filter:
+    pagination:
       enabled: true
-      countries:
-      - Israel
-      - United States
-      match_keywords:
-      - Israel
-      - Tel Aviv
-      - Ramat Gan
-      - Haifa
-      - Jerusalem
-      - IL,
-      - Remote
-      - United States
-      - US
+      type: url_param
+      param_name: start
+      page_size: 10
+      max_pages: 50
     selectors:
-      job_list: .job-item, .position-item
-      job_item: .job-link, .position-link
+      job_list: table.job_list_table
+      job_item: table.job_list_table tr
+      title_selector: td:nth-child(1) a
+      location_selector: td:nth-child(2)
+      department_selector: td:nth-child(3)
+      job_url_selector: td:nth-child(1) a
 - name: Lumen
   website: https://www.lumen.me
   careers_url: https://www.lumen.me/careers
@@ -1322,3 +1316,32 @@ companies:
       token: 7C42E981F101F10365C174C2E98F88F880
     api_format: comeet
     pagination_type: none
+- name: Lusha
+  website: https://www.lusha.com
+  careers_url: https://www.lusha.com/careers/
+  industry: Sales Intelligence / B2B Data
+  size: 200-500
+  location: Tel Aviv, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    - United States
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Boston
+    - London
+    - Remote
+  scraping_config:
+    scraper_type: playwright
+    requires_js: true
+    wait_time: 3
+    selectors:
+      job_list: div.careers-positions-list
+      job_item: div.careers-position
+      job_title: h3.careers-position-title
+      job_location: span.careers-position-location
+      job_url: a.careers-position-link
