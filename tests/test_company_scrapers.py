@@ -1924,6 +1924,13 @@ class CompanyScraperTests:
             }
             return False
 
+
+    async def test_conifers_scraper(self):
+        """Test Conifers scraper using Comeet API."""
+        logger.info("=" * 80)
+        logger.info("Testing Conifers Scraper (Comeet API)")
+        logger.info("=" * 80)
+
         # Load config from companies.yaml
         location_filter, scraping_config = self.load_company_config('Conifers')
 
@@ -2430,6 +2437,10 @@ class CompanyScraperTests:
         intuit_result = await self.test_intuit_scraper()
         servicenow_result = await self.test_servicenow_scraper()
         buildots_result = await self.test_buildots_scraper()
+        conifers_result = await self.test_conifers_scraper()
+        torq_result = await self.test_torq_scraper()
+        crowdstrike_result = await self.test_crowdstrike_scraper()
+        blink_ops_result = await self.test_blink_ops_scraper()
 
         # Print summary
         logger.info("\n" + "=" * 80)
@@ -2450,7 +2461,9 @@ class CompanyScraperTests:
             wix_result, salesforce_result, datadog_result, unity_result, appsflyer_result,
             jfrog_result, riskified_result, papaya_gaming_result, checkpoint_result, lumen_result, gong_result,
             booking_result, apple_result, microsoft_result, google_result, intel_result,
-            sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result, buildots_result])
+            sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result, buildots_result,
+            conifers_result, blink_ops_result, torq_result, crowdstrike_result
+        ])
 
         if all_passed:
             logger.success("\n✓ ALL TESTS PASSED")
