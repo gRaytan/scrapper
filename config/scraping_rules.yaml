@@ -1,0 +1,223 @@
+# Common scraping patterns and selectors
+# These are fallback patterns when company-specific selectors are not available
+
+common_selectors:
+  # Job list containers
+  job_list_patterns:
+    - ".jobs-list"
+    - ".careers-list"
+    - ".openings"
+    - ".positions"
+    - "#jobs"
+    - "#careers"
+    - "[data-jobs]"
+    - ".job-board"
+    
+  # Individual job items
+  job_item_patterns:
+    - ".job"
+    - ".job-card"
+    - ".position"
+    - ".opening"
+    - "[data-job-id]"
+    - ".career-item"
+    - "li.job-listing"
+    
+  # Job title
+  job_title_patterns:
+    - "h2"
+    - "h3"
+    - ".title"
+    - ".job-title"
+    - ".position-title"
+    - "[data-job-title]"
+    
+  # Job location
+  job_location_patterns:
+    - ".location"
+    - ".job-location"
+    - "[data-location]"
+    - ".office"
+    - ".city"
+    
+  # Job department/team
+  job_department_patterns:
+    - ".department"
+    - ".team"
+    - ".category"
+    - "[data-department]"
+    
+  # Job URL/link
+  job_url_patterns:
+    - "a"
+    - ".apply-link"
+    - ".job-link"
+    - "[href*='job']"
+    - "[href*='position']"
+    
+  # Pagination
+  next_button_patterns:
+    - ".next"
+    - ".pagination-next"
+    - "a[rel='next']"
+    - "button:contains('Next')"
+    - "[aria-label*='next']"
+    
+  load_more_patterns:
+    - ".load-more"
+    - "button:contains('Load More')"
+    - "button:contains('Show More')"
+    - "[data-load-more]"
+
+# Text patterns for extraction
+text_patterns:
+  # Remote work indicators
+  remote_keywords:
+    - "remote"
+    - "work from home"
+    - "wfh"
+    - "distributed"
+    - "anywhere"
+    - "virtual"
+    
+  hybrid_keywords:
+    - "hybrid"
+    - "flexible"
+    - "remote-friendly"
+    
+  # Employment type
+  full_time_keywords:
+    - "full-time"
+    - "full time"
+    - "ft"
+    - "permanent"
+    
+  part_time_keywords:
+    - "part-time"
+    - "part time"
+    - "pt"
+    
+  contract_keywords:
+    - "contract"
+    - "contractor"
+    - "freelance"
+    - "temporary"
+    - "temp"
+    
+  # Seniority levels
+  entry_keywords:
+    - "entry"
+    - "junior"
+    - "associate"
+    - "graduate"
+    - "intern"
+    
+  mid_keywords:
+    - "mid"
+    - "intermediate"
+    - "engineer ii"
+    - "engineer 2"
+    
+  senior_keywords:
+    - "senior"
+    - "sr"
+    - "lead"
+    - "principal"
+    - "staff"
+    
+  executive_keywords:
+    - "director"
+    - "vp"
+    - "vice president"
+    - "head of"
+    - "chief"
+    - "cto"
+    - "ceo"
+    - "cfo"
+
+# Scraping behavior rules
+scraping_rules:
+  # Rate limiting
+  rate_limiting:
+    default_delay_min: 2
+    default_delay_max: 5
+    requests_per_minute: 10
+    burst_limit: 3
+    
+  # Retry logic
+  retry:
+    max_attempts: 3
+    backoff_factor: 2
+    retry_on_status: [429, 500, 502, 503, 504]
+    
+  # Timeouts
+  timeouts:
+    page_load: 30
+    element_wait: 10
+    network_idle: 5
+    
+  # Anti-bot evasion
+  anti_bot:
+    randomize_viewport: true
+    viewport_sizes:
+      - [1920, 1080]
+      - [1366, 768]
+      - [1440, 900]
+      - [1536, 864]
+    rotate_user_agent: true
+    enable_stealth: true
+    random_mouse_movement: true
+    human_typing_speed: true
+    
+  # Content detection
+  content_detection:
+    wait_for_selector_timeout: 10
+    check_dom_changes: true
+    detect_lazy_loading: true
+    
+# Data validation rules
+validation_rules:
+  job_title:
+    min_length: 3
+    max_length: 200
+    required: true
+    
+  job_location:
+    min_length: 2
+    max_length: 100
+    required: false
+    
+  job_url:
+    required: true
+    must_be_url: true
+    
+  job_description:
+    min_length: 50
+    max_length: 50000
+    required: false
+    
+  salary_range:
+    min_value: 0
+    max_value: 10000000
+    required: false
+
+# LLM prompts configuration
+llm_config:
+  use_llm_fallback: true
+  llm_confidence_threshold: 0.7
+  cache_llm_results: true
+  cache_ttl: 86400  # 24 hours
+  
+  # When to use LLM
+  use_llm_for:
+    - page_structure_analysis
+    - selector_generation
+    - data_extraction_fallback
+    - content_classification
+    - error_diagnosis
+    
+  # Cost optimization
+  prefer_rule_based: true
+  batch_llm_requests: true
+  max_llm_calls_per_company: 10
+

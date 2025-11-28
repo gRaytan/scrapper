@@ -1,0 +1,1060 @@
+"""Playwright-based scraper implementation."""
+import asyncio
+import hashlib
+import xml.etree.ElementTree as ET
+import httpx
+import requests
+
+from datetime import datetime
+from dateutil import parser as date_parser
+from typing import List, Dict, Any, Optional
+
+from bs4 import BeautifulSoup
+from playwright.async_api import async_playwright, Browser, Page
+
+from .base_scraper import BaseScraper
+from src.utils.logger import logger
+
+
+class PlaywrightScraper(BaseScraper):
+    """Scraper using Playwright for dynamic content."""
+    
+    def __init__(self, company_config: Dict[str, Any], scraping_config: Dict[str, Any], **kwargs):
+        super().__init__(company_config, scraping_config, **kwargs)
+        self.browser: Optional[Browser] = None
+        self.page: Optional[Page] = None
+        self.playwright = None
+    
+    async def setup(self):
+        """Initialize Playwright browser."""
+        logger.info("Setting up Playwright browser")
+        self.playwright = await async_playwright().start()
+        
+        # Launch browser with stealth options
+        self.browser = await self.playwright.chromium.launch(
+            headless=True,
+            args=[
+                '--disable-blink-features=AutomationControlled',
+                '--disable-dev-shm-usage',
+                '--no-sandbox',
+            ]
+        )
+        
+        # Create context with realistic settings
+        context = await self.browser.new_context(
+            viewport={'width': 1920, 'height': 1080},
+            user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+        )
+        
+        self.page = await context.new_page()
+        logger.success("Playwright browser ready")
+    
+    async def teardown(self):
+        """Close Playwright browser."""
+        logger.info("Closing Playwright browser")
+        if self.page:
+            await self.page.close()
+        if self.browser:
+            await self.browser.close()
+        if self.playwright:
+            await self.playwright.stop()
+    
+    async def scrape(self) -> List[Dict[str, Any]]:
+        """
+        Main scraping method using Playwright.
+        
+        Returns:
+            List of job dictionaries
+        """
+        jobs = []
+        
+        try:
+            # Check if this is Meta (uses GraphQL) - check early
+            company_name = self.company_config.get("name", "")
+            if company_name == "Meta":
+                jobs = await self._scrape_meta_graphql()
+                logger.success(f"Scraped {len(jobs)} jobs from Meta GraphQL")
+                self.stats["jobs_found"] = len(jobs)
+                return jobs
+            
+            # Check if using simple HTTP scraping (for Island) or RSS (for Palo Alto)
+            scraper_type = self.scraping_config.get("scraper_type", "playwright")
+            if scraper_type == "requests":
+                jobs = await self._scrape_html()
+                logger.success(f"Scraped {len(jobs)} jobs")
+                self.stats["jobs_found"] = len(jobs)
+                return jobs
+            elif scraper_type == "rss":
+                jobs = await self._scrape_rss()
+                logger.success(f"Scraped {len(jobs)} jobs")
+                self.stats["jobs_found"] = len(jobs)
+                return jobs
+            elif scraper_type == "api":
+                jobs = await self._scrape_api_with_pagination()
+                logger.success(f"Scraped {len(jobs)} jobs")
+                self.stats["jobs_found"] = len(jobs)
+                return jobs
+
+            pagination_type = self.scraping_config.get("pagination_type", "none")
+            
+            if pagination_type == "api":
+                # API-based scraping (e.g., Monday.com)
+                jobs = await self._scrape_api()
+            elif pagination_type == "dynamic":
+                # Dynamic page scraping (e.g., Microsoft)
+                jobs = await self._scrape_dynamic()
+            else:
+                # Standard scraping
+                jobs = await self._scrape_standard()
+            
+            logger.success(f"Scraped {len(jobs)} jobs")
+            self.stats["jobs_found"] = len(jobs)
+            
+        except Exception as e:
+            logger.error(f"Error during scraping: {e}")
+            self.stats["errors"] += 1
+            raise
+        
+        return jobs
+    
+    async def _scrape_api(self) -> List[Dict[str, Any]]:
+        """Scrape jobs from API endpoint."""
+        api_endpoint = self.scraping_config.get("api_endpoint")
+        api_params = self.scraping_config.get("api_params", {})
+
+        logger.info(f"Fetching jobs from API: {api_endpoint}")
+        logger.info(f"API params: {api_params}")
+
+        async with httpx.AsyncClient(timeout=30.0) as client:
+            response = await client.get(api_endpoint, params=api_params)
+            logger.info(f"API Response Status: {response.status_code}")
+            logger.info(f"API Response Headers: {dict(response.headers)}")
+
+            response.raise_for_status()
+            data = response.json()
+
+            # Log the response structure for debugging
+            logger.info(f"API Response Type: {type(data)}")
+            if isinstance(data, dict):
+                logger.info(f"API Response Keys: {list(data.keys())}")
+                logger.info(f"Full API Response: {data}")
+            else:
+                logger.info(f"API Response (first 500 chars): {str(data)[:500]}")
+
+        jobs = []
+
+        # Detect API format and parse accordingly
+        positions = []
+        parser_func = None
+        
+        if isinstance(data, dict) and "jobs" in data:
+            # Greenhouse API format
+            positions = data["jobs"]
+            parser_func = self._parse_greenhouse_job
+            logger.info(f"Detected Greenhouse API format with {len(positions)} jobs")
+        elif isinstance(data, list):
+            # Comeet API format (list directly)
+            positions = data
+            parser_func = self._parse_comeet_job
+            logger.info(f"Detected Comeet API format (list) with {len(positions)} positions")
+        elif isinstance(data, dict) and "positions" in data:
+            # Comeet API format (dict with 'positions' key)
+            positions = data["positions"]
+            parser_func = self._parse_comeet_job
+            logger.info(f"Detected Comeet API format (dict) with {len(positions)} positions")
+        else:
+            logger.warning(f"Unexpected API response format. Expected Greenhouse or Comeet format, got: {type(data)}")
+            logger.warning(f"Response keys: {list(data.keys()) if isinstance(data, dict) else 'N/A'}")
+            self.stats["requests_made"] += 1
+            return jobs
+
+        for position in positions:
+            job = parser_func(position)
+            if job:
+                logger.info(f"Parsed job: {job.get('title')} at {job.get('location')}")
+                if self.validate_job_data(job):
+                    # Apply location filter
+                    if self.matches_location_filter(job):
+                        jobs.append(self.normalize_job_data(job))
+                    else:
+                        self.stats["jobs_filtered"] += 1
+                        logger.debug(f'Filtered out job: {job.get("title")} at {job.get("location")}')
+                else:
+                    logger.warning(f"Job failed validation: {job}")
+            else:
+                position_name = position.get('name') or position.get('title', 'Unknown')
+                logger.warning(f"Failed to parse position: {position_name}")
+
+        self.stats["requests_made"] += 1
+        return jobs
+    
+    def _parse_comeet_job(self, position: Dict[str, Any]) -> Dict[str, Any]:
+        """Parse job from Comeet API format."""
+        try:
+            location_data = position.get("location", {})
+            location_parts = []
+            if location_data.get("city"):
+                location_parts.append(location_data["city"])
+            if location_data.get("country"):
+                location_parts.append(location_data["country"])
+            
+            location = ", ".join(location_parts) if location_parts else location_data.get("name", "")
+            
+            # Extract description from details
+            description = ""
+            details = position.get("details", [])
+            for detail in details:
+                if detail.get("name") == "Description":
+                    description = detail.get("value", "")
+                    # Remove HTML tags
+                    import re
+                    description = re.sub(r'<[^>]+>', '', description)
+                    break
+            
+            # Parse posted date
+            posted_date = None
+            time_updated = position.get("time_updated")
+            if time_updated:
+                try:
+                    posted_date = datetime.fromisoformat(time_updated.replace('Z', '+00:00'))
+                except:
+                    pass
+            
+            return {
+                "external_id": position.get("uid"),
+                "title": position.get("name"),
+                "description": description[:5000] if description else "",  # Limit length
+                "location": location,
+                "job_url": position.get("url_active_page"),
+                "department": position.get("department"),
+                "employment_type": position.get("employment_type"),
+                "posted_date": posted_date,
+                "is_remote": location_data.get("is_remote", False),
+            }
+        except Exception as e:
+            logger.error(f"Error parsing Comeet job: {e}")
+            return {}
+    
+
+    
+    def _parse_greenhouse_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Parse job from Greenhouse API format."""
+        try:
+            # Extract location
+            location = ""
+            location_obj = job_data.get("location", {})
+            if isinstance(location_obj, dict):
+                location = location_obj.get("name", "")
+            elif isinstance(location_obj, str):
+                location = location_obj
+            
+            # Extract job URL
+            job_url = job_data.get("absolute_url", "")
+            
+            # Parse posted/updated date
+            posted_date = None
+            updated_at = job_data.get("updated_at") or job_data.get("first_published")
+            if updated_at:
+                try:
+                    # Greenhouse uses ISO format with timezone
+                    posted_date = datetime.fromisoformat(updated_at.replace('Z', '+00:00'))
+                except:
+                    pass
+            
+            # Extract departments from metadata if available
+            department = None
+            metadata = job_data.get("metadata")
+            if metadata and isinstance(metadata, list):
+                for item in metadata:
+                    if item.get("name") == "Department":
+                        department = item.get("value")
+                        break
+            
+            return {
+                "external_id": str(job_data.get("id")),
+                "title": job_data.get("title"),
+                "description": "",  # Greenhouse API doesn't include full description in list endpoint
+                "location": location,
+                "job_url": job_url,
+                "department": department,
+                "employment_type": None,  # Not in basic API response
+                "posted_date": posted_date,
+                "is_remote": "remote" in location.lower() if location else False,
+            }
+        except Exception as e:
+            logger.error(f"Error parsing Greenhouse job: {e}")
+            return {}
+
+    async def _scrape_dynamic(self) -> List[Dict[str, Any]]:
+        """Scrape jobs from dynamic page (e.g., Microsoft)."""
+        careers_url = self.company_config.get("careers_url")
+        search_url = self.scraping_config.get("search_url", careers_url)
+
+        logger.info(f"Navigating to {search_url}")
+        # Increased timeout to 90 seconds for slow-loading pages
+        await self.page.goto(search_url, wait_until="domcontentloaded", timeout=90000)
+
+        # Save page HTML for debugging
+        html_content = await self.page.content()
+        logger.info(f"Page loaded, HTML length: {len(html_content)} characters")
+
+        # Save to file for inspection
+        import os
+        debug_dir = "data/raw"
+        os.makedirs(debug_dir, exist_ok=True)
+        debug_file = os.path.join(debug_dir, f"{self.company_config.get('name', 'unknown').replace(' ', '_')}_page.html")
+        with open(debug_file, 'w', encoding='utf-8') as f:
+            f.write(html_content)
+        logger.info(f"Saved page HTML to {debug_file}")
+
+        # Wait for job listings to load
+        wait_selector = self.scraping_config.get("wait_for_selector")
+        if wait_selector:
+            try:
+                await self.page.wait_for_selector(wait_selector, timeout=30000)
+                logger.info(f"Found selector: {wait_selector}")
+            except Exception as e:
+                logger.warning(f"Timeout waiting for selector {wait_selector}: {e}")
+                logger.info(f"Page title: {await self.page.title()}")
+                logger.info(f"Page URL: {self.page.url}")
+
+        jobs = []
+        selectors = self.scraping_config.get("selectors", {})
+
+        # Extract jobs from current page
+        jobs_on_page = await self._extract_jobs_from_page(selectors)
+        jobs.extend(jobs_on_page)
+        
+        self.stats["pages_scraped"] += 1
+        self.stats["requests_made"] += 1
+        return jobs
+    
+    async def _scrape_standard(self) -> List[Dict[str, Any]]:
+        """Standard scraping for regular pages."""
+        careers_url = self.company_config.get("careers_url")
+        
+        logger.info(f"Navigating to {careers_url}")
+        await self.page.goto(careers_url, wait_until="networkidle", timeout=60000)
+        
+        jobs = []
+        selectors = self.scraping_config.get("selectors", {})
+        
+        # Extract jobs from current page
+        jobs_on_page = await self._extract_jobs_from_page(selectors)
+        jobs.extend(jobs_on_page)
+        
+        self.stats["pages_scraped"] += 1
+        self.stats["requests_made"] += 1
+        return jobs
+    
+    def _make_absolute_url(self, href: str) -> str:
+        """Convert relative URL to absolute URL."""
+        if href.startswith("http://") or href.startswith("https://"):
+            return href
+        
+        base_url = self.company_config.get("website", "")
+        if not base_url:
+            return href
+        
+        # Remove trailing slash from base_url
+        base_url = base_url.rstrip("/")
+        
+        if href.startswith("/"):
+            return f"{base_url}{href}"
+        else:
+            return f"{base_url}/{href}"
+    
+    async def _extract_jobs_from_page(self, selectors: Dict[str, str]) -> List[Dict[str, Any]]:
+        """Extract job listings from current page."""
+        jobs = []
+
+        job_item_selector = selectors.get("job_item")
+        if not job_item_selector:
+            logger.warning("No job_item selector configured")
+            return jobs
+
+        logger.info(f"Looking for job items with selector: {job_item_selector}")
+
+        # Get all job items
+        job_elements = await self.page.query_selector_all(job_item_selector)
+        logger.info(f"Found {len(job_elements)} job elements with selector: {job_item_selector}")
+
+        if len(job_elements) == 0:
+            # Try to debug what's on the page
+            logger.warning("No job elements found. Trying to find what's on the page...")
+
+            # Try each selector individually
+            for selector_name, selector_value in selectors.items():
+                if selector_value:
+                    try:
+                        elements = await self.page.query_selector_all(selector_value)
+                        logger.info(f"Selector '{selector_name}' ({selector_value}): found {len(elements)} elements")
+                    except Exception as e:
+                        logger.error(f"Error testing selector '{selector_name}' ({selector_value}): {e}")
+
+        for idx, element in enumerate(job_elements):
+            try:
+                job = await self._extract_job_from_element(element, selectors)
+                logger.info(f"Job {idx + 1}: {job}")
+                if job and self.validate_job_data(job):
+                    jobs.append(self.normalize_job_data(job))
+                else:
+                    logger.warning(f"Job {idx + 1} failed validation: {job}")
+            except Exception as e:
+                logger.error(f"Error extracting job {idx + 1}: {e}")
+                self.stats["errors"] += 1
+
+        return jobs
+    
+    async def _extract_job_from_element(
+        self,
+        element,
+        selectors: Dict[str, str]
+    ) -> Dict[str, Any]:
+        """Extract job data from a single element."""
+        job = {}
+        
+        # Extract title
+        title_selector = selectors.get("job_title")
+        if title_selector:
+            title_el = await element.query_selector(title_selector)
+            if title_el:
+                job["title"] = (await title_el.inner_text()).strip()
+        
+        # Extract location
+        location_selector = selectors.get("job_location")
+        if location_selector:
+            location_el = await element.query_selector(location_selector)
+            if location_el:
+                job["location"] = (await location_el.inner_text()).strip()
+        
+        # Extract URL - try multiple strategies
+        url_found = False
+        
+        # Strategy 1: Check if title element is a link
+        if title_el:
+            tag_name = await title_el.evaluate("el => el.tagName.toLowerCase()")
+            if tag_name == "a":
+                href = await title_el.get_attribute("href")
+                if href:
+                    job["job_url"] = self._make_absolute_url(href)
+                    url_found = True
+        
+        # Strategy 2: Look for link using URL selector
+        if not url_found:
+            url_selector = selectors.get("job_url")
+            if url_selector:
+                url_el = await element.query_selector(url_selector)
+                if url_el:
+                    href = await url_el.get_attribute("href")
+                    if href:
+                        job["job_url"] = self._make_absolute_url(href)
+                        url_found = True
+        
+        # Strategy 3: Look for any link in the element
+        if not url_found:
+            link_el = await element.query_selector("a[href]")
+            if link_el:
+                href = await link_el.get_attribute("href")
+                if href and ("/job" in href.lower() or "/career" in href.lower() or "/position" in href.lower()):
+                    job["job_url"] = self._make_absolute_url(href)
+                    url_found = True
+
+        # Extract department
+        dept_selector = selectors.get("job_department")
+        if dept_selector:
+            dept_el = await element.query_selector(dept_selector)
+            if dept_el:
+                job["department"] = (await dept_el.inner_text()).strip()
+
+        # Extract employment type
+        type_selector = selectors.get("job_type")
+        if type_selector:
+            type_el = await element.query_selector(type_selector)
+            if type_el:
+                job["employment_type"] = (await type_el.inner_text()).strip()
+
+        # Generate external_id from URL or title
+        if "job_url" in job:
+            # Use last part of URL as ID
+            job["external_id"] = job["job_url"].split("/")[-1].split("?")[0]
+        elif "title" in job:
+            # Generate hash from title
+            job["external_id"] = hashlib.md5(job["title"].encode()).hexdigest()[:16]
+
+        return job
+
+
+    async def _scrape_html(self) -> List[Dict[str, Any]]:
+        """
+        Scrape jobs using simple HTTP requests (for sites like Island that block Playwright).
+        
+        Returns:
+            List of job dictionaries
+        """
+        
+        careers_url = self.company_config.get("careers_url")
+        logger.info(f"Fetching HTML from: {careers_url}")
+        
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
+        }
+        
+        try:
+            response = requests.get(careers_url, headers=headers, timeout=30)
+            response.raise_for_status()
+            logger.info(f"HTTP Status: {response.status_code}")
+            
+            soup = BeautifulSoup(response.text, 'html.parser')
+            
+            # Get selectors from config
+            selectors = self.scraping_config.get("selectors", {})
+            job_link_selector = selectors.get("job_link", "a[href*='comeet.com/jobs']")
+            
+            # Find all job links
+            job_links = soup.select(job_link_selector)
+            logger.info(f"Found {len(job_links)} job links")
+            
+            jobs = []
+            seen_positions = set()
+            
+            for link in job_links:
+                href = link.get('href', '')
+                position = link.get('data-position', '')
+                
+                # Skip if no position or duplicate
+                if not position or position in seen_positions:
+                    continue
+                seen_positions.add(position)
+                
+                # Extract location and department
+                location = link.get('data-location', '')
+                department = link.get('data-team', '')
+                
+                # If not in link, try parent container
+                if not location or not department:
+                    parent = link.find_parent(attrs={'data-location': True})
+                    if parent:
+                        location = location or parent.get('data-location', '')
+                        department = department or parent.get('data-team', '')
+                
+                # Make URL absolute
+                if href and not href.startswith('http'):
+                    if href.startswith('/'):
+                        href = 'https://www.comeet.com' + href
+                    else:
+                        href = 'https://www.comeet.com/' + href
+                
+                # Create job dict
+                job = {
+                    "title": position,
+                    "location": location,
+                    "department": department,
+                    "job_url": href,
+                    "description": "",
+                    "employment_type": None,
+                    "posted_date": None,
+                    "is_remote": "remote" in location.lower() if location else False,
+                }
+                
+                # Validate and normalize
+                if self.validate_job_data(job):
+                    # Apply location filter
+                    if self.matches_location_filter(job):
+                        jobs.append(self.normalize_job_data(job))
+                        logger.info(f"Parsed job: {job['title']} at {job['location']}")
+                    else:
+                        self.stats["jobs_filtered"] += 1
+                        logger.debug(f'Filtered out job: {job["title"]} at {job["location"]}')
+                else:
+                    logger.warning(f"Job failed validation: {job}")
+            
+            self.stats["requests_made"] += 1
+            return jobs
+            
+        except Exception as e:
+            logger.error(f"Error scraping HTML: {e}")
+            self.stats["errors"] += 1
+            return []
+
+    async def _scrape_rss(self) -> List[Dict[str, Any]]:
+        """Scrape jobs from RSS/XML feed (e.g., TalentBrew)."""
+        
+        rss_url = self.scraping_config.get("rss_url")
+        if not rss_url:
+            logger.error("No rss_url configured for RSS scraping")
+            return []
+        
+        logger.info(f"Fetching jobs from RSS feed: {rss_url}")
+        
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(rss_url)
+                response.raise_for_status()
+                
+                logger.info(f"RSS Response Status: {response.status_code}")
+                logger.info(f"Content-Type: {response.headers.get('content-type')}")
+            
+            # Parse XML
+            root = ET.fromstring(response.content)
+            
+            # Find all job items
+            items = root.findall('.//item')
+            logger.info(f"Found {len(items)} jobs in RSS feed")
+            
+            jobs = []
+            for item in items:
+                job = self._parse_rss_job(item)
+                if job:
+                    logger.info(f"Parsed job: {job.get('title')} at {job.get('location')}")
+                    if self.validate_job_data(job):
+                        # Apply location filter
+                        if self.matches_location_filter(job):
+                            jobs.append(self.normalize_job_data(job))
+                        else:
+                            self.stats["jobs_filtered"] += 1
+                            logger.debug(f'Filtered out job: {job.get("title")} at {job.get("location")}')
+                    else:
+                        logger.warning(f"Job failed validation: {job}")
+                else:
+                    logger.warning(f"Failed to parse RSS item")
+            
+            self.stats["requests_made"] += 1
+            return jobs
+            
+        except Exception as e:
+            logger.error(f"Error scraping RSS feed: {e}")
+            self.stats["errors"] += 1
+            return []
+    
+    def _parse_rss_job(self, item) -> Dict[str, Any]:
+        """Parse job from RSS/XML item (TalentBrew format)."""
+        try:
+            # Extract fields from XML
+            title_elem = item.find('title')
+            link_elem = item.find('link')
+            guid_elem = item.find('guid')
+            pub_date_elem = item.find('pubDate')
+            category_elem = item.find('category')
+            description_elem = item.find('description')
+            
+            # Parse title to extract location (TalentBrew format: "Job Title - (Location)")
+            title_text = title_elem.text if title_elem is not None else ""
+            location = ""
+            
+            # TalentBrew format: "Title - (Location)"
+            if " - (" in title_text and title_text.endswith(")"):
+                parts = title_text.rsplit(" - (", 1)
+                title = parts[0].strip()
+                location = parts[1].rstrip(")").strip()
+            else:
+                title = title_text
+            
+            # Parse posted date
+            posted_date = None
+            if pub_date_elem is not None and pub_date_elem.text:
+                try:
+                    from email.utils import parsedate_to_datetime
+                    posted_date = parsedate_to_datetime(pub_date_elem.text)
+                except:
+                    pass
+            
+            # Extract description and remove HTML tags
+            description = ""
+            if description_elem is not None and description_elem.text:
+                import re
+                description = re.sub(r'<[^>]+>', '', description_elem.text)
+                description = description.strip()[:5000]  # Limit length
+            
+            # Generate external_id from guid or link
+            external_id = ""
+            if guid_elem is not None and guid_elem.text:
+                # GUID format: "86090263200-Dallas,Texas,United States-Sales"
+                external_id = guid_elem.text.split("-")[0] if "-" in guid_elem.text else guid_elem.text
+            elif link_elem is not None and link_elem.text:
+                # Extract ID from URL
+                external_id = link_elem.text.split("/")[-1]
+            
+            return {
+                "external_id": external_id,
+                "title": title,
+                "description": description,
+                "location": location,
+                "job_url": link_elem.text if link_elem is not None else "",
+                "department": category_elem.text if category_elem is not None else None,
+                "posted_date": posted_date,
+                "employment_type": None,
+                "is_remote": "remote" in location.lower() if location else False,
+            }
+        except Exception as e:
+            logger.error(f"Error parsing RSS job: {e}")
+            return {}
+
+    async def _scrape_api_with_pagination(self) -> List[Dict[str, Any]]:
+        """Scrape jobs from API with pagination support (e.g., Amazon, Nvidia Eightfold)."""
+        api_endpoint = self.scraping_config.get("api_endpoint")
+        pagination_params = self.scraping_config.get("pagination_params", {})
+        query_params = self.scraping_config.get("query_params", {})
+        response_structure = self.scraping_config.get("response_structure", {})
+        
+        offset_param = pagination_params.get("offset_param", "offset")
+        limit_param = pagination_params.get("limit_param", "limit")
+        page_size = pagination_params.get("page_size", 100)
+        max_pages = pagination_params.get("max_pages", 10)  # Limit to prevent infinite loops
+        
+        # Get jobs key (supports nested keys like "data.positions")
+        jobs_key = response_structure.get("jobs_key", "jobs")
+        total_key = response_structure.get("total_key", "hits")
+        
+        logger.info(f"Fetching jobs from API with pagination: {api_endpoint}")
+        logger.info(f"Pagination: {offset_param}={page_size}, max_pages={max_pages}")
+        
+        all_jobs = []
+        offset = 0
+        page = 0
+        
+        while page < max_pages:
+            # Build params for this page
+            params = dict(query_params)  # Start with base query params
+            params[offset_param] = offset
+            if limit_param:  # Only add limit if specified (Eightfold doesn't use it)
+                params[limit_param] = page_size
+            
+            logger.info(f"Fetching page {page + 1} (offset={offset}, limit={page_size})")
+            
+            try:
+                async with httpx.AsyncClient(timeout=30.0) as client:
+                    response = await client.get(api_endpoint, params=params)
+                    response.raise_for_status()
+                    data = response.json()
+                
+                # Parse jobs based on API format
+                jobs_on_page = []
+                
+                # Extract positions from response (supports nested keys)
+                positions = self._extract_nested_value(data, jobs_key)
+                
+                if positions and isinstance(positions, list):
+                    # Get total hits if available
+                    total_hits = self._extract_nested_value(data, total_key) if total_key else 0
+                    
+                    logger.info(f"Found {len(positions)} jobs on page {page + 1}" + 
+                               (f" (total: {total_hits})" if total_hits else ""))
+                    
+                    # Determine which parser to use
+                    company_name = self.company_config.get("name", "")
+                    
+                    for position in positions:
+                        # Use company-specific parser
+                        if company_name == "Nvidia":
+                            job = self._parse_eightfold_job(position)
+                        elif company_name == "Wix":
+                            job = self._parse_smartrecruiters_job(position)
+                        elif company_name == "Amazon":
+                            job = self._parse_amazon_job(position)
+                        else:
+                            logger.warning(f"No parser defined for company: {company_name}")
+                            continue
+                        if job and self.validate_job_data(job):
+                            # Apply location filter
+                            if self.matches_location_filter(job):
+                                jobs_on_page.append(self.normalize_job_data(job))
+                            else:
+                                self.stats["jobs_filtered"] += 1
+                                logger.debug(f'Filtered out job: {job.get("title")} at {job.get("location")}')
+
+                    all_jobs.extend(jobs_on_page)
+                    self.stats["requests_made"] += 1
+                    
+                    # Check if we've reached the end
+                    if len(positions) == 0:
+                        logger.info(f"No more jobs found at page {page + 1}")
+                        break
+                    elif len(positions) < page_size:
+                        logger.info(f"Reached end of results at page {page + 1}")
+                        break
+                    elif total_hits and offset + len(positions) >= total_hits:
+                        logger.info(f"Reached total hits ({total_hits}) at page {page + 1}")
+                        break
+                else:
+                    logger.warning(f"Unexpected API format or no positions found")
+                    logger.warning(f"Response keys: {list(data.keys()) if isinstance(data, dict) else type(data)}")
+                    break
+                
+                # Move to next page
+                offset += len(positions)  # Use actual number of positions returned
+                page += 1
+                
+                # Small delay between requests
+                await asyncio.sleep(self.scraping_config.get("wait_time", 1))
+                
+            except Exception as e:
+                logger.error(f"Error fetching page {page + 1}: {e}")
+                self.stats["errors"] += 1
+                break
+        
+        logger.info(f"Total jobs scraped: {len(all_jobs)} across {page + 1} pages")
+        return all_jobs
+    
+    def _extract_nested_value(self, data: Dict[str, Any], key_path: str) -> Any:
+        """Extract value from nested dictionary using dot notation (e.g., 'data.positions')."""
+        if not key_path:
+            return None
+        
+        keys = key_path.split('.')
+        value = data
+        
+        for key in keys:
+            if isinstance(value, dict) and key in value:
+                value = value[key]
+            else:
+                return None
+        
+        return value
+    
+    def _parse_amazon_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Parse job from Amazon API format."""
+        try:
+            # Extract location
+            location = job_data.get("location", "")
+            if not location:
+                location = job_data.get("normalized_location", "")
+            
+            # Extract job URL
+            job_path = job_data.get("job_path", "")
+            job_url = f"https://www.amazon.jobs{job_path}" if job_path else ""
+            
+            # Parse posted date
+            posted_date = None
+            posted_str = job_data.get("posted_date")
+            if posted_str:
+                try:
+                    # Amazon format: "October  9, 2025"
+                    posted_date = date_parser.parse(posted_str)
+                except:
+                    pass
+            
+            # Extract description (may be HTML)
+            description = job_data.get("description", "") or job_data.get("description_short", "")
+            if description:
+                import re
+                description = re.sub(r'<[^>]+>', '', description)  # Remove HTML tags
+                description = description[:5000]  # Limit length
+            
+            # Determine if remote
+            is_remote = False
+            if location:
+                is_remote = any(keyword in location.lower() for keyword in ['remote', 'virtual', 'work from home'])
+            
+            return {
+                "external_id": job_data.get("id_icims") or job_data.get("id"),
+                "title": job_data.get("title"),
+                "description": description,
+                "location": location,
+                "job_url": job_url,
+                "department": job_data.get("job_category") or job_data.get("business_category"),
+                "employment_type": job_data.get("job_schedule_type"),
+                "posted_date": posted_date,
+                "is_remote": is_remote,
+            }
+        except Exception as e:
+            logger.error(f"Error parsing Amazon job: {e}")
+            return {}
+
+    
+    def _parse_eightfold_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Parse job from Eightfold AI API format (Nvidia)."""
+        try:
+            # Extract location (Eightfold returns list of locations)
+            locations = job_data.get("locations", [])
+            location = ", ".join(locations) if locations else ""
+            
+            # Extract job URL
+            position_url = job_data.get("positionUrl", "")
+            job_url = f"https://nvidia.eightfold.ai{position_url}" if position_url else ""
+            
+            # Parse posted date (Unix timestamp in milliseconds)
+            posted_date = None
+            posted_ts = job_data.get("postedTs")
+            if posted_ts:
+                try:
+                    from datetime import datetime
+                    # Convert from milliseconds to seconds
+                    posted_date = datetime.fromtimestamp(posted_ts / 1000)
+                except:
+                    pass
+            
+            # Determine if remote
+            work_location_option = job_data.get("workLocationOption", "")
+            is_remote = work_location_option.lower() == "remote"
+            
+            return {
+                "external_id": job_data.get("displayJobId") or str(job_data.get("id", "")),
+                "title": job_data.get("name"),
+                "description": "",  # Not in search API response
+                "location": location,
+                "job_url": job_url,
+                "department": job_data.get("department"),
+                "employment_type": None,  # Not in Eightfold API
+                "posted_date": posted_date,
+                "is_remote": is_remote,
+            }
+        except Exception as e:
+            logger.error(f"Error parsing Eightfold job: {e}")
+            return {}
+
+    def _parse_smartrecruiters_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Parse job from SmartRecruiters API format (Wix)."""
+        try:
+            # Extract location
+            location_data = job_data.get("location", {})
+            location = location_data.get("fullLocation", "")
+            
+            # Extract job URL
+            job_id = job_data.get("id", "")
+            job_url = f"https://jobs.smartrecruiters.com/Wix2/{job_id}" if job_id else ""
+            
+            # Extract department
+            department_data = job_data.get("department", {})
+            department = department_data.get("label") if department_data else None
+            
+            # Extract employment type
+            employment_data = job_data.get("typeOfEmployment", {})
+            employment_type = employment_data.get("label") if employment_data else None
+            
+            # Parse posted date (ISO format)
+            posted_date = None
+            released_date = job_data.get("releasedDate")
+            if released_date:
+                try:
+                    posted_date = date_parser.parse(released_date)
+                except:
+                    pass
+            
+            # Determine if remote
+            is_remote = location_data.get("remote", False)
+            
+            return {
+                "external_id": job_id,
+                "title": job_data.get("name"),
+                "description": "",  # Not in list API response
+                "location": location,
+                "job_url": job_url,
+                "department": department,
+                "employment_type": employment_type,
+                "posted_date": posted_date,
+                "is_remote": is_remote,
+            }
+        except Exception as e:
+            logger.error(f"Error parsing SmartRecruiters job: {e}")
+            return {}
+
+    async def _scrape_meta_graphql(self) -> List[Dict[str, Any]]:
+        """
+        Scrape Meta careers using Playwright to intercept GraphQL responses.
+        
+        Returns:
+            List of job dictionaries
+        """
+        jobs = []
+        search_url = self.scraping_config.get("search_url") or self.company_config.get("careers_url")
+        
+        logger.info(f"Scraping Meta GraphQL from: {search_url}")
+        
+        # Variable to store GraphQL response
+        graphql_jobs_data = None
+        
+        async def handle_response(response):
+            """Intercept GraphQL responses to extract job data."""
+            nonlocal graphql_jobs_data
+            
+            if 'graphql' in response.url:
+                try:
+                    data = await response.json()
+                    if 'data' in data and data['data']:
+                        if 'job_search_with_featured_jobs' in data['data']:
+                            graphql_jobs_data = data['data']['job_search_with_featured_jobs']
+                            logger.info("Captured Meta GraphQL jobs response")
+                except Exception as e:
+                    logger.debug(f"Error parsing GraphQL response: {e}")
+        
+        try:
+            # Set up response handler
+            self.page.on('response', handle_response)
+            
+            # Navigate to Meta careers page
+            logger.info(f"Navigating to: {search_url}")
+            await self.page.goto(search_url, wait_until='networkidle', timeout=60000)
+            
+            # Wait for GraphQL to load
+            wait_time = self.scraping_config.get("wait_time", 5)
+            await self.page.wait_for_timeout(wait_time * 1000)
+            
+            # Check if we captured the GraphQL response
+            if graphql_jobs_data and 'all_jobs' in graphql_jobs_data:
+                all_jobs = graphql_jobs_data['all_jobs']
+                
+                if isinstance(all_jobs, list):
+                    logger.info(f"Found {len(all_jobs)} jobs in GraphQL response")
+                    
+                    for job_data in all_jobs:
+                        job = self._parse_meta_job(job_data)
+                        if job:
+                            logger.info(f"Parsed job: {job.get('title')} at {job.get('location')}")
+                            if self.validate_job_data(job):
+                                # Apply location filter
+                                if self.matches_location_filter(job):
+                                    jobs.append(self.normalize_job_data(job))
+                                else:
+                                    self.stats["jobs_filtered"] += 1
+                                    logger.debug(f'Filtered out job: {job.get("title")} at {job.get("location")}')
+                            else:
+                                logger.warning(f"Job failed validation: {job}")
+                else:
+                    logger.warning(f"Unexpected all_jobs format: {type(all_jobs)}")
+            else:
+                logger.warning("No GraphQL jobs data captured")
+            
+            self.stats["requests_made"] += 1
+            return jobs
+            
+        except Exception as e:
+            logger.error(f"Error scraping Meta GraphQL: {e}")
+            self.stats["errors"] += 1
+            return []
+    
+    def _parse_meta_job(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Parse job from Meta GraphQL format."""
+        try:
+            # Extract location (Meta returns list of locations)
+            locations = job_data.get("locations", [])
+            location = ", ".join(locations) if locations else ""
+            
+            # Extract teams/departments
+            teams = job_data.get("teams", [])
+            sub_teams = job_data.get("sub_teams", [])
+            department = ", ".join(teams) if teams else None
+            
+            # Build job URL
+            job_id = job_data.get("id")
+            job_url = f"https://www.metacareers.com/jobs/{job_id}" if job_id else ""
+            
+            # Determine if remote
+            is_remote = False
+            if location:
+                is_remote = any(keyword in location.lower() for keyword in ['remote', 'virtual', 'work from home'])
+            
+            return {
+                "external_id": job_id,
+                "title": job_data.get("title"),
+                "description": "",  # GraphQL response doesn't include full description
+                "location": location,
+                "job_url": job_url,
+                "department": department,
+                "employment_type": None,  # Not in GraphQL response
+                "posted_date": None,  # Not in GraphQL response
+                "is_remote": is_remote,
+            }
+        except Exception as e:
+            logger.error(f"Error parsing Meta job: {e}")
+            return {}

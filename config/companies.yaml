@@ -1,0 +1,1152 @@
+companies:
+- name: Monday.com
+  website: https://monday.com
+  careers_url: https://monday.com/careers
+  industry: Technology
+  size: 1000-5000
+  location: Tel Aviv, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL,
+  scraping_config:
+    scraper_type: api
+    pagination_type: none
+    requires_js: true
+    anti_bot_measures: false
+    wait_time: 2
+    api_endpoint: https://www.comeet.co/careers-api/2.0/company/41.00B/positions?token=14B52C52C67790D3E1296BA37C20
+    api_method: GET
+    selectors:
+      job_list: null
+      job_item: null
+- name: Microsoft
+  website: https://microsoft.com
+  careers_url: https://careers.microsoft.com/us/en
+  industry: Technology
+  size: 10000+
+  location: Redmond, WA
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL,
+  scraping_config:
+    scraper_type: playwright
+    requires_js: true
+    anti_bot_measures: true
+    wait_time: 5
+    search_url: https://jobs.careers.microsoft.com/global/en/search
+    wait_for_selector: div[class*='job'], article, .ms-List
+    max_pages: 50
+    selectors:
+      job_list: div.jobs-list, div[data-test='job-results'], main, .ms-List
+      job_item: div[class*='job-card'], div[class*='job-item'], article, .ms-List-cell
+      job_title: h3, h2, a[class*='title'], .ms-Link
+      job_location: span[class*='location'], div[class*='location']
+      job_url: a[href*='/job/'], a[href*='careers']
+      job_department: span[class*='department'], div[class*='category']
+      job_type: span[class*='type'], span[class*='employment']
+      load_more_button: button[class*='load-more'], button[class*='show-more']
+- name: Wiz
+  website: https://www.wiz.io
+  careers_url: https://boards.greenhouse.io/wizinc
+  industry: Technology
+  size: 1000-5000
+  location: New York, NY
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL,
+  scraping_config:
+    scraper_type: api
+    pagination_type: none
+    requires_js: false
+    anti_bot_measures: false
+    wait_time: 2
+    api_endpoint: https://boards-api.greenhouse.io/v1/boards/wizinc/jobs
+    api_method: GET
+    selectors:
+      job_list: null
+      job_item: null
+- name: Island
+  website: https://www.island.io
+  careers_url: https://www.island.io/careers
+  industry: Technology
+  size: 100-500
+  location: Dallas, TX
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL,
+  scraping_config:
+    scraper_type: requests
+    pagination_type: none
+    requires_js: false
+    anti_bot_measures: false
+    wait_time: 2
+    selectors:
+      job_link: a[href*='comeet.com/jobs']
+      job_title: '[data-position]'
+      job_location: '[data-location]'
+      job_department: '[data-team]'
+- name: EON
+  website: https://www.eon.io
+  careers_url: https://boards.eu.greenhouse.io/eonio
+  industry: Technology
+  size: 50-100
+  location: New York, NY
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL,
+  scraping_config:
+    scraper_type: api
+    pagination_type: none
+    requires_js: false
+    api_endpoint: https://api.greenhouse.io/v1/boards/eonio/jobs
+    api_method: GET
+    selectors:
+      job_list: null
+      job_item: null
+- name: Palo Alto Networks
+  website: https://www.paloaltonetworks.com
+  careers_url: https://jobs.paloaltonetworks.com
+  industry: Cybersecurity
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL,
+  scraping:
+    scraper_type: rss
+    rss_url: https://jobs.paloaltonetworks.com/en/rss
+    wait_time: 2
+    selectors:
+      job_list: null
+      job_item: null
+- name: Amazon
+  website: https://www.amazon.com
+  careers_url: https://www.amazon.jobs
+  industry: Technology
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL,
+  scraping:
+    scraper_type: api
+    api_endpoint: https://www.amazon.jobs/en/search.json?country=ISR
+    api_method: GET
+    pagination_type: offset
+    pagination_params:
+      offset_param: offset
+      limit_param: result_limit
+      page_size: 100
+      max_pages: 50
+    wait_time: 1
+    response_structure:
+      jobs_key: jobs
+      total_key: hits
+    field_mapping:
+      external_id:
+      - id_icims
+      - id
+      title: title
+      description:
+        field: description
+        transform: strip_html
+        max_length: 5000
+      location:
+      - location
+      - normalized_location
+      department:
+      - job_category
+      - business_category
+      employment_type: job_schedule_type
+      posted_date:
+        field: posted_date
+        transform: parse_date
+        date_format: natural
+      job_url:
+        field: job_path
+        transform: prepend_url
+        base_url: https://www.amazon.jobs
+      is_remote:
+        field: location
+        transform: contains_keywords
+        keywords:
+        - remote
+        - virtual
+        - work from home
+    selectors:
+      job_list: null
+      job_item: null
+- name: Meta
+  website: https://www.meta.com
+  careers_url: https://www.metacareers.com/jobs
+  industry: Technology
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL,
+  scraping:
+    scraper_type: meta_graphql
+    wait_time: 5
+    search_url: https://www.metacareers.com/jobs?offices[0]=Tel%20Aviv%2C%20Israel
+- name: Nvidia
+  website: https://www.nvidia.com
+  careers_url: https://nvidia.eightfold.ai/careers
+  industry: Technology
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Raanana
+    - Beer Sheva
+    - Yokneam
+    - IL,
+  scraping:
+    scraper_type: api
+    api_endpoint: https://nvidia.eightfold.ai/api/pcsx/search
+    api_method: GET
+    pagination_type: offset
+    pagination_params:
+      offset_param: start
+      limit_param: null
+      page_size: 10
+      max_pages: 50
+    wait_time: 1
+    query_params:
+      domain: nvidia.com
+      query: ''
+      location: Israel
+    response_structure:
+      jobs_key: data.positions
+      total_key: null
+    field_mapping:
+      external_id:
+      - displayJobId
+      - id
+      title: name
+      description: ''
+      location:
+        field: locations
+        transform: join_list
+        separator: ', '
+      department: department
+      employment_type: null
+      posted_date:
+        field: postedTs
+        transform: parse_timestamp
+      job_url:
+        field: positionUrl
+        transform: prepend_url
+        base_url: https://nvidia.eightfold.ai
+      is_remote:
+        field: workLocationOption
+        transform: equals
+        value: remote
+    selectors:
+      job_list: null
+      job_item: null
+- name: Wix
+  website: https://www.wix.com
+  careers_url: https://careers.wix.com/positions
+  industry: Technology
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Beer Sheva
+    - IL,
+  scraping:
+    scraper_type: api
+    api_endpoint: https://api.smartrecruiters.com/v1/companies/Wix2/postings
+    api_method: GET
+    pagination_type: offset
+    pagination_params:
+      offset_param: offset
+      limit_param: limit
+      page_size: 100
+      max_pages: 10
+    wait_time: 1
+    response_structure:
+      jobs_key: content
+      total_key: totalFound
+    field_mapping:
+      external_id: id
+      title: name
+      description: ''
+      location:
+        field: location.fullLocation
+        transform: direct
+      department:
+        field: department.label
+        transform: direct
+      employment_type:
+        field: typeOfEmployment.label
+        transform: direct
+      posted_date:
+        field: releasedDate
+        transform: parse_iso_date
+      job_url:
+        field: id
+        transform: prepend_url
+        base_url: https://jobs.smartrecruiters.com/Wix2/
+      is_remote:
+        field: location.remote
+        transform: direct
+    selectors:
+      job_list: null
+      job_item: null
+- name: Salesforce
+  website: https://www.salesforce.com
+  careers_url: https://careers.salesforce.com/en/jobs/
+  industry: Technology
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL,
+  scraping:
+    scraper_type: workday
+    api_endpoint: https://salesforce.wd12.myworkdayjobs.com/wday/cxs/salesforce/External_Career_Site/jobs
+    api_method: POST
+    pagination_type: offset
+    pagination_params:
+      offset_param: offset
+      limit_param: limit
+      page_size: 20
+      max_pages: 50
+    wait_time: 1
+    workday_config:
+      base_url: https://salesforce.wd12.myworkdayjobs.com
+      search_text: Israel
+      applied_facets: {}
+    response_structure:
+      jobs_key: jobPostings
+      total_key: total
+    field_mapping:
+      external_id:
+        field: bulletFields
+        transform: extract_first
+      title: title
+      description: ''
+      location: locationsText
+      department: null
+      employment_type: null
+      posted_date: null
+      job_url:
+        field: externalPath
+        transform: prepend_url
+        base_url: https://salesforce.wd12.myworkdayjobs.com
+      is_remote:
+        field: locationsText
+        transform: contains_keywords
+        keywords:
+        - remote
+        - virtual
+        - work from home
+    selectors:
+      job_list: null
+      job_item: null
+- name: Intel
+  website: https://www.intel.com
+  careers_url: https://jobs.intel.com/en/search-jobs/Israel
+  industry: Technology / Semiconductors
+  size: 100000+
+  location: Santa Clara, USA / Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Petah-Tikva
+    - Kiryat-Gat
+    - IL,
+  scraping_config:
+    scraper_type: workday
+    api_endpoint: https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External/jobs
+    api_method: POST
+    pagination_type: offset
+    pagination_params:
+      offset_param: offset
+      limit_param: limit
+      page_size: 20
+      max_pages: 50
+    wait_time: 1
+    workday_config:
+      base_url: https://intel.wd1.myworkdayjobs.com/en-US/External
+      search_text: ''
+      applied_facets: {}
+    response_structure:
+      jobs_key: jobPostings
+      total_key: total
+    field_mapping:
+      external_id:
+        field: bulletFields
+        transform: extract_first
+      title: title
+      description: ''
+      location: locationsText
+      department: null
+      employment_type: null
+      posted_date: null
+      job_url:
+        field: externalPath
+        transform: prepend_url
+        base_url: https://intel.wd1.myworkdayjobs.com/en-US/External
+      is_remote:
+        field: locationsText
+        transform: contains_keywords
+        keywords:
+        - remote
+        - virtual
+        - work from home
+    selectors:
+      job_list: null
+      job_item: null
+- name: Datadog
+  website: https://www.datadoghq.com
+  careers_url: https://www.datadoghq.com/careers/
+  industry: Technology
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL,
+  scraping:
+    scraper_type: api
+    pagination_type: none
+    api_endpoint: https://boards-api.greenhouse.io/v1/boards/datadog/jobs
+    api_params: {}
+    wait_time: 1
+    response_structure:
+      jobs_key: jobs
+    field_mapping:
+      external_id: id
+      title: title
+      description: content
+      location: location.name
+      department: departments[0].name
+      employment_type: null
+      posted_date: null
+      job_url: absolute_url
+      is_remote:
+        field: location.name
+        transform: contains_keywords
+        keywords:
+        - remote
+        - virtual
+        - work from home
+    selectors:
+      job_list: null
+      job_item: null
+- name: Unity
+  website: https://unity.com
+  careers_url: https://unity.com/careers
+  industry: Technology
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL,
+  scraping:
+    scraper_type: api
+    pagination_type: none
+    api_endpoint: https://boards-api.greenhouse.io/v1/boards/unity3d/jobs
+    api_params: {}
+    wait_time: 1
+    response_structure:
+      jobs_key: jobs
+    field_mapping:
+      external_id: id
+      title: title
+      description: content
+      location: location.name
+      department: departments[0].name
+      employment_type: null
+      posted_date: null
+      job_url: absolute_url
+      is_remote:
+        field: location.name
+        transform: contains_keywords
+        keywords:
+        - remote
+        - virtual
+        - work from home
+    selectors:
+      job_list: null
+      job_item: null
+- name: AppsFlyer
+  website: https://www.appsflyer.com
+  careers_url: https://careers.appsflyer.com/
+  industry: Technology
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Raanana
+    - Beer Sheva
+    - IL,
+  scraping:
+    scraper_type: api
+    api_endpoint: https://boards-api.greenhouse.io/v1/boards/appsflyer/jobs
+    api_method: GET
+    pagination_type: none
+    wait_time: 1
+    response_structure:
+      jobs_key: jobs
+      total_key: null
+    field_mapping:
+      external_id: id
+      title: title
+      description: ''
+      location:
+        field: location.name
+        transform: direct
+      job_url:
+        field: absolute_url
+        transform: direct
+      department:
+        field: departments
+        transform: extract_first
+      employment_type: ''
+      posted_date:
+        field: updated_at
+        transform: parse_iso_date
+      is_remote: ''
+    selectors:
+      job_list: null
+      job_item: null
+- name: JFrog
+  website: https://jfrog.com
+  careers_url: https://join.jfrog.com/
+  industry: Technology
+  size: 1000-5000
+  location: Sunnyvale, CA / Netanya, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    - United States
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Netanya
+    - Haifa
+    - Jerusalem
+    - IL,
+    - Remote
+  scraping_config:
+    scraper_type: api
+    pagination_type: none
+    requires_js: false
+    anti_bot_measures: false
+    wait_time: 2
+    api_endpoint: https://boards-api.greenhouse.io/v1/boards/jfrog/jobs
+    api_method: GET
+    response_structure:
+      jobs_path: jobs
+      job_fields:
+        title:
+          field: title
+          transform: direct
+        description: ''
+        location:
+          field: location.name
+          transform: direct
+        job_url:
+          field: absolute_url
+          transform: direct
+        department:
+          field: departments
+          transform: extract_first
+        employment_type: ''
+        posted_date:
+          field: updated_at
+          transform: parse_iso_date
+        is_remote: ''
+    selectors:
+      job_list: null
+      job_item: null
+- name: Riskified
+  website: https://www.riskified.com
+  careers_url: https://www.riskified.com/careers/
+  industry: Technology
+  size: 500-1000
+  location: Tel Aviv, Israel / New York, NY
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    - United States
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Jerusalem
+    - Haifa
+    - IL,
+    - Remote
+    - New York
+  scraping_config:
+    scraper_type: api
+    pagination_type: none
+    requires_js: false
+    anti_bot_measures: false
+    wait_time: 2
+    api_endpoint: https://boards-api.greenhouse.io/v1/boards/riskified/jobs
+    api_method: GET
+    response_structure:
+      jobs_path: jobs
+      job_fields:
+        title:
+          field: title
+          transform: direct
+        description: ''
+        location:
+          field: location.name
+          transform: direct
+        job_url:
+          field: absolute_url
+          transform: direct
+        department:
+          field: departments
+          transform: extract_first
+        employment_type: ''
+        posted_date:
+          field: updated_at
+          transform: parse_iso_date
+        is_remote: ''
+    selectors:
+      job_list: null
+      job_item: null
+- name: Papaya Gaming
+  website: https://www.papaya.com
+  careers_url: https://www.papaya.com/contact-us
+  industry: Technology
+  size: 100-500
+  location: Tel Aviv, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    - Poland
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Tel-Aviv
+    - Jerusalem
+    - Haifa
+    - IL,
+    - Poland
+    - Warsaw
+  scraping_config:
+    scraper_type: api
+    pagination_type: none
+    requires_js: true
+    anti_bot_measures: false
+    wait_time: 2
+    api_endpoint: https://www.comeet.co/careers-api/2.0/company/46.00B/positions?token=64B25C264B12E112E102C0D2C0D64B25C2
+    api_method: GET
+    selectors:
+      job_list: null
+      job_item: null
+- name: Check Point
+  website: https://www.checkpoint.com
+  careers_url: https://careers.checkpoint.com/
+  industry: Cybersecurity
+  size: 5000+
+  location: Tel Aviv, Israel / Worldwide
+  scraping_config:
+    scraper_type: playwright
+    requires_js: true
+    careers_url: https://careers.checkpoint.com/index.php?m=cpcareers&a=search
+    wait_time: 3
+    location_filter:
+      enabled: true
+      countries:
+      - Israel
+      - United States
+      match_keywords:
+      - Israel
+      - Tel Aviv
+      - Ramat Gan
+      - Haifa
+      - Jerusalem
+      - IL,
+      - Remote
+      - United States
+      - US
+    selectors:
+      job_list: .job-item, .position-item
+      job_item: .job-link, .position-link
+- name: Lumen
+  website: https://www.lumen.me
+  careers_url: https://www.lumen.me/careers
+  industry: Health Tech
+  size: 50-200
+  location: Tel Aviv, Israel
+  scraping_config:
+    scraper_type: api
+    pagination_type: none
+    requires_js: false
+    api_endpoint: https://www.lumen.me/careers.json
+    api_method: GET
+    location_filter:
+      enabled: true
+      countries:
+      - Israel
+      match_keywords:
+      - Israel
+      - Tel Aviv
+      - IL
+    selectors:
+      job_list: null
+      job_item: null
+- name: Gong
+  website: https://www.gong.io
+  careers_url: https://www.gong.io/careers
+  industry: Revenue Intelligence / Sales Tech
+  size: 1000-2000
+  location: Tel Aviv, Israel / San Francisco, USA
+  scraping_config:
+    scraper_type: api
+    pagination_type: none
+    requires_js: false
+    api_endpoint: https://boards-api.greenhouse.io/v1/boards/gongio/jobs
+    api_method: GET
+    location_filter:
+      enabled: true
+      countries:
+      - Israel
+      - United States
+      match_keywords:
+      - Israel
+      - Tel Aviv
+      - Ramat Gan
+      - Haifa
+      - Jerusalem
+      - IL
+      - Remote
+      - United States
+      - US
+      - New York
+      - San Francisco
+      - Austin
+      - Chicago
+      - Salt Lake
+    selectors:
+      job_list: null
+      job_item: null
+- name: Booking.com
+  website: https://www.booking.com
+  careers_url: https://jobs.booking.com/booking/jobs
+  industry: Travel Technology
+  size: 10000+
+  location: Amsterdam, Netherlands / Tel Aviv, Israel
+  scraping_config:
+    scraper_type: api
+    pagination_type: none
+    requires_js: false
+    api_endpoint: https://jobs.booking.com/api/jobs
+    api_method: GET
+    api_params:
+      page: 1
+      limit: 100
+    location_filter:
+      enabled: true
+      countries:
+      - Israel
+      - United States
+      match_keywords:
+      - Israel
+      - Tel Aviv
+      - Ramat Gan
+      - Haifa
+      - Jerusalem
+      - IL
+      - Remote
+      - United States
+      - US
+      - New York
+      - San Francisco
+      - Austin
+      - Chicago
+      - Seattle
+    selectors:
+      job_list: null
+      job_item: null
+- name: Apple
+  website: https://www.apple.com
+  careers_url: https://jobs.apple.com/en-us/search?location=israel-ISR
+  industry: Technology / Consumer Electronics
+  size: 100000+
+  location: Cupertino, USA / Herzliya, Israel
+  scraping_config:
+    scraper_type: playwright
+    requires_js: true
+    wait_for_selector: '[data-test=''search-result'']'
+    location_filter:
+      enabled: true
+      countries:
+      - Israel
+      - United States
+      match_keywords:
+      - Israel
+      - Herzliya
+      - Haifa
+      - Tel Aviv
+      - IL
+      - Remote
+      - United States
+      - US
+      - California
+      - Texas
+      - New York
+      - Washington
+      - Cupertino
+      - Austin
+      - Seattle
+    selectors:
+      job_list: '[data-test=''search-result'']'
+      job_item: a[data-test='job-link']
+- name: Fiverr
+  website: https://www.fiverr.com
+  careers_url: https://www.fiverr.com/jobs/teams
+  industry: Technology / Marketplace
+  size: 1000-5000
+  location: Tel Aviv, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL
+    - tlv
+  scraping_config:
+    scraper_type: playwright
+    pagination_type: none
+    requires_js: true
+    wait_time: 10
+    wait_for_selector: a[href*='/jobs/positions/'], div[class*='job'], div[class*='position']
+    selectors:
+      job_list: main, body
+      job_item: a[href*='/jobs/positions/'], div[class*='job'], div[class*='position']
+      title: h3, h4, h5, [class*='title']
+      location: '[class*=''location''], [class*=''office'']'
+      link: a
+- name: SentinelOne
+  website: https://www.sentinelone.com
+  careers_url: https://boards-api.greenhouse.io/v1/boards/sentinellabs/jobs
+  industry: Cybersecurity
+  size: 1000-5000
+  location: Mountain View, CA / Tel Aviv, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    - United States
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL
+    - United States
+    - US
+    - California
+    - New York
+    - Remote
+  scraping_config:
+    scraper_type: api
+    api_type: greenhouse
+    api_endpoint: https://boards-api.greenhouse.io/v1/boards/sentinellabs/jobs
+    pagination_type: none
+    field_mapping:
+      title: title
+      location: location.name
+      url: absolute_url
+      company: company_name
+      department: departments[0].name
+- name: Redis
+  website: https://redis.com
+  careers_url: https://boards-api.greenhouse.io/v1/boards/redis/jobs
+  industry: Database / Infrastructure
+  size: 500-1000
+  location: Mountain View, CA / Tel Aviv, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    - United States
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL
+    - United States
+    - US
+    - California
+    - New York
+    - Remote
+  scraping_config:
+    scraper_type: api
+    api_type: greenhouse
+    api_endpoint: https://boards-api.greenhouse.io/v1/boards/redis/jobs
+    pagination_type: none
+    field_mapping:
+      title: title
+      location: location.name
+      url: absolute_url
+      company: company_name
+      job_id: id
+      posted_date: updated_at
+- name: Samsung
+  website: https://www.samsung.com
+  careers_url: https://sec.wd3.myworkdayjobs.com/Samsung_Careers
+  industry: Electronics / Semiconductors
+  size: 10000+
+  location: Seoul, South Korea / Global
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    - United States
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL
+    - United States
+    - US
+    - California
+    - New York
+    - Texas
+    - Remote
+  scraping_config:
+    scraper_type: workday
+    api_endpoint: https://sec.wd3.myworkdayjobs.com/wday/cxs/sec/Samsung_Careers/jobs
+    api_method: POST
+    pagination_type: offset
+    pagination_params:
+      offset_param: offset
+      limit_param: limit
+      page_size: 20
+      max_pages: 50
+    wait_time: 1
+    workday_config:
+      base_url: https://sec.wd3.myworkdayjobs.com/Samsung_Careers
+      search_text: ''
+      applied_facets: {}
+    response_structure:
+      jobs_key: jobPostings
+      total_key: total
+    field_mapping:
+      external_id:
+        field: bulletFields
+        transform: extract_first
+      title: title
+      location: locationsText
+      url:
+        field: externalPath
+        transform: prepend_base_url
+        base_url: https://sec.wd3.myworkdayjobs.com/Samsung_Careers
+      posted_date: postedOn
+- name: Intuit
+  website: https://www.intuit.com
+  careers_url: https://jobs.intuit.com/search-jobs
+  industry: Financial Software
+  size: 10000+
+  location: Mountain View, California / Global
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    - United States
+    match_keywords:
+    - Israel
+    - Petah Tikva
+    - Tel Aviv
+    - Haifa
+    - Jerusalem
+    - IL
+    - United States
+    - US
+    - California
+    - New York
+    - Texas
+    - Remote
+  scraping_config:
+    scraper_type: phenom
+    phenom_config:
+      location_filter: Petah Tikva
+      location_param_type: path
+      max_pages: 5
+    wait_time: 2
+- name: ServiceNow
+  website: https://www.servicenow.com
+  careers_url: https://careers.servicenow.com/jobs
+  industry: Enterprise Software / IT Service Management
+  size: 10000+
+  location: Santa Clara, California / Global
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    - United States
+    match_keywords:
+    - Israel
+    - Petah Tikva
+    - Tel Aviv
+    - Haifa
+    - Jerusalem
+    - IL
+    - United States
+    - US
+    - California
+    - New York
+    - Texas
+    - Remote
+  scraping_config:
+    scraper_type: phenom
+    phenom_config:
+      location_filter: Petah Tikva
+      location_param_type: query
+      max_pages: 5
+    wait_time: 2
