@@ -32,6 +32,7 @@ pydantic==2.5.3
 pydantic-settings==2.1.0
 pandas==2.1.4
 python-dateutil==2.8.2
+pyyaml==6.0.1
 
 # API
 fastapi==0.108.0

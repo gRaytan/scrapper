@@ -90,14 +90,31 @@ uvicorn src.api.app:app --reload
 
 ## Configuration
 
+### Adding New Companies
+
+**IMPORTANT:** When adding new companies, you must add them to **both** the YAML configuration **and** the PostgreSQL database.
+
+See the complete guide: **[docs/ADDING_NEW_COMPANIES.md](docs/ADDING_NEW_COMPANIES.md)**
+
+Quick steps:
+1. Add company to `config/companies.yaml`
+2. Run migration script: `.venv/bin/python scripts/migrate_companies_to_db.py`
+3. Test scraping: `.venv/bin/python scripts/run_scraper.py --company "Company Name"`
+
 ### Company Configuration (`config/companies.yaml`)
 
 ```yaml
 companies:
   - name: "Example Corp"
+    website: "https://example.com"
     careers_url: "https://example.com/careers"
+    industry: "Technology"
+    is_active: true
     scraper_type: "playwright"
     pagination_type: "infinite_scroll"
+    location_filter:
+      enabled: true
+      countries: ["Israel", "United States"]
     selectors:
       job_list: ".careers-list"
       job_item: ".job-card"

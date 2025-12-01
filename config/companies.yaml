@@ -771,6 +771,7 @@ companies:
   industry: Cybersecurity
   size: 5000+
   location: Tel Aviv, Israel / Worldwide
+  is_active: false
   scraping_config:
     scraper_type: playwright
     requires_js: true
