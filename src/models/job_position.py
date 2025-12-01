@@ -52,8 +52,14 @@ class JobPosition(Base, UUIDMixin, TimestampMixin):
         nullable=False,
         index=True
     )
-    
-    # Status
+
+    # Lifecycle tracking
+    status: Mapped[str] = mapped_column(String(50), default='active', nullable=False, index=True)  # active, expired, filled
+    first_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    last_seen_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    expired_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    # Status (deprecated - use status field instead)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
     
     # Raw data (for re-parsing if needed)

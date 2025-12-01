@@ -144,6 +144,8 @@ Build a comprehensive job scraping and notification system that:
 - `raw_html` (TEXT)
 - `metadata` (JSON)
 - `created_at`, `updated_at` (TIMESTAMP)
+- `is_archived` (BOOLEAN)
+- `is_starred` (BOOLEAN)
 
 **`scraping_sessions`**
 - `id` (UUID, PK)
