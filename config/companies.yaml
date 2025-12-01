@@ -1320,6 +1320,32 @@ companies:
       token: 7C42E981F101F10365C174C2E98F88F880
     api_format: comeet
     pagination_type: none
+- name: Broadcom
+  website: https://www.broadcom.com
+  careers_url: https://broadcom.wd1.myworkdayjobs.com/External_Career
+  industry: Semiconductors / Infrastructure Software
+  size: 10000+
+  location: San Jose, CA / Global
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - ISR-
+    - IL
+  scraping_config:
+    scraper_type: workday
+    api_endpoint: https://broadcom.wd1.myworkdayjobs.com/wday/cxs/broadcom/External_Career/jobs
+    pagination_type: offset
+    page_size: 20
+
 - name: Elementor
   website: https://elementor.com
   careers_url: https://elementor.careers/explore/
