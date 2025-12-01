@@ -1452,3 +1452,114 @@ companies:
       posted_date:
         field: PostedDate
         transform: parse_date
+
+- name: SimilarWeb
+  website: https://www.similarweb.com
+  careers_url: https://www.similarweb.com/corp/careers/
+  industry: Digital Intelligence / Analytics
+  size: 1000-5000
+  location: Tel Aviv, Israel / Global
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+      - Israel
+    match_keywords:
+      - Israel
+      - Tel Aviv
+      - Herzliya
+      - Haifa
+      - Jerusalem
+      - Petach Tikva
+      - Ramat Gan
+      - IL
+  scraping_config:
+    scraper_type: api
+    api_endpoint: https://boards-api.greenhouse.io/v1/boards/similarweb/jobs
+    api_method: GET
+    pagination_type: none
+    wait_time: 1
+
+- name: Taboola
+  website: https://www.taboola.com
+  careers_url: https://www.taboola.com/careers
+  industry: Content Discovery / Advertising Technology
+  size: 1000-5000
+  location: Tel Aviv, Israel / Global
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+      - Israel
+    match_keywords:
+      - Israel
+      - Tel Aviv
+      - Herzliya
+      - Haifa
+      - Jerusalem
+      - Petach Tikva
+      - IL
+  scraping_config:
+    scraper_type: api
+    api_endpoint: https://www.comeet.com/careers-api/2.0/company/taboola/positions
+    api_method: GET
+    pagination_type: none
+    wait_time: 1
+
+- name: Trax
+  website: https://traxretail.com
+  careers_url: https://traxretail.com/company/careers/
+  industry: Retail Technology / Computer Vision
+  size: 1000-5000
+  location: Singapore / Global
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+      - Israel
+    match_keywords:
+      - Israel
+      - Tel Aviv
+      - Herzliya
+      - Haifa
+      - Jerusalem
+      - Petach Tikva
+      - IL
+  scraping_config:
+    scraper_type: api
+    api_endpoint: https://www.comeet.com/careers-api/2.0/company/trax/positions
+    api_method: GET
+    pagination_type: none
+    wait_time: 1
+
+- name: Innoviz
+  website: https://innoviz.tech
+  careers_url: https://innoviz.tech/careers
+  industry: Automotive / LiDAR Technology
+  size: 201-500
+  location: Rosh HaAyin, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+      - Israel
+    match_keywords:
+      - Israel
+      - Tel Aviv
+      - Herzliya
+      - Haifa
+      - Jerusalem
+      - Petach Tikva
+      - Rosh HaAyin
+      - Rosh Ha'ayin
+      - IL
+  scraping_config:
+    scraper_type: api
+    api_endpoint: https://www.comeet.com/careers-api/2.0/company/innoviz/positions
+    api_method: GET
+    pagination_type: none
+    wait_time: 1
