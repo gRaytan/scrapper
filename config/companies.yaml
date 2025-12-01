@@ -1622,3 +1622,61 @@ companies:
       page_size: 20
       max_pages: 50
     wait_time: 1
+
+- name: SAP
+  website: https://www.sap.com
+  careers_url: https://jobs.sap.com/
+  industry: Enterprise Software / ERP
+  size: 10000+
+  location: Walldorf, Germany / Global
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+      - Israel
+    match_keywords:
+      - Israel
+      - Tel Aviv
+      - Herzliya
+      - Haifa
+      - Jerusalem
+      - Petach Tikva
+      - Ra'anana
+      - Raanana
+      - IL
+  scraping_config:
+    scraper_type: playwright
+    url: https://jobs.sap.com/search/?createNewAlert=false&q=&locationsearch=Israel
+    wait_time: 2
+    job_selector: .jobTitle a
+    pagination_selector: .next
+    max_pages: 20
+
+- name: Cisco
+  website: https://www.cisco.com
+  careers_url: https://careers.cisco.com/
+  industry: Networking / Technology Infrastructure
+  size: 10000+
+  location: San Jose, CA / Global
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+      - Israel
+    match_keywords:
+      - Israel
+      - Tel Aviv
+      - Herzliya
+      - Haifa
+      - Jerusalem
+      - Petach Tikva
+      - IL
+  scraping_config:
+    scraper_type: playwright
+    url: https://careers.cisco.com/global/en/search-results?keywords=&location=Israel
+    wait_time: 2
+    job_selector: .job-title a
+    pagination_selector: .next-page
+    max_pages: 20
