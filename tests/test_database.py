@@ -1,8 +1,13 @@
 """Test database connectivity and basic CRUD operations."""
+import sys
+from pathlib import Path
 from datetime import datetime
 from uuid import uuid4
 
 from sqlalchemy import text
+
+# Add parent directory to path to import src modules
+sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from src.storage.database import db
 from src.models.user import User

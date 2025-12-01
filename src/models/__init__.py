@@ -2,6 +2,7 @@
 from .base import Base, TimestampMixin, UUIDMixin
 from .company import Company
 from .job_position import JobPosition
+from .scraping_session import ScrapingSession
 from .user import User
 from .alert import Alert
 from .user_job_application import UserJobApplication
@@ -13,6 +14,7 @@ __all__ = [
     "UUIDMixin",
     "Company",
     "JobPosition",
+    "ScrapingSession",
     "User",
     "Alert",
     "UserJobApplication",
