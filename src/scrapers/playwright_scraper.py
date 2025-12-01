@@ -290,17 +290,26 @@ class PlaywrightScraper(BaseScraper):
     def _get_api_parser_for_pagination(self) -> Any:
         """
         Determine which parser to use for paginated API responses.
-        
+
         This is used by _scrape_api_with_pagination() for APIs that use
         company-specific formats (Amazon, Nvidia, Wix) or standard formats.
-        
+
         Returns:
             Parser instance
         """
         company_name = self.company_config.get("name", "")
         api_endpoint = self.scraping_config.get("api_endpoint", "")
+        api_type = self.scraping_config.get("api_type", "")
         jobs_key = self.scraping_config.get("response_structure", {}).get("jobs_key", "jobs")
-        
+        field_mapping = self.scraping_config.get("field_mapping", {})
+
+        # Check for generic API parser with field mapping
+        if api_type == "generic" and field_mapping:
+            logger.debug(f"Using generic API parser with field mapping for {company_name}")
+            from .parsers.api_parser import APIParser
+            url_template = self.scraping_config.get("url_template")
+            return APIParser(field_mapping=field_mapping, url_template=url_template)
+
         # Company-specific parsers
         if company_name == "Nvidia":
             logger.debug("Using Eightfold parser for Nvidia")
@@ -1035,7 +1044,21 @@ class PlaywrightScraper(BaseScraper):
         return all_jobs
 
     def _extract_nested_value(self, data: Dict[str, Any], key_path: str) -> Any:
-        """Extract value from nested dictionary using dot notation (e.g., 'data.positions')."""
+        """
+        Extract value from nested dictionary/list using dot notation.
+
+        Supports:
+        - Dictionary keys: 'data.positions'
+        - Array indices: 'items.0.requisitionList'
+        - Mixed: 'data.items.0.jobs'
+
+        Args:
+            data: The data structure to extract from
+            key_path: Dot-separated path (e.g., 'items.0.requisitionList')
+
+        Returns:
+            Extracted value or None if path doesn't exist
+        """
         if not key_path:
             return None
 
@@ -1043,7 +1066,15 @@ class PlaywrightScraper(BaseScraper):
         value = data
 
         for key in keys:
-            if isinstance(value, dict) and key in value:
+            # Check if key is a numeric index (for arrays)
+            if key.isdigit():
+                index = int(key)
+                if isinstance(value, list) and 0 <= index < len(value):
+                    value = value[index]
+                else:
+                    return None
+            # Otherwise treat as dictionary key
+            elif isinstance(value, dict) and key in value:
                 value = value[key]
             else:
                 return None

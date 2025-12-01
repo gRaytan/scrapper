@@ -59,21 +59,28 @@ class APIParser(BaseJobParser):
     
     def parse(self, job_data: Dict[str, Any]) -> Dict[str, Any]:
         """Parse job from API response using field mapping.
-        
+
         Args:
             job_data: Job data from API response
-            
+
         Returns:
             Standardized job dictionary
         """
         try:
             result = {}
-            
+
             # Process each field in the mapping
             for standard_field, field_config in self.field_mapping.items():
                 value = self._extract_field_value(job_data, field_config)
                 result[standard_field] = value
-            
+
+            # Build job_url from template if provided and not already set
+            if self.url_template and not result.get("job_url"):
+                external_id = result.get("external_id")
+                if external_id:
+                    # Support both {id} and {Id} placeholders
+                    result["job_url"] = self.url_template.replace("{id}", str(external_id)).replace("{Id}", str(external_id))
+
             return result
         except Exception as e:
             logger.error(f"Error parsing API job: {e}")
@@ -187,7 +194,18 @@ class APIParser(BaseJobParser):
                 separator = config.get("separator", ", ")
                 return separator.join(str(item) for item in value if item)
             return value
-        
+
+        elif transform == "template":
+            # Build string from template using job data
+            # This is different from prepend_url - it uses the entire job_data dict
+            # Note: This requires passing job_data through the transformation
+            template = config.get("template", "")
+            if template:
+                # This won't work with current architecture - need to pass job_data
+                logger.warning("Template transformation requires job_data context")
+                return None
+            return value
+
         else:
             logger.warning(f"Unknown transformation: {transform}")
             return value

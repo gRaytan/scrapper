@@ -1403,3 +1403,52 @@ companies:
       job_title: h3.careers-position-title
       job_location: span.careers-position-location
       job_url: a.careers-position-link
+- name: Oracle
+  website: https://www.oracle.com
+  careers_url: https://careers.oracle.com/en/sites/jobsearch/jobs
+  industry: Enterprise Software / Cloud Computing / Database
+  size: 10000+
+  location: Redwood City, CA / Global
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Petach Tikva
+    - PETACH TIKVA
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL
+  scraping_config:
+    scraper_type: api
+    api_type: generic
+    api_endpoint: https://eeho.fa.us2.oraclecloud.com/hcmRestApi/resources/latest/recruitingCEJobRequisitions
+    api_method: GET
+    pagination_type: offset
+    pagination_params:
+      offset_param: offset
+      limit_param: limit
+      page_size: 100
+      max_pages: 10
+    query_params:
+      onlyData: "true"
+      expand: "requisitionList.secondaryLocations"
+      finder: "findReqs;siteNumber=CX,location=Israel"
+    wait_time: 1
+    response_structure:
+      jobs_key: items.0.requisitionList
+      total_key: items.0.TotalJobsCount
+    url_template: "https://careers.oracle.com/jobs/#en/sites/jobsearch/job/{Id}"
+    field_mapping:
+      external_id: Id
+      title: Title
+      description: ShortDescriptionStr
+      location: PrimaryLocation
+      posted_date:
+        field: PostedDate
+        transform: parse_date
