@@ -385,8 +385,8 @@ def index():
             for c, count in companies_with_stats
         ]
         
-        # Get recent jobs (limit to 500 for performance)
-        jobs = session.query(JobPosition).join(Company).order_by(desc(JobPosition.posted_date)).limit(500).all()
+        # Get all active jobs (ordered by posted date)
+        jobs = session.query(JobPosition).join(Company).filter(JobPosition.is_active == True).order_by(desc(JobPosition.posted_date)).all()
         jobs_data = [
             {
                 'company_name': job.company.name,
