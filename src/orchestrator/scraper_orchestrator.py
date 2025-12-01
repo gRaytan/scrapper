@@ -252,25 +252,45 @@ class ScraperOrchestrator:
     async def scrape_all_companies(self, incremental: bool = False):
         """
         Scrape all active companies.
-        
+
         Args:
             incremental: If True, only fetch jobs from last 24 hours
+
+        Returns:
+            Dictionary mapping company names to scraping results
         """
         companies = self.companies_config.get("companies", [])
         active_companies = [c for c in companies if c.get("is_active", True)]
-        
+
         logger.info(f"Scraping {len(active_companies)} companies")
-        
+
+        results = {}
+
         for company_config in active_companies:
             company_name = company_config.get("name")
             try:
                 with db.get_session() as session:
-                    await self.scrape_company(company_name, session, incremental)
+                    scraping_session = await self.scrape_company(company_name, session, incremental)
+
+                    # Extract data while session is still active
+                    results[company_name] = {
+                        'status': 'success',
+                        'session_id': str(scraping_session.id),
+                        'jobs_found': scraping_session.jobs_found,
+                        'jobs_new': scraping_session.jobs_new,
+                        'jobs_updated': scraping_session.jobs_updated,
+                        'jobs_removed': scraping_session.jobs_removed,
+                    }
             except Exception as e:
                 logger.error(f"Failed to scrape {company_name}: {e}")
+                results[company_name] = {
+                    'status': 'failed',
+                    'error': str(e)
+                }
                 continue
-        
+
         logger.success("All companies scraped")
+        return results
 
 
 async def run_scraper(company_name: Optional[str] = None, incremental: bool = False):

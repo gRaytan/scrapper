@@ -100,38 +100,45 @@ def scrape_single_company(self: Task, company_name: str, incremental: bool = Fal
     """
     try:
         logger.info(f"Starting scrape for {company_name} (incremental={incremental})")
-        
+
         start_time = datetime.utcnow()
         orchestrator = ScraperOrchestrator()
-        
+
         # Run scraping
         with db.get_session() as session:
             scraping_session = asyncio.run(
                 orchestrator.scrape_company(company_name, session, incremental)
             )
-        
+
+            # Extract data while session is still active
+            session_id = str(scraping_session.id)
+            jobs_found = scraping_session.jobs_found
+            jobs_new = scraping_session.jobs_new
+            jobs_updated = scraping_session.jobs_updated
+            jobs_removed = scraping_session.jobs_removed
+
         duration = (datetime.utcnow() - start_time).total_seconds()
-        
+
         result = {
             'status': 'success',
-            'company': company_name,
-            'session_id': str(scraping_session.id),
+            'company_name': company_name,
+            'session_id': session_id,
             'started_at': start_time.isoformat(),
             'completed_at': datetime.utcnow().isoformat(),
             'duration_seconds': duration,
-            'jobs_found': scraping_session.jobs_found,
-            'jobs_new': scraping_session.jobs_new,
-            'jobs_updated': scraping_session.jobs_updated,
-            'jobs_removed': scraping_session.jobs_removed,
+            'jobs_found': jobs_found,
+            'jobs_new': jobs_new,
+            'jobs_updated': jobs_updated,
+            'jobs_removed': jobs_removed,
         }
-        
+
         logger.success(
             f"Scraping completed for {company_name}: "
-            f"{scraping_session.jobs_new} new, "
-            f"{scraping_session.jobs_updated} updated, "
-            f"{scraping_session.jobs_removed} removed"
+            f"{jobs_new} new, "
+            f"{jobs_updated} updated, "
+            f"{jobs_removed} removed"
         )
-        
+
         return result
         
     except Exception as exc:
