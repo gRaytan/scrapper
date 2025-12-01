@@ -22,7 +22,10 @@ class JobPosition(Base, UUIDMixin, TimestampMixin):
         nullable=False,
         index=True
     )
-    
+
+    # External ID from source (for deduplication)
+    external_id: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+
     # Basic information
     title: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
     description: Mapped[Optional[str]] = mapped_column(Text)
@@ -76,6 +79,7 @@ class JobPosition(Base, UUIDMixin, TimestampMixin):
         Index("ix_job_positions_company_active", "company_id", "is_active"),
         Index("ix_job_positions_location_active", "location", "is_active"),
         Index("ix_job_positions_department_active", "department", "is_active"),
+        Index("ix_job_positions_external_id_company", "external_id", "company_id", unique=True),
     )
     
     def __repr__(self) -> str:

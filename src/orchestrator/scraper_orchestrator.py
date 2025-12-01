@@ -121,7 +121,7 @@ class ScraperOrchestrator:
             logger.error(f"Scraping failed for {company_name}: {e}")
             scraping_session.status = "failed"
             scraping_session.completed_at = datetime.utcnow()
-            scraping_session.add_error(str(e))
+            scraping_session.add_error("scraping_error", str(e))
             session.commit()
             raise
         
@@ -131,14 +131,50 @@ class ScraperOrchestrator:
         """Create appropriate scraper based on configuration."""
         scraping_config = company_config.get("scraping_config", {})
         scraper_type = scraping_config.get("scraper_type", "static")
-        
-        if scraper_type == "playwright":
+
+        # PlaywrightScraper handles most types with different parsers
+        playwright_types = [
+            "playwright",      # Dynamic content with browser automation
+            "api",            # API-based (Comeet, Greenhouse, etc.)
+            "rss",            # RSS feeds
+            "workday",        # Workday ATS
+            "meta_graphql",   # Meta GraphQL API
+            "jibe",           # Jibe ATS
+            "eightfold",      # Eightfold ATS
+            "phenom",         # Phenom ATS
+            "requests",       # Simple HTTP requests (similar to API)
+        ]
+
+        if scraper_type in playwright_types:
             return PlaywrightScraper(company_config, scraping_config)
         elif scraper_type == "static":
             return StaticScraper(company_config, scraping_config)
         else:
             raise ValueError(f"Unknown scraper type: {scraper_type}")
-    
+
+    def _normalize_job_data(self, job_data: dict) -> dict:
+        """Normalize job data from parsers to match JobPosition model."""
+        normalized = job_data.copy()
+
+        # Map is_remote to remote_type
+        if "is_remote" in normalized:
+            is_remote = normalized.pop("is_remote")
+            if is_remote and "remote_type" not in normalized:
+                normalized["remote_type"] = "remote"
+            elif not is_remote and "remote_type" not in normalized:
+                normalized["remote_type"] = "onsite"
+
+        # Ensure required timestamp fields
+        now = datetime.utcnow()
+        if "scraped_at" not in normalized:
+            normalized["scraped_at"] = now
+        if "first_seen_at" not in normalized:
+            normalized["first_seen_at"] = now
+        if "last_seen_at" not in normalized:
+            normalized["last_seen_at"] = now
+
+        return normalized
+
     async def _process_jobs(
         self,
         company: Company,
@@ -164,11 +200,14 @@ class ScraperOrchestrator:
         
         # Process each scraped job
         for job_data in scraped_jobs:
+            # Normalize job data to match model
+            job_data = self._normalize_job_data(job_data)
+
             external_id = job_data.get("external_id")
             if not external_id:
                 logger.warning(f"Job missing external_id: {job_data.get('title')}")
                 continue
-            
+
             # Check if job exists
             existing_job = job_repo.get_by_external_id(external_id, company.id)
             
