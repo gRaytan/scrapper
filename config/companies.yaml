@@ -1226,23 +1226,15 @@ companies:
     - Herzliya
     - Haifa
     - Jerusalem
-    - IL
   scraping_config:
     scraper_type: workday
     api_endpoint: https://crowdstrike.wd5.myworkdayjobs.com/wday/cxs/crowdstrike/crowdstrikecareers/jobs
     api_method: POST
     pagination_type: offset
-    location_filter:
-      enabled: true
-      countries:
-      - Israel
-      match_keywords:
-      - Israel
-      - Tel Aviv
-      - Herzliya
-      - Haifa
-      - Jerusalem
-      - IL
+    workday_config:
+      applied_facets:
+        locationCountry:
+        - 084562884af243748dad7c84c304d89a
 - name: Noma Security
   website: https://noma.security
   careers_url: https://noma.security/careers/

@@ -174,27 +174,38 @@ class BaseScraper(ABC):
     def matches_location_filter(self, job: Dict[str, Any]) -> bool:
         """
         Check if job matches location filter criteria.
-        
+
         Args:
             job: Job dictionary with location field
-            
+
         Returns:
             True if job matches filter (or filter disabled), False otherwise
         """
         # If filter is disabled, all jobs pass
         if not self.location_filter_enabled:
             return True
-        
+
         location = job.get("location", "")
         if not location:
             # If no location specified, filter it out when filter is enabled
             return False
-        
+
         location_lower = location.lower()
-        
+
         # Check if any of the filter keywords match the location
+        # Use word boundaries to avoid false matches (e.g., "IL" in "Philippines")
+        import re
         for keyword in self.filter_keywords:
-            if keyword.lower() in location_lower:
-                return True
-        
+            keyword_lower = keyword.lower()
+            # For short keywords (2 chars or less), require word boundaries
+            if len(keyword) <= 2:
+                # Match as whole word with word boundaries
+                pattern = r'\b' + re.escape(keyword_lower) + r'\b'
+                if re.search(pattern, location_lower):
+                    return True
+            else:
+                # For longer keywords, simple substring match is fine
+                if keyword_lower in location_lower:
+                    return True
+
         return False
