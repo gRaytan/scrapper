@@ -1320,6 +1320,34 @@ companies:
       token: 7C42E981F101F10365C174C2E98F88F880
     api_format: comeet
     pagination_type: none
+- name: Elementor
+  website: https://elementor.com
+  careers_url: https://elementor.careers/explore/
+  industry: Web Development / WordPress
+  size: 200-500
+  location: Ramat Gan, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Ramat Gan
+    - Ramat-Gan
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - IL
+  scraping_config:
+    scraper_type: api
+    api_endpoint: https://www.comeet.co/careers-api/2.0/company/A3.00F/positions
+    api_params:
+      token: 3AF126BB0D161A3AF161A00B0D126B
+    api_format: comeet
+    pagination_type: none
 - name: Lusha
   website: https://www.lusha.com
   careers_url: https://www.lusha.com/careers/
