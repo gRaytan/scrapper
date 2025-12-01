@@ -1563,3 +1563,62 @@ companies:
     api_method: GET
     pagination_type: none
     wait_time: 1
+
+- name: Lemonade
+  website: https://www.lemonade.com
+  careers_url: https://www.lemonade.com/careers
+  industry: Insurance / Insurtech
+  size: 501-1000
+  location: New York, NY / Tel Aviv, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+      - Israel
+    match_keywords:
+      - Israel
+      - Tel Aviv
+      - Herzliya
+      - Haifa
+      - Jerusalem
+      - Petach Tikva
+      - IL
+  scraping_config:
+    scraper_type: api
+    api_endpoint: https://api.lever.co/v0/postings/lemonade?mode=json
+    api_method: GET
+    pagination_type: none
+    wait_time: 1
+
+- name: PayPal
+  website: https://www.paypal.com
+  careers_url: https://careers.pypl.com/home/
+  industry: Financial Technology / Payments
+  size: 10000+
+  location: San Jose, CA / Global
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+      - Israel
+    match_keywords:
+      - Israel
+      - Tel Aviv
+      - Herzliya
+      - Haifa
+      - Jerusalem
+      - Petach Tikva
+      - IL
+  scraping_config:
+    scraper_type: workday
+    api_endpoint: https://paypal.wd1.myworkdayjobs.com/wday/cxs/paypal/jobs/jobs
+    api_method: POST
+    pagination_type: offset
+    pagination_params:
+      offset_param: offset
+      limit_param: limit
+      page_size: 20
+      max_pages: 50
+    wait_time: 1
