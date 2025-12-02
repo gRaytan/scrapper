@@ -144,6 +144,7 @@ class ScraperOrchestrator:
             "eightfold",      # Eightfold ATS
             "phenom",         # Phenom ATS
             "requests",       # Simple HTTP requests (similar to API)
+            "comeet",         # Comeet ATS
         ]
 
         if scraper_type in playwright_types:

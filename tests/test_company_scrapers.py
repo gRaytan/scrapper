@@ -2792,6 +2792,55 @@ class CompanyScraperTests:
         finally:
             await scraper.teardown()
 
+    async def test_cynet_security_scraper(self):
+        """Test Cynet Security scraper using Comeet API."""
+        logger.info("=" * 80)
+        logger.info("Testing Cynet Security Scraper (Comeet API)")
+        logger.info("=" * 80)
+
+        try:
+            # Load full company config from YAML file
+            full_config = self.load_full_company_config('Cynet Security')
+            
+            company_config = {
+                "name": full_config.get("name"),
+                "website": full_config.get("website"),
+                "careers_url": full_config.get("careers_url"),
+                "location_filter": full_config.get("location_filter", {})
+            }
+            
+            scraping_config = full_config.get("scraping_config", {})
+
+            scraper = PlaywrightScraper(company_config, scraping_config)
+
+            await scraper.setup()
+            jobs = await scraper.scrape()
+
+            success = len(jobs) > 0
+            self.results['Cynet Security'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+
+            if success:
+                logger.success(f"✓ Cynet Security: Found {len(jobs)} jobs")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Cynet Security: No jobs found")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"✗ Cynet Security test failed: {e}")
+            self.results['Cynet Security'] = {'success': False, 'jobs_count': 0, 'sample_jobs': []}
+            return False
+
+        finally:
+            await scraper.teardown()
+
+
     async def run_all_tests(self):
         """Run all company scraper tests."""
         logger.info("\n" + "=" * 80)
@@ -2841,6 +2890,7 @@ class CompanyScraperTests:
         broadcom_result = await self.test_broadcom_scraper()
         lemonade_result = await self.test_lemonade_scraper()
         zafran_security_result = await self.test_zafran_security_scraper()
+        cynet_security_result = await self.test_cynet_security_scraper()
 
         # Print summary
         logger.info("\n" + "=" * 80)
@@ -2864,7 +2914,7 @@ class CompanyScraperTests:
             sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result, buildots_result,
             conifers_result, blink_ops_result, torq_result, crowdstrike_result, lusha_result,
             similarweb_result, paypal_result, sap_result, elementor_result, broadcom_result, lemonade_result,
-            zafran_security_result
+            zafran_security_result, cynet_security_result
         ])
 
         if all_passed:

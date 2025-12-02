@@ -42,3 +42,7 @@ __all__.append('PhenomParser')
 from .ashby_parser import AshbyParser
 
 __all__.append('AshbyParser')
+
+from .linkedin_parser import LinkedInParser
+
+__all__.append('LinkedInParser')

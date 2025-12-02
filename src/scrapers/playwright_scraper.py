@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright, Browser, Page
 
 from .base_scraper import BaseScraper
-from .parsers import ComeetParser, GreenhouseParser, AmazonParser, EightfoldParser, SmartRecruitersParser, RSSParser, MetaParser, SalesforceParser, JibeParser, PhenomParser, AshbyParser
+from .parsers import ComeetParser, GreenhouseParser, AmazonParser, EightfoldParser, SmartRecruitersParser, RSSParser, MetaParser, SalesforceParser, JibeParser, PhenomParser, AshbyParser, LinkedInParser
 from src.utils.logger import logger
 from urllib.parse import urljoin, urlparse
 
@@ -52,6 +52,7 @@ class PlaywrightScraper(BaseScraper):
             'jibe': JibeParser,
             'phenom': PhenomParser,
             'ashby': lambda: AshbyParser(self.scraping_config.get('company_identifier', '')),
+            'linkedin': LinkedInParser,
         }
     
     def _get_parser(self, parser_name: str) -> Any:
@@ -159,6 +160,7 @@ class PlaywrightScraper(BaseScraper):
             'workday': self._scrape_workday,
             'phenom': self._scrape_phenom,
             'api': self._get_api_scraper_method,
+            'comeet': self._get_api_scraper_method,
             'playwright': self._get_playwright_scraper_method,
         }
 
