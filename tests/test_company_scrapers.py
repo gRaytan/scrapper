@@ -2841,6 +2841,97 @@ class CompanyScraperTests:
             await scraper.teardown()
 
 
+    async def test_linkedin_scraper(self):
+        """Test LinkedIn job scraper."""
+        logger.info("\n" + "=" * 80)
+        logger.info("Testing LinkedIn Scraper")
+        logger.info("=" * 80)
+        
+        # LinkedIn configuration
+        linkedin_config = {
+            "scraper_type": "linkedin",
+            "api_endpoint": "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search",
+            "query_params": {
+                "keywords": "Software Engineer",
+                "location": "Israel"
+            },
+            "pagination_params": {
+                "offset_param": "start",
+                "page_size": 25,
+                "max_pages": 2  # Only test 2 pages
+            },
+            "timeout": 30.0,
+            "wait_time": 2
+        }
+        
+        # Create a pseudo-company config for LinkedIn
+        linkedin_company_config = {
+            "name": "LinkedIn",
+            "website": "https://www.linkedin.com",
+            "careers_url": "https://www.linkedin.com/jobs",
+            "location_filter": {
+                "enabled": True,
+                "countries": ["Israel"],
+                "match_keywords": [
+                    "Israel",
+                    "Tel Aviv",
+                    "Herzliya",
+                    "Haifa",
+                    "Jerusalem",
+                    "Petach Tikva",
+                    "Raanana",
+                    "IL"
+                ]
+            }
+        }
+        
+        scraper = PlaywrightScraper(
+            company_config=linkedin_company_config,
+            scraping_config=linkedin_config
+        )
+        
+        try:
+            jobs = await scraper.scrape()
+            
+            logger.info(f"Total jobs found: {len(jobs)}")
+            
+            # Display sample jobs
+            for i, job in enumerate(jobs[:5], 1):
+                logger.info(f"\n{i}. {job.get('title', 'N/A')}")
+                logger.info(f"   Company: {job.get('company', 'N/A')}")
+                logger.info(f"   Location: {job.get('location', 'N/A')}")
+                logger.info(f"   URL: {job.get('job_url', 'N/A')[:80]}...")
+                logger.info(f"   External ID: {job.get('external_id', 'N/A')}")
+                logger.info(f"   Remote: {job.get('is_remote', False)}")
+            
+            # Validate results
+            success = len(jobs) > 0
+            
+            if success:
+                logger.success(f"✅ LinkedIn scraper test PASSED - Found {len(jobs)} jobs")
+            else:
+                logger.error("❌ LinkedIn scraper test FAILED - No jobs found")
+            
+            self.results['LinkedIn'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'filtered_count': 0
+            }
+            
+            return success
+            
+        except Exception as e:
+            logger.error(f"❌ LinkedIn scraper test FAILED: {e}")
+            logger.exception(e)
+            self.results['LinkedIn'] = {
+                'success': False,
+                'jobs_count': 0,
+                'filtered_count': 0
+            }
+            return False
+        finally:
+            await scraper.teardown()
+
     async def run_all_tests(self):
         """Run all company scraper tests."""
         logger.info("\n" + "=" * 80)
@@ -2891,6 +2982,7 @@ class CompanyScraperTests:
         lemonade_result = await self.test_lemonade_scraper()
         zafran_security_result = await self.test_zafran_security_scraper()
         cynet_security_result = await self.test_cynet_security_scraper()
+        linkedin_result = await self.test_linkedin_scraper()
 
         # Print summary
         logger.info("\n" + "=" * 80)

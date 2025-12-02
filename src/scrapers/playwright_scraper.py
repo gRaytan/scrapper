@@ -155,6 +155,7 @@ class PlaywrightScraper(BaseScraper):
         scraper_methods = {
             'meta_graphql': self._scrape_meta_graphql,
             'ashby_graphql': self._scrape_ashby_graphql,
+            'linkedin': self._scrape_linkedin,
             'requests': self._scrape_html,
             'rss': self._scrape_rss,
             'workday': self._scrape_workday,
@@ -1486,3 +1487,118 @@ class PlaywrightScraper(BaseScraper):
             self.stats["errors"] += 1
             return []
 
+
+    async def _scrape_linkedin(self) -> List[Dict[str, Any]]:
+        """
+        Scrape LinkedIn jobs using the hidden API endpoint.
+        
+        LinkedIn provides a public API endpoint that returns HTML with job listings.
+        This method handles pagination and parses the HTML response.
+        
+        Configuration:
+            - api_endpoint: LinkedIn jobs API URL (required)
+            - query_params: Search parameters (keywords, location)
+            - pagination_params:
+                - offset_param: Name of offset parameter (default: "start")
+                - page_size: Number of jobs per page (default: 25)
+                - max_pages: Maximum pages to fetch (default: 10)
+        
+        Returns:
+            List of job dictionaries
+        """
+        api_endpoint = self.scraping_config.get("api_endpoint")
+        if not api_endpoint:
+            raise ValueError("api_endpoint is required for LinkedIn scraping")
+        
+        # Get configuration
+        pagination_params = self.scraping_config.get("pagination_params", {})
+        query_params = self.scraping_config.get("query_params", {})
+        
+        offset_param = pagination_params.get("offset_param", "start")
+        page_size = pagination_params.get("page_size", 25)
+        max_pages = pagination_params.get("max_pages", 10)
+        timeout = self.scraping_config.get("timeout", 30.0)
+        
+        logger.info(f"Fetching jobs from LinkedIn API: {api_endpoint}")
+        logger.info(f"Search params: {query_params}")
+        logger.info(f"Pagination: {offset_param}={page_size}, max_pages={max_pages}")
+        
+        all_jobs = []
+        offset = 0
+        page = 0
+        
+        # Get LinkedIn parser
+        parser = self._get_parser('linkedin')
+        
+        while page < max_pages:
+            # Build params for this page
+            params = dict(query_params)
+            params[offset_param] = offset
+            
+            logger.info(f"Fetching page {page + 1} (offset={offset})")
+            
+            try:
+                # Fetch page data (LinkedIn returns HTML, not JSON)
+                async with httpx.AsyncClient(timeout=timeout) as client:
+                    response = await client.get(api_endpoint, params=params)
+                    response.raise_for_status()
+                    html_content = response.text
+                
+                # Parse HTML with BeautifulSoup
+                from bs4 import BeautifulSoup
+                soup = BeautifulSoup(html_content, 'html.parser')
+                job_elements = soup.select('li')
+                
+                if job_elements:
+                    logger.info(f"Found {len(job_elements)} job elements on page {page + 1}")
+                    
+                    # Parse each job element
+                    jobs_on_page = []
+                    for job_element in job_elements:
+                        try:
+                            job = parser.parse(job_element)
+                            if job and job.get('title'):
+                                # Apply location filter if configured
+                                if self.matches_location_filter(job):
+                                    jobs_on_page.append(job)
+                                    self.stats["jobs_found"] += 1
+                                else:
+                                    self.stats["jobs_filtered"] += 1
+                        except Exception as e:
+                            logger.warning(f"Failed to parse job element: {e}")
+                            self.stats["errors"] += 1
+                    
+                    logger.info(f"Parsed {len(jobs_on_page)} jobs from page {page + 1}")
+                    all_jobs.extend(jobs_on_page)
+                    self.stats["requests_made"] += 1
+                    
+                    # Check if we've reached the end
+                    if len(job_elements) == 0:
+                        logger.info(f"No more jobs found at page {page + 1}")
+                        break
+                    elif len(job_elements) < page_size:
+                        logger.info(f"Reached end of results at page {page + 1}")
+                        break
+                else:
+                    logger.warning(f"No job elements found on page {page + 1}")
+                    break
+                
+                # Move to next page
+                offset += page_size
+                page += 1
+                
+                # Delay between requests to be respectful
+                await asyncio.sleep(self.scraping_config.get("wait_time", 2))
+                
+            except httpx.HTTPError as e:
+                logger.error(f"LinkedIn API request failed: {e}")
+                self.stats["errors"] += 1
+                self.stats["requests_made"] += 1
+                break
+            except Exception as e:
+                logger.error(f"Error scraping LinkedIn page {page + 1}: {e}")
+                self.stats["errors"] += 1
+                break
+        
+        logger.info(f"Total jobs scraped from LinkedIn: {len(all_jobs)}")
+        return all_jobs

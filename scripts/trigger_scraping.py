@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 from src.workers.tasks import (
     run_daily_scraping,
     scrape_single_company,
+    scrape_linkedin_jobs,
     process_new_jobs,
     cleanup_old_sessions,
     mark_stale_jobs_inactive,
@@ -25,13 +26,28 @@ def main():
     parser = argparse.ArgumentParser(description="Trigger scraping tasks manually")
     parser.add_argument(
         '--task',
-        choices=['daily', 'company', 'process', 'cleanup', 'mark-stale', 'stats'],
+        choices=['daily', 'company', 'linkedin', 'process', 'cleanup', 'mark-stale', 'stats'],
         required=True,
         help='Task to run'
     )
     parser.add_argument(
         '--company',
         help='Company name (for company task)'
+    )
+    parser.add_argument(
+        '--keywords',
+        help='Job keywords to search (for linkedin task)'
+    )
+    parser.add_argument(
+        '--location',
+        default='Israel',
+        help='Location to filter jobs (for linkedin task, default: Israel)'
+    )
+    parser.add_argument(
+        '--max-pages',
+        type=int,
+        default=10,
+        help='Maximum pages to scrape (for linkedin task, default: 10)'
     )
     parser.add_argument(
         '--incremental',
@@ -81,6 +97,26 @@ def main():
                 logger.info(f"Task queued: {result.id}")
             else:
                 result = scrape_single_company(args.company, args.incremental)
+                logger.success(f"Task completed: {result}")
+        
+        elif args.task == 'linkedin':
+            logger.info(f"Triggering LinkedIn scrape...")
+            logger.info(f"  Keywords: {args.keywords or 'All active companies'}")
+            logger.info(f"  Location: {args.location}")
+            logger.info(f"  Max pages: {args.max_pages}")
+            if args.async_mode:
+                result = scrape_linkedin_jobs.delay(
+                    keywords=args.keywords,
+                    location=args.location,
+                    max_pages=args.max_pages
+                )
+                logger.info(f"Task queued: {result.id}")
+            else:
+                result = scrape_linkedin_jobs(
+                    keywords=args.keywords,
+                    location=args.location,
+                    max_pages=args.max_pages
+                )
                 logger.success(f"Task completed: {result}")
         
         elif args.task == 'process':

@@ -373,3 +373,250 @@ def get_scraping_stats(days: int = 7) -> Dict[str, Any]:
         logger.error(f"Failed to get scraping stats: {exc}")
         raise
 
+
+
+@celery_app.task(bind=True, name='src.workers.tasks.scrape_linkedin_jobs', max_retries=3)
+def scrape_linkedin_jobs(
+    self: Task,
+    keywords: Optional[str] = None,
+    location: str = "Israel",
+    max_pages: int = 10
+) -> Dict[str, Any]:
+    """
+    Scrape LinkedIn jobs for all active companies or specific keywords.
+    
+    This task searches LinkedIn for jobs matching company names and/or keywords,
+    then stores the results in the database. Unlike company-specific scrapers,
+    this aggregates jobs from LinkedIn's job board.
+    
+    Args:
+        keywords: Optional job title/keywords to search for (e.g., "Software Engineer")
+                 If None, will search for each active company name
+        location: Location to filter jobs (default: "Israel")
+        max_pages: Maximum pages to scrape per search (default: 10)
+        
+    Returns:
+        Dictionary with scraping statistics
+        
+    Example:
+        # Search for all companies
+        scrape_linkedin_jobs.delay()
+        
+        # Search for specific role
+        scrape_linkedin_jobs.delay(keywords="Software Engineer", location="Israel")
+    """
+    try:
+        logger.info("=" * 80)
+        logger.info(f"Starting LinkedIn scraping job...")
+        logger.info(f"Keywords: {keywords or 'All active companies'}")
+        logger.info(f"Location: {location}")
+        logger.info(f"Max pages: {max_pages}")
+        logger.info("=" * 80)
+        
+        start_time = datetime.utcnow()
+        
+        # Import here to avoid circular dependencies
+        from src.storage.repositories.company_repo import CompanyRepository
+        # JobPositionRepository not needed - we'll use direct model access
+        from src.scrapers.playwright_scraper import PlaywrightScraper
+        from src.models.scraping_session import ScrapingSession
+        from src.models.company import Company
+        import httpx
+        from bs4 import BeautifulSoup
+        
+        # Get all active companies if no keywords specified
+        search_queries = []
+        if keywords:
+            search_queries.append(keywords)
+        else:
+            with db.get_session() as session:
+                company_repo = CompanyRepository(session)
+                companies = company_repo.get_active_companies()
+                search_queries = [company.name for company in companies]
+        
+        logger.info(f"Will search LinkedIn for {len(search_queries)} queries")
+        
+        # LinkedIn API configuration
+        linkedin_config = {
+            "scraper_type": "linkedin",
+            "api_endpoint": "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search",
+            "pagination_params": {
+                "offset_param": "start",
+                "page_size": 25,
+                "max_pages": max_pages
+            },
+            "timeout": 30.0,
+            "wait_time": 2  # Be respectful with rate limiting
+        }
+        
+        # Create a pseudo-company config for LinkedIn
+        linkedin_company_config = {
+            "name": "LinkedIn",
+            "website": "https://www.linkedin.com",
+            "careers_url": "https://www.linkedin.com/jobs",
+            "location_filter": {
+                "enabled": True,
+                "countries": [location],
+                "match_keywords": [
+                    location,
+                    "Tel Aviv",
+                    "Herzliya",
+                    "Haifa",
+                    "Jerusalem",
+                    "Petach Tikva",
+                    "Raanana",
+                    "IL"
+                ] if location == "Israel" else [location]
+            }
+        }
+        
+        total_jobs_found = 0
+        total_jobs_new = 0
+        total_jobs_updated = 0
+        results_by_query = {}
+        
+        # Search for each query
+        for query in search_queries:
+            try:
+                logger.info(f"Searching LinkedIn for: {query}")
+                
+                # Update query params
+                linkedin_config["query_params"] = {
+                    "keywords": query,
+                    "location": location
+                }
+                
+                # Create scraper
+                scraper = PlaywrightScraper(
+                    company_config=linkedin_company_config,
+                    scraping_config=linkedin_config
+                )
+                
+                # Scrape jobs (this is async, so we need to run it in event loop)
+                jobs = asyncio.run(scraper.scrape())
+                
+                logger.info(f"Found {len(jobs)} jobs for query: {query}")
+                
+                # Store jobs in database
+                with db.get_session() as session:
+                    company_repo = CompanyRepository(session)
+                    
+                    jobs_new = 0
+                    jobs_updated = 0
+                    
+                    for job in jobs:
+                        # Try to find the company in our database
+                        company_name = job.get('company', '')
+                        company = company_repo.get_by_name(company_name)
+                        
+                        # If company doesn't exist, create it
+                        if not company:
+                            company = Company(
+                                name=company_name,
+                                website=f"https://www.linkedin.com/company/{company_name.lower().replace(' ', '-')}",
+                                careers_url=job.get('job_url', ''),
+                                industry="Unknown",
+                                is_active=False,  # Don't auto-activate LinkedIn-discovered companies
+                                location=job.get('location', ''),
+                                scraping_config={}
+                            )
+                            session.add(company)
+                            session.flush()  # Get the ID
+                            logger.info(f"Created new company from LinkedIn: {company_name}")
+                        
+                        # Check if job already exists
+                        existing_job = session.query(JobPosition).filter(
+                            JobPosition.company_id == company.id,
+                            JobPosition.external_id == job.get('external_id', '')
+                        ).first()
+                        
+                        if existing_job:
+                            # Update existing job
+                            existing_job.title = job.get('title', '')
+                            existing_job.location = job.get('location', '')
+                            existing_job.job_url = job.get('job_url', '')
+                            existing_job.remote_type = 'remote' if job.get('is_remote', False) else 'onsite'
+                            existing_job.last_seen_at = datetime.utcnow()
+                            existing_job.scraped_at = datetime.utcnow()
+                            jobs_updated += 1
+                        else:
+                            # Create new job
+                            now = datetime.utcnow()
+                            new_job = JobPosition(
+                                company_id=company.id,
+                                external_id=job.get('external_id', ''),
+                                title=job.get('title', ''),
+                                location=job.get('location', ''),
+                                job_url=job.get('job_url', ''),
+                                remote_type='remote' if job.get('is_remote', False) else 'onsite',
+                                posted_date=job.get('posted_date'),
+                                scraped_at=now,
+                                first_seen_at=now,
+                                last_seen_at=now,
+                                status='active',
+                                is_active=True
+                            )
+                            session.add(new_job)
+                            jobs_new += 1
+                    
+                    session.commit()
+                    
+                    total_jobs_found += len(jobs)
+                    total_jobs_new += jobs_new
+                    total_jobs_updated += jobs_updated
+                    
+                    results_by_query[query] = {
+                        'jobs_found': len(jobs),
+                        'jobs_new': jobs_new,
+                        'jobs_updated': jobs_updated
+                    }
+                    
+                    logger.success(
+                        f"Processed {query}: {jobs_new} new, {jobs_updated} updated"
+                    )
+                
+                # Small delay between queries to be respectful
+                import time
+                time.sleep(3)
+                
+            except Exception as e:
+                logger.error(f"Failed to scrape LinkedIn for query '{query}': {e}")
+                results_by_query[query] = {
+                    'error': str(e),
+                    'jobs_found': 0,
+                    'jobs_new': 0,
+                    'jobs_updated': 0
+                }
+                continue
+        
+        duration = (datetime.utcnow() - start_time).total_seconds()
+        
+        result = {
+            'status': 'success',
+            'started_at': start_time.isoformat(),
+            'completed_at': datetime.utcnow().isoformat(),
+            'duration_seconds': duration,
+            'queries_searched': len(search_queries),
+            'total_jobs_found': total_jobs_found,
+            'total_jobs_new': total_jobs_new,
+            'total_jobs_updated': total_jobs_updated,
+            'results_by_query': results_by_query
+        }
+        
+        logger.success("=" * 80)
+        logger.success(f"LinkedIn scraping completed successfully!")
+        logger.success(f"  Queries: {len(search_queries)}")
+        logger.success(f"  Jobs found: {total_jobs_found}")
+        logger.success(f"  New jobs: {total_jobs_new}")
+        logger.success(f"  Updated jobs: {total_jobs_updated}")
+        logger.success(f"  Duration: {duration:.2f}s")
+        logger.success("=" * 80)
+        
+        return result
+        
+    except Exception as exc:
+        logger.error(f"LinkedIn scraping failed: {exc}")
+        logger.exception(exc)
+        
+        # Retry with exponential backoff
+        raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))
