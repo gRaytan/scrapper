@@ -1678,8 +1678,16 @@ companies:
       - Petach Tikva
       - IL
   scraping_config:
-    scraper_type: phenom
-    phenom_config:
-      location_filter: Israel
-      location_param_type: query
-      max_pages: 5
+    scraper_type: playwright
+    search_url: https://careers.cisco.com/global/en/search-results
+    wait_time: 10
+    wait_for_selector: 'a[data-ph-at-id*="job-link"]'
+    max_pages: 20
+    pagination_type: button
+    pagination_selector: button:has-text("Next"), a:has-text("Next"), [aria-label*="Next"]
+    selectors:
+      job_item: 'a[data-ph-at-id*="job-link"]'
+      job_title: 'a[data-ph-at-id*="job-link"]'
+      job_url: 'a[data-ph-at-id*="job-link"]'
+      job_location: 'span'
+    extract_location_from_job_page: true
