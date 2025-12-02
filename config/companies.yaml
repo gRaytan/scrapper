@@ -1659,7 +1659,7 @@ companies:
 
 - name: Cisco
   website: https://www.cisco.com
-  careers_url: https://careers.cisco.com/
+  careers_url: https://careers.cisco.com/global/en/search-results
   industry: Networking / Technology Infrastructure
   size: 10000+
   location: San Jose, CA / Global
@@ -1678,40 +1678,8 @@ companies:
       - Petach Tikva
       - IL
   scraping_config:
-    scraper_type: api
-    api_endpoint: https://careers.cisco.com/widgets
-    api_method: POST
-    pagination_type: offset
-    pagination_params:
-      offset_param: from
-      limit_param: jobs
-      page_size: 20
-      max_pages: 50
-    api_params:
-      lang: en_global
-      deviceType: desktop
-      country: global
-      ddoKey: refineSearch
-      sortBy: ""
-      subsearch: ""
-      jobs: true
-      counts: true
-      facets: {}
-      location: ""
-      searchText: ""
-      pageId: page4
-      siteType: external
-      keywords: ""
-      global: true
-    parser_config:
-      parser_type: generic_api
-      jobs_path: refineSearch.data.jobs
-      field_mapping:
-        external_id: jobSeqNo
-        title: title
-        location: location
-        job_url: jobVisibleId
-        department: category
-        employment_type: type
-      url_template: "https://careers.cisco.com/global/en/job/{job_url}"
-    wait_time: 1
+    scraper_type: phenom
+    phenom_config:
+      location_filter: Israel
+      location_param_type: query
+      max_pages: 5
