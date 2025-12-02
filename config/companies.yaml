@@ -1695,3 +1695,64 @@ companies:
       job_url: 'a[data-ph-at-id*="job-link"]'
       job_location: 'span'
     extract_location_from_job_page: true
+
+- name: Zafran Security
+  website: https://www.zafran.io
+  careers_url: https://www.zafran.io/careers
+  industry: Cybersecurity / Risk Management
+  size: 51-200
+  location: Tel Aviv, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+      - Israel
+    match_keywords:
+      - Israel
+      - Tel Aviv
+      - Herzliya
+      - Haifa
+      - Jerusalem
+      - Petach Tikva
+      - Raanana
+      - IL
+  scraping_config:
+    scraper_type: playwright
+    search_url: https://www.zafran.io/careers
+    wait_time: 3
+    wait_for_selector: '.careers-jobs_department_item'
+    max_pages: 1
+    pagination_type: none
+    selectors:
+      job_item: '.careers-jobs_department_item'
+      job_title: '.careers-jobs_card_title'
+      job_location: '.careers-jobs_card_detail-text'
+      job_url: 'a.g_clickable_link'
+
+- name: Cynet Security
+  website: https://www.cynet.com
+  careers_url: https://www.cynet.com/careers/
+  industry: Cybersecurity
+  size: 201-500
+  location: Tel Aviv, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+      - Israel
+    match_keywords:
+      - Israel
+      - Tel Aviv
+      - Herzliya
+      - Haifa
+      - Jerusalem
+      - Petach Tikva
+      - Raanana
+      - IL
+  scraping_config:
+    scraper_type: comeet
+    api_endpoint: https://www.comeet.co/careers-api/2.0/company/33.00D/positions
+    company_uid: 33.00D
+    token: 33D103133D19E8136E1D25103133D10311D25
