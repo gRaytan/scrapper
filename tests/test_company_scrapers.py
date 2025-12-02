@@ -39,6 +39,22 @@ class CompanyScraperTests:
 
         return company_config.get('location_filter', {}), company_config.get('scraping_config', {})
 
+    def load_full_company_config(self, company_name: str):
+        """Load full company configuration from companies.yaml file."""
+
+        with open('config/companies.yaml', 'r') as f:
+            config = yaml.safe_load(f)
+
+        company_config = next(
+            (c for c in config['companies'] if c['name'] == company_name),
+            None
+        )
+
+        if not company_config:
+            raise ValueError(f"Company '{company_name}' not found in config")
+
+        return company_config
+
     """Test suite for company scrapers."""
 
     def __init__(self):
@@ -2680,6 +2696,54 @@ class CompanyScraperTests:
         finally:
             await scraper.teardown()
 
+    async def test_lemonade_scraper(self):
+        """Test Lemonade scraper using Ashby GraphQL API."""
+        logger.info("=" * 80)
+        logger.info("Testing Lemonade Scraper (Ashby GraphQL API)")
+        logger.info("=" * 80)
+
+        try:
+            # Load full company config from YAML file
+            full_config = self.load_full_company_config('Lemonade')
+
+            company_config = {
+                "name": full_config.get("name"),
+                "website": full_config.get("website"),
+                "careers_url": full_config.get("careers_url"),
+                "location_filter": full_config.get("location_filter", {})
+            }
+
+            scraping_config = full_config.get("scraping_config", {})
+
+            scraper = PlaywrightScraper(company_config, scraping_config)
+
+            await scraper.setup()
+            jobs = await scraper.scrape()
+
+            success = len(jobs) > 0
+            self.results['Lemonade'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+
+            if success:
+                logger.success(f"✓ Lemonade: Found {len(jobs)} jobs")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Lemonade: No jobs found")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"✗ Lemonade test failed: {e}")
+            self.results['Lemonade'] = {'success': False, 'jobs_count': 0, 'sample_jobs': []}
+            return False
+
+        finally:
+            await scraper.teardown()
+
     async def run_all_tests(self):
         """Run all company scraper tests."""
         logger.info("\n" + "=" * 80)
@@ -2727,6 +2791,7 @@ class CompanyScraperTests:
         sap_result = await self.test_sap_scraper()
         elementor_result = await self.test_elementor_scraper()
         broadcom_result = await self.test_broadcom_scraper()
+        lemonade_result = await self.test_lemonade_scraper()
 
         # Print summary
         logger.info("\n" + "=" * 80)
@@ -2749,7 +2814,7 @@ class CompanyScraperTests:
             booking_result, apple_result, microsoft_result, google_result, intel_result,
             sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result, buildots_result,
             conifers_result, blink_ops_result, torq_result, crowdstrike_result, lusha_result,
-            similarweb_result, paypal_result, sap_result, elementor_result, broadcom_result
+            similarweb_result, paypal_result, sap_result, elementor_result, broadcom_result, lemonade_result
         ])
 
         if all_passed:
