@@ -1647,11 +1647,15 @@ companies:
       - IL
   scraping_config:
     scraper_type: playwright
-    url: https://jobs.sap.com/search/?createNewAlert=false&q=&locationsearch=Israel
+    search_url: https://jobs.sap.com/search/?createNewAlert=false&q=&locationsearch=Israel
     wait_time: 2
-    job_selector: .jobTitle a
-    pagination_selector: .next
     max_pages: 20
+    selectors:
+      job_item: tr.data-row
+      job_title: .jobTitle a
+      job_location: .jobLocation
+      job_url: .jobTitle a
+      pagination: .next
 
 - name: Cisco
   website: https://www.cisco.com
@@ -1674,9 +1678,40 @@ companies:
       - Petach Tikva
       - IL
   scraping_config:
-    scraper_type: playwright
-    url: https://careers.cisco.com/global/en/search-results?keywords=&location=Israel
-    wait_time: 2
-    job_selector: .job-title a
-    pagination_selector: .next-page
-    max_pages: 20
+    scraper_type: api
+    api_endpoint: https://careers.cisco.com/widgets
+    api_method: POST
+    pagination_type: offset
+    pagination_params:
+      offset_param: from
+      limit_param: jobs
+      page_size: 20
+      max_pages: 50
+    api_params:
+      lang: en_global
+      deviceType: desktop
+      country: global
+      ddoKey: refineSearch
+      sortBy: ""
+      subsearch: ""
+      jobs: true
+      counts: true
+      facets: {}
+      location: ""
+      searchText: ""
+      pageId: page4
+      siteType: external
+      keywords: ""
+      global: true
+    parser_config:
+      parser_type: generic_api
+      jobs_path: refineSearch.data.jobs
+      field_mapping:
+        external_id: jobSeqNo
+        title: title
+        location: location
+        job_url: jobVisibleId
+        department: category
+        employment_type: type
+      url_template: "https://careers.cisco.com/global/en/job/{job_url}"
+    wait_time: 1
