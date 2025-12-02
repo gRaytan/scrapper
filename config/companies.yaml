@@ -1586,7 +1586,7 @@ companies:
       - IL
   scraping_config:
     scraper_type: api
-    api_endpoint: https://api.lever.co/v0/postings/lemonade?mode=json
+    api_endpoint: https://api.lever.co/v0/postings/lemonadeinsurance?mode=json
     api_method: GET
     pagination_type: none
     wait_time: 1
