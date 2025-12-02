@@ -38,3 +38,7 @@ __all__.append('GoogleParser')
 from .phenom_parser import PhenomParser
 
 __all__.append('PhenomParser')
+
+from .ashby_parser import AshbyParser
+
+__all__.append('AshbyParser')

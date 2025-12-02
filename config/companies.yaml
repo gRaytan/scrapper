@@ -1569,7 +1569,7 @@ companies:
 
 - name: Lemonade
   website: https://www.lemonade.com
-  careers_url: https://www.lemonade.com/careers
+  careers_url: https://makers.lemonade.com/
   industry: Insurance / Insurtech
   size: 501-1000
   location: New York, NY / Tel Aviv, Israel
@@ -1586,12 +1586,13 @@ companies:
       - Haifa
       - Jerusalem
       - Petach Tikva
+      - TLV
       - IL
   scraping_config:
-    scraper_type: api
-    api_endpoint: https://api.lever.co/v0/postings/lemonade?mode=json
-    api_method: GET
-    pagination_type: none
+    scraper_type: ashby_graphql
+    api_endpoint: https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobBoardWithTeams
+    api_method: POST
+    company_identifier: lemonade
     wait_time: 1
 
 - name: PayPal

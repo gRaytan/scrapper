@@ -139,6 +139,7 @@ class ScraperOrchestrator:
             "rss",            # RSS feeds
             "workday",        # Workday ATS
             "meta_graphql",   # Meta GraphQL API
+            "ashby_graphql",  # Ashby GraphQL API
             "jibe",           # Jibe ATS
             "eightfold",      # Eightfold ATS
             "phenom",         # Phenom ATS

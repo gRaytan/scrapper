@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright, Browser, Page
 
 from .base_scraper import BaseScraper
-from .parsers import ComeetParser, GreenhouseParser, AmazonParser, EightfoldParser, SmartRecruitersParser, RSSParser, MetaParser, SalesforceParser, JibeParser, PhenomParser
+from .parsers import ComeetParser, GreenhouseParser, AmazonParser, EightfoldParser, SmartRecruitersParser, RSSParser, MetaParser, SalesforceParser, JibeParser, PhenomParser, AshbyParser
 from src.utils.logger import logger
 from urllib.parse import urljoin, urlparse
 
@@ -51,24 +51,30 @@ class PlaywrightScraper(BaseScraper):
             'salesforce': SalesforceParser,
             'jibe': JibeParser,
             'phenom': PhenomParser,
+            'ashby': lambda: AshbyParser(self.scraping_config.get('company_identifier', '')),
         }
     
     def _get_parser(self, parser_name: str) -> Any:
         """Get or create a parser instance lazily.
-        
+
         Args:
             parser_name: Name of the parser to retrieve
-            
+
         Returns:
             Parser instance
-            
+
         Raises:
             ValueError: If parser_name is not recognized
         """
         if parser_name not in self._parsers:
             if parser_name not in self._parser_classes:
                 raise ValueError(f"Unknown parser: {parser_name}")
-            self._parsers[parser_name] = self._parser_classes[parser_name]()
+            parser_class = self._parser_classes[parser_name]
+            # Handle both class references and lambda functions
+            if callable(parser_class):
+                self._parsers[parser_name] = parser_class()
+            else:
+                self._parsers[parser_name] = parser_class
         return self._parsers[parser_name]
     
     async def setup(self):
@@ -147,6 +153,7 @@ class PlaywrightScraper(BaseScraper):
         # Scraper type to method mapping
         scraper_methods = {
             'meta_graphql': self._scrape_meta_graphql,
+            'ashby_graphql': self._scrape_ashby_graphql,
             'requests': self._scrape_html,
             'rss': self._scrape_rss,
             'workday': self._scrape_workday,
@@ -1384,6 +1391,96 @@ class PlaywrightScraper(BaseScraper):
 
         except Exception as e:
             logger.error(f"Error scraping Meta GraphQL: {e}")
+            self.stats["errors"] += 1
+            return []
+
+    async def _scrape_ashby_graphql(self) -> List[Dict[str, Any]]:
+        """
+        Scrape Ashby ATS using GraphQL API.
+
+        Returns:
+            List of job dictionaries
+        """
+        jobs = []
+        api_endpoint = self.scraping_config.get("api_endpoint")
+        company_identifier = self.scraping_config.get("company_identifier")
+
+        if not api_endpoint or not company_identifier:
+            logger.error("api_endpoint and company_identifier are required for Ashby GraphQL scraping")
+            return []
+
+        logger.info(f"Scraping Ashby GraphQL for company: {company_identifier}")
+
+        # Build GraphQL query
+        graphql_query = {
+            "operationName": "ApiJobBoardWithTeams",
+            "variables": {
+                "organizationHostedJobsPageName": company_identifier
+            },
+            "query": """query ApiJobBoardWithTeams($organizationHostedJobsPageName: String!) {
+                jobBoard: jobBoardWithTeams(organizationHostedJobsPageName: $organizationHostedJobsPageName) {
+                    jobPostings {
+                        id
+                        title
+                        locationName
+                        employmentType
+                    }
+                }
+            }"""
+        }
+
+        try:
+            # Make GraphQL request
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.post(
+                    api_endpoint,
+                    json=graphql_query,
+                    headers={
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json'
+                    }
+                )
+                response.raise_for_status()
+                data = response.json()
+
+            # Extract job postings from GraphQL response
+            if 'data' in data and 'jobBoard' in data['data']:
+                job_postings = data['data']['jobBoard'].get('jobPostings', [])
+
+                if isinstance(job_postings, list):
+                    logger.info(f"Found {len(job_postings)} jobs in Ashby GraphQL response")
+
+                    # Get Ashby parser
+                    parser = self._get_parser('ashby')
+
+                    for job_data in job_postings:
+                        job = parser.parse(job_data)
+                        if job:
+                            logger.info(f"Parsed job: {job.get('title')} at {job.get('location')}")
+                            if self.validate_job_data(job):
+                                # Apply location filter
+                                if self.matches_location_filter(job):
+                                    jobs.append(self.normalize_job_data(job))
+                                else:
+                                    logger.debug(f"Job filtered out by location: {job.get('title')} at {job.get('location')}")
+                            else:
+                                logger.warning(f"Job failed validation: {job}")
+                else:
+                    logger.warning(f"Unexpected jobPostings format: {type(job_postings)}")
+            else:
+                logger.warning("No job data found in Ashby GraphQL response")
+                logger.debug(f"Response data: {data}")
+
+            self.stats["requests_made"] += 1
+            return jobs
+
+        except httpx.HTTPError as e:
+            logger.error(f"Ashby GraphQL API request failed: {e}")
+            self.stats["errors"] += 1
+            self.stats["requests_made"] += 1
+            return []
+        except Exception as e:
+            logger.error(f"Error scraping Ashby GraphQL: {e}")
             self.stats["errors"] += 1
             return []
 
