@@ -25,37 +25,37 @@ class CompanyScraperTests:
 
     def load_company_config(self, company_name: str):
         """Load company configuration from companies.yaml file."""
-        
+
         with open('config/companies.yaml', 'r') as f:
             config = yaml.safe_load(f)
-        
+
         company_config = next(
             (c for c in config['companies'] if c['name'] == company_name),
             None
         )
-        
+
         if not company_config:
             raise ValueError(f"Company '{company_name}' not found in config")
-        
+
         return company_config.get('location_filter', {}), company_config.get('scraping_config', {})
 
     """Test suite for company scrapers."""
-    
+
     def __init__(self):
         self.results = {}
-    
+
     async def test_monday_scraper(self):
         """Test Monday.com scraper using Comeet API."""
         logger.info("=" * 80)
         logger.info("Testing Monday.com Scraper (Comeet API)")
         logger.info("=" * 80)
-        
+
         company_config = {
             "name": "Monday.com",
             "website": "https://monday.com",
             "careers_url": "https://monday.com/careers",
         }
-        
+
         scraping_config = {
             "scraper_type": "api",
             "pagination_type": "none",
@@ -63,42 +63,42 @@ class CompanyScraperTests:
             "api_endpoint": "https://www.comeet.co/careers-api/2.0/company/41.00B/positions?token=14B52C52C67790D3E1296BA37C20",
             "api_method": "GET",
         }
-        
+
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Monday.com'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Monday.com: Found {len(jobs)} jobs")
             else:
                 logger.error("✗ Monday.com: No jobs found")
-            
+
             return success
-            
+
         finally:
             await scraper.teardown()
-    
+
     async def test_wiz_scraper(self):
         """Test Wiz scraper using Greenhouse API."""
         logger.info("=" * 80)
         logger.info("Testing Wiz Scraper (Greenhouse API)")
         logger.info("=" * 80)
-        
+
         company_config = {
             "name": "Wiz",
             "website": "https://www.wiz.io",
             "careers_url": "https://boards.greenhouse.io/wizinc",
         }
-        
+
         scraping_config = {
             "scraper_type": "api",
             "pagination_type": "none",
@@ -106,42 +106,42 @@ class CompanyScraperTests:
             "api_endpoint": "https://boards-api.greenhouse.io/v1/boards/wizinc/jobs",
             "api_method": "GET",
         }
-        
+
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Wiz'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Wiz: Found {len(jobs)} jobs")
             else:
                 logger.error("✗ Wiz: No jobs found")
-            
+
             return success
-            
+
         finally:
             await scraper.teardown()
-    
+
     async def test_island_scraper(self):
         """Test Island scraper using HTML scraping."""
         logger.info("=" * 80)
         logger.info("Testing Island Scraper (HTML Scraping)")
         logger.info("=" * 80)
-        
+
         company_config = {
             "name": "Island",
             "website": "https://www.island.io",
             "careers_url": "https://www.island.io/careers",
         }
-        
+
         scraping_config = {
             "scraper_type": "requests",
             "pagination_type": "none",
@@ -153,42 +153,42 @@ class CompanyScraperTests:
                 "job_department": "[data-team]",
             }
         }
-        
+
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Island'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Island: Found {len(jobs)} jobs")
             else:
                 logger.error("✗ Island: No jobs found")
-            
+
             return success
-            
+
         finally:
             await scraper.teardown()
-    
+
     async def test_eon_scraper(self):
         """Test EON scraper using Greenhouse API."""
         logger.info("=" * 80)
         logger.info("Testing EON Scraper (Greenhouse API)")
         logger.info("=" * 80)
-        
+
         company_config = {
             "name": "EON",
             "website": "https://www.eon.io",
             "careers_url": "https://boards.eu.greenhouse.io/eonio",
         }
-        
+
         scraping_config = {
             "scraper_type": "api",
             "pagination_type": "none",
@@ -196,57 +196,57 @@ class CompanyScraperTests:
             "api_endpoint": "https://api.greenhouse.io/v1/boards/eonio/jobs",
             "api_method": "GET",
         }
-        
+
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['EON'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ EON: Found {len(jobs)} jobs")
             else:
                 logger.error("✗ EON: No jobs found")
-            
+
             return success
-            
+
         finally:
             await scraper.teardown()
-    
+
     async def test_palo_alto_scraper(self):
         """Test Palo Alto Networks scraper with RSS feed."""
         logger.info("=" * 80)
         logger.info("Testing Palo Alto Networks Scraper (TalentBrew RSS)")
         logger.info("=" * 80)
-        
+
         company_config = {
             "name": "Palo Alto Networks",
             "website": "https://www.paloaltonetworks.com",
             "careers_url": "https://jobs.paloaltonetworks.com",
             "industry": "Cybersecurity"
         }
-        
+
         scraping_config = {
             "scraper_type": "rss",
             "rss_url": "https://jobs.paloaltonetworks.com/en/rss",
             "wait_time": 2
         }
-        
+
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             logger.success(f"✓ Palo Alto Networks: Found {len(jobs)} jobs")
-            
+
             # Show sample jobs
             if jobs:
                 logger.info("\n=== Sample Jobs ===")
@@ -255,19 +255,19 @@ class CompanyScraperTests:
                     logger.info(f"  Title: {job.get('title')}")
                     logger.info(f"  Location: {job.get('location')}")
                     logger.info(f"  Department: {job.get('department')}")
-            
+
             # Validate
             assert len(jobs) > 0, "No jobs found"
             assert all(job.get('title') for job in jobs), "Some jobs missing title"
             assert all(job.get('job_url') for job in jobs), "Some jobs missing URL"
-            
+
             self.results['Palo Alto Networks'] = {
                 'success': True,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
             return True
-            
+
         except Exception as e:
             logger.error(f"✗ Test failed: {e}")
             self.results['Palo Alto Networks'] = {
@@ -276,7 +276,7 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
     async def test_amazon_scraper(self):
@@ -284,14 +284,14 @@ class CompanyScraperTests:
         logger.info("=" * 80)
         logger.info("Testing Amazon Scraper (Direct API)")
         logger.info("=" * 80)
-        
+
         company_config = {
             "name": "Amazon",
             "website": "https://www.amazon.com",
             "careers_url": "https://www.amazon.jobs",
             "industry": "Technology"
         }
-        
+
         scraping_config = {
             "scraper_type": "api",  # Direct API scraping
             "api_endpoint": "https://www.amazon.jobs/en/search.json",
@@ -305,15 +305,15 @@ class CompanyScraperTests:
             },
             "wait_time": 1
         }
-        
+
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             logger.success(f"✓ Amazon: Found {len(jobs)} jobs")
-            
+
             # Show sample jobs
             if jobs:
                 logger.info("\n=== Sample Jobs ===")
@@ -322,19 +322,19 @@ class CompanyScraperTests:
                     logger.info(f"  Title: {job.get('title')}")
                     logger.info(f"  Location: {job.get('location')}")
                     logger.info(f"  Department: {job.get('department')}")
-            
+
             # Validate
             assert len(jobs) > 0, "No jobs found"
             assert all(job.get('title') for job in jobs), "Some jobs missing title"
             assert all(job.get('job_url') for job in jobs), "Some jobs missing URL"
-            
+
             self.results['Amazon'] = {
                 'success': True,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
             return True
-            
+
         except Exception as e:
             logger.error(f"✗ Test failed: {e}")
             self.results['Amazon'] = {
@@ -343,29 +343,29 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
-    
+
     async def test_meta_scraper(self):
         """Test Meta scraper using GraphQL API."""
         logger.info("=" * 80)
         logger.info("Testing Meta Scraper (GraphQL API)")
         logger.info("=" * 80)
-        
+
         # Load config from companies.yaml
         with open('config/companies.yaml', 'r') as f:
             config = yaml.safe_load(f)
-        
+
         meta_config = next(
             (c for c in config['companies'] if c['name'] == 'Meta'),
             None
         )
-        
+
         if not meta_config:
             logger.error("Meta not found in config")
             return False
-        
+
         company_config = {
             "name": meta_config['name'],
             "website": meta_config['website'],
@@ -373,29 +373,29 @@ class CompanyScraperTests:
             "industry": meta_config.get('industry', 'Technology'),
             "location_filter": meta_config.get('location_filter', {})
         }
-        
+
         scraping_config = meta_config.get('scraping', {})
 
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Meta'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Meta: Found {len(jobs)} jobs")
             else:
                 logger.error("✗ Meta: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Meta test failed: {e}")
             self.results['Meta'] = {
@@ -404,23 +404,23 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
-    
+
     async def test_nvidia_scraper(self):
         """Test Nvidia scraper using Eightfold API."""
         logger.info("=" * 80)
         logger.info("Testing Nvidia Scraper (Eightfold API)")
         logger.info("=" * 80)
-        
+
         company_config = {
             "name": "Nvidia",
             "website": "https://www.nvidia.com",
             "careers_url": "https://nvidia.wd5.myworkdayjobs.com/NVIDIAExternalCareerSite",
             "industry": "Technology"
         }
-        
+
         scraping_config = {
             "scraper_type": "api",
             "api_endpoint": "https://nvidia.eightfold.ai/api/pcsx/search",
@@ -443,27 +443,27 @@ class CompanyScraperTests:
             },
             "wait_time": 1
         }
-        
+
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Nvidia'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Nvidia: Found {len(jobs)} jobs")
             else:
                 logger.error("✗ Nvidia: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Nvidia test failed: {e}")
             self.results['Nvidia'] = {
@@ -472,23 +472,23 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
-    
+
     async def test_wix_scraper(self):
         """Test Wix scraper using SmartRecruiters API."""
         logger.info("=" * 80)
         logger.info("Testing Wix Scraper (SmartRecruiters API)")
         logger.info("=" * 80)
-        
+
         company_config = {
             "name": "Wix",
             "website": "https://www.wix.com",
             "careers_url": "https://www.wix.com/jobs",
             "industry": "Technology"
         }
-        
+
         scraping_config = {
             "scraper_type": "api",
             "api_endpoint": "https://api.smartrecruiters.com/v1/companies/Wix2/postings",
@@ -506,27 +506,27 @@ class CompanyScraperTests:
             },
             "wait_time": 1
         }
-        
+
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Wix'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Wix: Found {len(jobs)} jobs")
             else:
                 logger.error("✗ Wix: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Wix test failed: {e}")
             self.results['Wix'] = {
@@ -535,23 +535,23 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
-    
+
     async def test_salesforce_scraper(self):
         """Test Salesforce scraper using Workday API."""
         logger.info("=" * 80)
         logger.info("Testing Salesforce Scraper (Workday API)")
         logger.info("=" * 80)
-        
+
         company_config = {
             "name": "Salesforce",
             "website": "https://www.salesforce.com",
             "careers_url": "https://salesforce.wd12.myworkdayjobs.com/External_Career_Site",
             "industry": "Technology"
         }
-        
+
         scraping_config = {
             "scraper_type": "workday",
             "api_endpoint": "https://salesforce.wd12.myworkdayjobs.com/wday/cxs/salesforce/External_Career_Site/jobs",
@@ -565,27 +565,27 @@ class CompanyScraperTests:
             },
             "wait_time": 1
         }
-        
+
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Salesforce'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Salesforce: Found {len(jobs)} jobs")
             else:
                 logger.error("✗ Salesforce: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Salesforce test failed: {e}")
             self.results['Salesforce'] = {
@@ -594,10 +594,10 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
-    
+
     async def test_buildots_scraper(self):
         """Test Buildots scraper using Comeet API."""
         logger.info("=" * 80)
@@ -623,14 +623,14 @@ class CompanyScraperTests:
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Buildots'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Buildots: Found {len(jobs)} jobs in Israel")
                 logger.info("=== Sample Jobs ===")
@@ -638,9 +638,9 @@ class CompanyScraperTests:
                     logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
             else:
                 logger.error("✗ Buildots: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Buildots test failed: {e}")
             self.results['Buildots'] = {
@@ -649,7 +649,7 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
 
@@ -658,14 +658,14 @@ class CompanyScraperTests:
         logger.info("=" * 80)
         logger.info("Testing Datadog Scraper (Greenhouse API)")
         logger.info("=" * 80)
-        
+
         company_config = {
             "name": "Datadog",
             "website": "https://www.datadoghq.com",
             "careers_url": "https://www.datadoghq.com/careers",
             "industry": "Technology"
         }
-        
+
         scraping_config = {
             "scraper_type": "api",
             "pagination_type": "none",
@@ -673,27 +673,27 @@ class CompanyScraperTests:
             "api_endpoint": "https://boards-api.greenhouse.io/v1/boards/datadog/jobs",
             "api_method": "GET",
         }
-        
+
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Datadog'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Datadog: Found {len(jobs)} jobs")
             else:
                 logger.error("✗ Datadog: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Datadog test failed: {e}")
             self.results['Datadog'] = {
@@ -702,23 +702,23 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
-    
+
     async def test_unity_scraper(self):
         """Test Unity scraper using Greenhouse API."""
         logger.info("=" * 80)
         logger.info("Testing Unity Scraper (Greenhouse API)")
         logger.info("=" * 80)
-        
+
         company_config = {
             "name": "Unity",
             "website": "https://unity.com",
             "careers_url": "https://careers.unity.com",
             "industry": "Technology"
         }
-        
+
         scraping_config = {
             "scraper_type": "api",
             "pagination_type": "none",
@@ -726,27 +726,27 @@ class CompanyScraperTests:
             "api_endpoint": "https://boards-api.greenhouse.io/v1/boards/unity3d/jobs",
             "api_method": "GET",
         }
-        
+
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Unity'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Unity: Found {len(jobs)} jobs")
             else:
                 logger.error("✗ Unity: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Unity test failed: {e}")
             self.results['Unity'] = {
@@ -755,16 +755,16 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
-    
+
     async def test_appsflyer_scraper(self):
         """Test AppsFlyer scraper (Greenhouse API)."""
         logger.info("=" * 80)
         logger.info("Testing AppsFlyer Scraper (Greenhouse API)")
         logger.info("=" * 80)
-        
+
         company_config = {
             "name": "AppsFlyer",
             "website": "https://www.appsflyer.com",
@@ -776,7 +776,7 @@ class CompanyScraperTests:
                 "match_keywords": ["Israel", "Tel Aviv", "Herzliya", "Haifa", "Jerusalem", "Raanana", "Beer Sheva", "IL,"]
             }
         }
-        
+
         scraping_config = {
             "scraper_type": "api",
             "api_endpoint": "https://boards-api.greenhouse.io/v1/boards/appsflyer/jobs",
@@ -788,17 +788,17 @@ class CompanyScraperTests:
             },
             "wait_time": 1
         }
-        
+
         scraper = PlaywrightScraper(company_config, scraping_config)
-        
+
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
             logger.success(f"AppsFlyer: Scraped {len(jobs)} jobs")
-            
+
             if jobs:
                 logger.info(f"Sample job: {jobs[0].get('title')} - {jobs[0].get('location')}")
-            
+
             self.results['AppsFlyer'] = {
                 'success': len(jobs) > 0,
                 'jobs_count': len(jobs),
@@ -1148,7 +1148,7 @@ class CompanyScraperTests:
             "industry": gong_config.get('industry', 'Technology'),
             "location_filter": gong_config.get('location_filter', {})
         }
-    
+
         scraping_config = gong_config.get('scraping_config', {})
 
         scraper = PlaywrightScraper(company_config, scraping_config)
@@ -1257,50 +1257,50 @@ class CompanyScraperTests:
         logger.info("Testing Apple Scraper (Embedded JSON)")
         logger.info("=" * 80)
 
-        
+
         url = "https://jobs.apple.com/en-il/search?location=israel-ISR"
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
         }
-        
+
         try:
             # Fetch HTML
             response = requests.get(url, headers=headers, timeout=30)
             response.raise_for_status()
-            
+
             # Parse jobs
             parser = AppleParser()
             jobs = parser.parse(response.text)
-            
+
             logger.info(f"Total jobs found: {len(jobs)}")
-            
+
             # Apply location filter
-            location_keywords = ["Israel", "Herzliya", "Haifa", "Tel Aviv", "IL", "Remote", 
-                                "United States", "US", "California", "Texas", "New York", 
+            location_keywords = ["Israel", "Herzliya", "Haifa", "Tel Aviv", "IL", "Remote",
+                                "United States", "US", "California", "Texas", "New York",
                                 "Washington", "Cupertino", "Austin", "Seattle"]
-            
+
             filtered_jobs = []
             for job in jobs:
                 location = job.get('location', '')
                 if any(keyword.lower() in location.lower() for keyword in location_keywords):
                     filtered_jobs.append(job)
-            
+
             logger.info(f"Jobs after location filter: {len(filtered_jobs)}")
-            
+
             success = len(filtered_jobs) > 0
             self.results['Apple'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'filtered_count': len(filtered_jobs)
             }
-            
+
             if filtered_jobs:
                 logger.info("\nSample jobs:")
                 for i, job in enumerate(filtered_jobs[:5], 1):
                     logger.info(f"{i}. {job.get('title', 'N/A')} - {job.get('location', 'N/A')}")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"Apple scraper failed: {str(e)}")
             import traceback
@@ -1318,7 +1318,7 @@ class CompanyScraperTests:
         logger.info("=" * 80)
         logger.info("Testing Microsoft Scraper (API)")
         logger.info("=" * 80)
-        
+
         base_url = "https://apply.careers.microsoft.com/api/pcsx/search"
         params = {
             'domain': 'microsoft.com',
@@ -1329,62 +1329,62 @@ class CompanyScraperTests:
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
         }
-        
+
         try:
             all_jobs = []
             parser = MicrosoftParser()
             page = 0
             page_size = 10
-            
+
             while True:
                 params['start'] = page * page_size
-                
+
                 logger.info(f"Fetching page {page + 1} (start={params['start']})")
                 response = requests.get(base_url, params=params, headers=headers, timeout=30)
                 response.raise_for_status()
-                
+
                 # Parse jobs from this page
                 jobs = parser.parse(response.text)
-                
+
                 if not jobs:
                     break
-                
+
                 all_jobs.extend(jobs)
                 logger.info(f"  Found {len(jobs)} jobs on page {page + 1}")
-                
+
                 # Check if there are more pages
                 import json
                 data = json.loads(response.text)
                 total_count = data.get('data', {}).get('count', 0)
-                
+
                 if len(all_jobs) >= total_count:
                     break
-                
+
                 page += 1
-                
+
                 # Safety limit
                 if page >= 10:
                     logger.warning("Reached page limit (10)")
                     break
-            
+
             logger.info(f"\nTotal jobs found: {len(all_jobs)}")
-            
+
             success = len(all_jobs) > 0
             self.results['Microsoft'] = {
                 'success': success,
                 'jobs_count': len(all_jobs),
                 'filtered_count': len(all_jobs)
             }
-            
+
             if all_jobs:
                 logger.info("\nSample jobs:")
                 for i, job in enumerate(all_jobs[:5], 1):
                     logger.info(f"{i}. {job.get('title', 'N/A')}")
                     logger.info(f"   Location: {job.get('location', 'N/A')}")
                     logger.info(f"   Department: {job.get('department', 'N/A')}")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"Microsoft scraper failed: {str(e)}")
             import traceback
@@ -1402,40 +1402,40 @@ class CompanyScraperTests:
         logger.info("=" * 80)
         logger.info("Testing Google Scraper (Embedded Data)")
         logger.info("=" * 80)
-        
+
 
         url = "https://www.google.com/about/careers/applications/jobs/results/?location=Israel"
         headers = {
             'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
         }
-        
+
         try:
             # Fetch HTML
             response = requests.get(url, headers=headers, timeout=30)
             response.raise_for_status()
-            
+
             # Parse jobs
             parser = GoogleParser()
             jobs = parser.parse(response.text)
-            
+
             logger.info(f"Total jobs found: {len(jobs)}")
-            
+
             success = len(jobs) > 0
             self.results['Google'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'filtered_count': len(jobs)
             }
-            
+
             if jobs:
                 logger.info("\nSample jobs:")
                 for i, job in enumerate(jobs[:5], 1):
                     logger.info(f"{i}. {job.get('title', 'N/A')}")
                     logger.info(f"   Location: {job.get('location', 'N/A')}")
                     logger.info(f"   Company: {job.get('company', 'N/A')}")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"Google scraper failed: {str(e)}")
             import traceback
@@ -1447,17 +1447,17 @@ class CompanyScraperTests:
             }
             return False
 
-    
+
     async def test_intel_scraper(self):
         """Test Intel scraper (Workday API)."""
         logger.info("=" * 80)
         logger.info("Testing Intel Scraper (Workday API)")
         logger.info("=" * 80)
 
-        
+
         api_url = "https://intel.wd1.myworkdayjobs.com/wday/cxs/intel/External/jobs"
         base_url = "https://intel.wd1.myworkdayjobs.com/en-US/External"
-        
+
         try:
             # Fetch jobs
             headers = {
@@ -1465,19 +1465,19 @@ class CompanyScraperTests:
                 'Accept': 'application/json',
                 'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36'
             }
-            
+
             payload = {
                 "limit": 20,
                 "offset": 0,
                 "searchText": ""
             }
-            
+
             response = requests.post(api_url, json=payload, headers=headers, timeout=30)
             response.raise_for_status()
-            
+
             data = response.json()
             job_postings = data.get('jobPostings', [])
-            
+
             # Parse jobs
             parser = WorkdayParser(base_url=base_url)
             jobs = []
@@ -1485,32 +1485,32 @@ class CompanyScraperTests:
                 parsed_job = parser.parse(job_data)
                 if parsed_job:
                     jobs.append(parsed_job)
-            
+
             # Filter for Israel
             israel_jobs = [
-                job for job in jobs 
+                job for job in jobs
                 if 'israel' in job.get('location', '').lower()
             ]
-            
+
             logger.info(f"Total jobs found: {len(jobs)}")
             logger.info(f"Israel jobs found: {len(israel_jobs)}")
-            
+
             success = len(jobs) > 0
             self.results['Intel'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'filtered_count': len(israel_jobs)
             }
-            
+
             if israel_jobs:
                 logger.info("\nSample Israel jobs:")
                 for i, job in enumerate(israel_jobs[:5], 1):
                     logger.info(f"{i}. {job.get('title', 'N/A')}")
                     logger.info(f"   Location: {job.get('location', 'N/A')}")
                     logger.info(f"   URL: {job.get('job_url', 'N/A')[:80]}...")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"Intel scraper failed: {str(e)}")
             import traceback
@@ -1528,17 +1528,17 @@ class CompanyScraperTests:
         logger.info("\n" + "=" * 80)
         logger.info("Testing Fiverr Scraper (with stealth mode)")
         logger.info("=" * 80)
-        
+
         try:
             # Load company config
             with open('config/companies.yaml', 'r') as f:
                 config = yaml.safe_load(f)
-            
+
             fiverr_config = next(
                 (c for c in config['companies'] if c['name'] == 'Fiverr'),
                 None
             )
-            
+
             if not fiverr_config:
                 logger.error("Fiverr configuration not found")
                 self.results['Fiverr'] = {
@@ -1547,47 +1547,47 @@ class CompanyScraperTests:
                     'filtered_count': 0
                 }
                 return False
-            
+
             logger.info(f"Scraping: {fiverr_config['careers_url']}")
             logger.info("Note: Using stealth mode to bypass bot protection")
-            
+
             # Create scraper with stealth mode
             scraper = PlaywrightScraper(
                 company_config=fiverr_config,
                 scraping_config=fiverr_config['scraping_config']
             )
-            
+
             # Setup Playwright and scrape jobs
             await scraper.setup()
             jobs = await scraper.scrape()
             await scraper.teardown()
-            
+
             # Filter for Israel
             israel_jobs = [
-                job for job in jobs 
-                if any(keyword.lower() in job.get('location', '').lower() 
+                job for job in jobs
+                if any(keyword.lower() in job.get('location', '').lower()
                       for keyword in ['israel', 'tel aviv', 'herzliya', 'haifa'])
             ]
-            
+
             logger.info(f"Total jobs found: {len(jobs)}")
             logger.info(f"Israel jobs found: {len(israel_jobs)}")
-            
+
             success = len(jobs) > 0
             self.results['Fiverr'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'filtered_count': len(israel_jobs)
             }
-            
+
             if israel_jobs:
                 logger.info("\nSample Israel jobs:")
                 for i, job in enumerate(israel_jobs[:5], 1):
                     logger.info(f"{i}. {job.get('title', 'N/A')}")
                     logger.info(f"   Location: {job.get('location', 'N/A')}")
                     logger.info(f"   Company: {job.get('company', 'N/A')}")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"Fiverr scraper failed: {str(e)}")
             import traceback
@@ -1767,17 +1767,17 @@ class CompanyScraperTests:
         logger.info("\n" + "=" * 80)
         logger.info("Testing Samsung Scraper (Workday API)")
         logger.info("=" * 80)
-        
+
         try:
             # Load company config
             with open('config/companies.yaml', 'r') as f:
                 config = yaml.safe_load(f)
-            
+
             samsung_config = next(
                 (c for c in config['companies'] if c['name'] == 'Samsung'),
                 None
             )
-            
+
             if not samsung_config:
                 logger.error("Samsung configuration not found")
                 self.results['Samsung'] = {
@@ -1786,51 +1786,51 @@ class CompanyScraperTests:
                     'filtered_count': 0
                 }
                 return False
-            
+
             logger.info(f"Scraping: {samsung_config['careers_url']}")
-            
+
             # Create scraper
             scraper = PlaywrightScraper(
                 company_config=samsung_config,
                 scraping_config=samsung_config['scraping_config']
             )
-            
+
             # Scrape jobs (API-based, no setup needed)
             jobs = await scraper.scrape()
-            
+
             # Filter for Israel and US
             israel_jobs = [
-                job for job in jobs 
-                if any(keyword.lower() in job.get('location', '').lower() 
+                job for job in jobs
+                if any(keyword.lower() in job.get('location', '').lower()
                       for keyword in ['israel', 'tel aviv', 'petah tikva'])
             ]
-            
+
             us_jobs = [
-                job for job in jobs 
-                if any(keyword.lower() in job.get('location', '').lower() 
+                job for job in jobs
+                if any(keyword.lower() in job.get('location', '').lower()
                       for keyword in ['united states', 'california', 'new york', 'texas', 'remote'])
             ]
-            
+
             logger.info(f"Total jobs found: {len(jobs)}")
             logger.info(f"Israel jobs found: {len(israel_jobs)}")
             logger.info(f"US jobs found: {len(us_jobs)}")
-            
+
             success = len(jobs) > 0
             self.results['Samsung'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'filtered_count': len(israel_jobs) + len(us_jobs)
             }
-            
+
             if israel_jobs:
                 logger.info("\nSample Israel jobs:")
                 for i, job in enumerate(israel_jobs[:5], 1):
                     logger.info(f"{i}. {job.get('title', 'N/A')}")
                     logger.info(f"   Location: {job.get('location', 'N/A')}")
                     logger.info(f"   URL: {job.get('url', 'N/A')}")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"Samsung scraper failed: {str(e)}")
             import traceback
@@ -1847,17 +1847,17 @@ class CompanyScraperTests:
         logger.info("\n" + "=" * 80)
         logger.info("Testing Intuit Scraper (Phenom People)")
         logger.info("=" * 80)
-        
+
         try:
             # Load company config
             with open('config/companies.yaml', 'r') as f:
                 config = yaml.safe_load(f)
-            
+
             intuit_config = next(
                 (c for c in config['companies'] if c['name'] == 'Intuit'),
                 None
             )
-            
+
             if not intuit_config:
                 logger.error("Intuit configuration not found")
                 self.results['Intuit'] = {
@@ -1866,53 +1866,53 @@ class CompanyScraperTests:
                     'filtered_count': 0
                 }
                 return False
-            
+
             logger.info(f"Scraping: {intuit_config['careers_url']}")
-            
+
             # Create scraper
             scraper = PlaywrightScraper(
                 company_config=intuit_config,
                 scraping_config=intuit_config['scraping_config']
             )
-            
+
             # Setup and scrape jobs
             await scraper.setup()
             jobs = await scraper.scrape()
             await scraper.teardown()
-            
+
             # Filter for Israel and US
             israel_jobs = [
-                job for job in jobs 
-                if any(keyword.lower() in job.get('location', '').lower() 
+                job for job in jobs
+                if any(keyword.lower() in job.get('location', '').lower()
                       for keyword in ['israel', 'tel aviv', 'petah tikva'])
             ]
-            
+
             us_jobs = [
-                job for job in jobs 
-                if any(keyword.lower() in job.get('location', '').lower() 
+                job for job in jobs
+                if any(keyword.lower() in job.get('location', '').lower()
                       for keyword in ['united states', 'california', 'new york', 'texas', 'remote'])
             ]
-            
+
             logger.info(f"Total jobs found: {len(jobs)}")
             logger.info(f"Israel jobs found: {len(israel_jobs)}")
             logger.info(f"US jobs found: {len(us_jobs)}")
-            
+
             success = len(jobs) > 0
             self.results['Intuit'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'filtered_count': len(israel_jobs) + len(us_jobs)
             }
-            
+
             if israel_jobs:
                 logger.info("\nSample Israel jobs:")
                 for i, job in enumerate(israel_jobs[:5], 1):
                     logger.info(f"{i}. {job.get('title', 'N/A')}")
                     logger.info(f"   Location: {job.get('location', 'N/A')}")
                     logger.info(f"   URL: {job.get('job_url', 'N/A')}")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"Intuit scraper failed: {str(e)}")
             import traceback
@@ -1950,14 +1950,14 @@ class CompanyScraperTests:
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Conifers'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Conifers: Found {len(jobs)} jobs")
                 logger.info("=== Sample Jobs ===")
@@ -1965,9 +1965,9 @@ class CompanyScraperTests:
                     logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
             else:
                 logger.error("✗ Conifers: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Conifers test failed: {e}")
             self.results['Conifers'] = {
@@ -1976,7 +1976,7 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
 
@@ -2006,14 +2006,14 @@ class CompanyScraperTests:
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Torq'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Torq: Found {len(jobs)} jobs")
                 logger.info("=== Sample Jobs ===")
@@ -2021,9 +2021,9 @@ class CompanyScraperTests:
                     logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
             else:
                 logger.error("✗ Torq: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Torq test failed: {e}")
             self.results['Torq'] = {
@@ -2032,7 +2032,7 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
 
@@ -2062,14 +2062,14 @@ class CompanyScraperTests:
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['CrowdStrike'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ CrowdStrike: Found {len(jobs)} jobs")
                 logger.info("=== Sample Jobs ===")
@@ -2077,9 +2077,9 @@ class CompanyScraperTests:
                     logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
             else:
                 logger.error("✗ CrowdStrike: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ CrowdStrike test failed: {e}")
             self.results['CrowdStrike'] = {
@@ -2088,7 +2088,7 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
 
@@ -2118,14 +2118,14 @@ class CompanyScraperTests:
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Noma Security'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Noma Security: Found {len(jobs)} jobs")
                 logger.info("=== Sample Jobs ===")
@@ -2133,9 +2133,9 @@ class CompanyScraperTests:
                     logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
             else:
                 logger.error("✗ Noma Security: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Noma Security test failed: {e}")
             self.results['Noma Security'] = {
@@ -2144,7 +2144,7 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
 
@@ -2174,14 +2174,14 @@ class CompanyScraperTests:
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Trigo Vision'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Trigo Vision: Found {len(jobs)} jobs")
                 logger.info("=== Sample Jobs ===")
@@ -2189,9 +2189,9 @@ class CompanyScraperTests:
                     logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
             else:
                 logger.error("✗ Trigo Vision: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Trigo Vision test failed: {e}")
             self.results['Trigo Vision'] = {
@@ -2200,7 +2200,7 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
 
@@ -2230,14 +2230,14 @@ class CompanyScraperTests:
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Eleos Health'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Eleos Health: Found {len(jobs)} jobs")
                 logger.info("=== Sample Jobs ===")
@@ -2245,9 +2245,9 @@ class CompanyScraperTests:
                     logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
             else:
                 logger.error("✗ Eleos Health: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Eleos Health test failed: {e}")
             self.results['Eleos Health'] = {
@@ -2256,7 +2256,7 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
 
@@ -2286,14 +2286,14 @@ class CompanyScraperTests:
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Blink Ops'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Blink Ops: Found {len(jobs)} jobs")
                 logger.info("=== Sample Jobs ===")
@@ -2301,9 +2301,9 @@ class CompanyScraperTests:
                     logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
             else:
                 logger.error("✗ Blink Ops: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Blink Ops test failed: {e}")
             self.results['Blink Ops'] = {
@@ -2312,7 +2312,7 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
 
@@ -2343,14 +2343,14 @@ class CompanyScraperTests:
         try:
             await scraper.setup()
             jobs = await scraper.scrape()
-            
+
             success = len(jobs) > 0
             self.results['Lusha'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
-            
+
             if success:
                 logger.success(f"✓ Lusha: Found {len(jobs)} jobs")
                 logger.info("=== Sample Jobs ===")
@@ -2358,9 +2358,9 @@ class CompanyScraperTests:
                     logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
             else:
                 logger.error("✗ Lusha: No jobs found")
-            
+
             return success
-            
+
         except Exception as e:
             logger.error(f"✗ Lusha test failed: {e}")
             self.results['Lusha'] = {
@@ -2369,7 +2369,7 @@ class CompanyScraperTests:
                 'sample_jobs': []
             }
             return False
-            
+
         finally:
             await scraper.teardown()
     async def test_servicenow_scraper(self):
@@ -2455,6 +2455,231 @@ class CompanyScraperTests:
             }
             return False
 
+    async def test_similarweb_scraper(self):
+        """Test SimilarWeb scraper using Greenhouse API."""
+        logger.info("=" * 80)
+        logger.info("Testing SimilarWeb Scraper (Greenhouse API)")
+        logger.info("=" * 80)
+
+        try:
+            location_filter, scraping_config = self.load_company_config('SimilarWeb')
+
+            company_config = {
+                "name": "SimilarWeb",
+                "website": "https://www.similarweb.com",
+                "careers_url": "https://boards.greenhouse.io/similarweb",
+                "location_filter": location_filter
+            }
+
+            scraper = PlaywrightScraper(company_config, scraping_config)
+
+            await scraper.setup()
+            jobs = await scraper.scrape()
+
+            success = len(jobs) > 0
+            self.results['SimilarWeb'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+
+            if success:
+                logger.success(f"✓ SimilarWeb: Found {len(jobs)} jobs")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ SimilarWeb: No jobs found")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"✗ SimilarWeb test failed: {e}")
+            self.results['SimilarWeb'] = {'success': False, 'jobs_count': 0, 'sample_jobs': []}
+            return False
+
+        finally:
+            await scraper.teardown()
+
+    async def test_paypal_scraper(self):
+        """Test PayPal scraper using Workday API."""
+        logger.info("=" * 80)
+        logger.info("Testing PayPal Scraper (Workday API)")
+        logger.info("=" * 80)
+
+        try:
+            location_filter, scraping_config = self.load_company_config('PayPal')
+
+            company_config = {
+                "name": "PayPal",
+                "website": "https://www.paypal.com",
+                "careers_url": "https://careers.pypl.com/home/",
+                "location_filter": location_filter
+            }
+
+            scraper = PlaywrightScraper(company_config, scraping_config)
+
+            await scraper.setup()
+            jobs = await scraper.scrape()
+
+            success = len(jobs) > 0
+            self.results['PayPal'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+
+            if success:
+                logger.success(f"✓ PayPal: Found {len(jobs)} jobs")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ PayPal: No jobs found")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"✗ PayPal test failed: {e}")
+            self.results['PayPal'] = {'success': False, 'jobs_count': 0, 'sample_jobs': []}
+            return False
+
+        finally:
+            await scraper.teardown()
+
+    async def test_sap_scraper(self):
+        """Test SAP scraper using Playwright."""
+        logger.info("=" * 80)
+        logger.info("Testing SAP Scraper (Playwright)")
+        logger.info("=" * 80)
+
+        try:
+            location_filter, scraping_config = self.load_company_config('SAP')
+
+            company_config = {
+                "name": "SAP",
+                "website": "https://www.sap.com",
+                "careers_url": "https://jobs.sap.com",
+                "location_filter": location_filter
+            }
+
+            scraper = PlaywrightScraper(company_config, scraping_config)
+
+            await scraper.setup()
+            jobs = await scraper.scrape()
+
+            success = len(jobs) > 0
+            self.results['SAP'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+
+            if success:
+                logger.success(f"✓ SAP: Found {len(jobs)} jobs")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ SAP: No jobs found")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"✗ SAP test failed: {e}")
+            self.results['SAP'] = {'success': False, 'jobs_count': 0, 'sample_jobs': []}
+            return False
+
+        finally:
+            await scraper.teardown()
+
+    async def test_elementor_scraper(self):
+        """Test Elementor scraper using Comeet API."""
+        logger.info("=" * 80)
+        logger.info("Testing Elementor Scraper (Comeet API)")
+        logger.info("=" * 80)
+
+        try:
+            location_filter, scraping_config = self.load_company_config('Elementor')
+
+            company_config = {
+                "name": "Elementor",
+                "website": "https://elementor.com",
+                "careers_url": "https://elementor.com/careers/",
+                "location_filter": location_filter
+            }
+
+            scraper = PlaywrightScraper(company_config, scraping_config)
+
+            await scraper.setup()
+            jobs = await scraper.scrape()
+
+            success = len(jobs) > 0
+            self.results['Elementor'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+
+            if success:
+                logger.success(f"✓ Elementor: Found {len(jobs)} jobs")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Elementor: No jobs found")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"✗ Elementor test failed: {e}")
+            self.results['Elementor'] = {'success': False, 'jobs_count': 0, 'sample_jobs': []}
+            return False
+
+        finally:
+            await scraper.teardown()
+
+    async def test_broadcom_scraper(self):
+        """Test Broadcom scraper using Workday API."""
+        logger.info("=" * 80)
+        logger.info("Testing Broadcom Scraper (Workday API)")
+        logger.info("=" * 80)
+
+        try:
+            location_filter, scraping_config = self.load_company_config('Broadcom')
+
+            company_config = {
+                "name": "Broadcom",
+                "website": "https://www.broadcom.com",
+                "careers_url": "https://broadcom.wd3.myworkdayjobs.com/External",
+                "location_filter": location_filter
+            }
+
+            scraper = PlaywrightScraper(company_config, scraping_config)
+
+            await scraper.setup()
+            jobs = await scraper.scrape()
+
+            success = len(jobs) > 0
+            self.results['Broadcom'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+
+            if success:
+                logger.success(f"✓ Broadcom: Found {len(jobs)} jobs")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Broadcom: No jobs found")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"✗ Broadcom test failed: {e}")
+            self.results['Broadcom'] = {'success': False, 'jobs_count': 0, 'sample_jobs': []}
+            return False
+
+        finally:
+            await scraper.teardown()
+
     async def run_all_tests(self):
         """Run all company scraper tests."""
         logger.info("\n" + "=" * 80)
@@ -2497,6 +2722,11 @@ class CompanyScraperTests:
         crowdstrike_result = await self.test_crowdstrike_scraper()
         blink_ops_result = await self.test_blink_ops_scraper()
         lusha_result = await self.test_lusha_scraper()
+        similarweb_result = await self.test_similarweb_scraper()
+        paypal_result = await self.test_paypal_scraper()
+        sap_result = await self.test_sap_scraper()
+        elementor_result = await self.test_elementor_scraper()
+        broadcom_result = await self.test_broadcom_scraper()
 
         # Print summary
         logger.info("\n" + "=" * 80)
@@ -2518,7 +2748,8 @@ class CompanyScraperTests:
             jfrog_result, riskified_result, papaya_gaming_result, checkpoint_result, lumen_result, gong_result,
             booking_result, apple_result, microsoft_result, google_result, intel_result,
             sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result, buildots_result,
-            conifers_result, blink_ops_result, torq_result, crowdstrike_result, lusha_result
+            conifers_result, blink_ops_result, torq_result, crowdstrike_result, lusha_result,
+            similarweb_result, paypal_result, sap_result, elementor_result, broadcom_result
         ])
 
         if all_passed:
@@ -2539,10 +2770,10 @@ if __name__ == "__main__":
     exit_code = asyncio.run(main())
     sys.exit(exit_code)
 
-    
-    
-    
-    
-    
-    
+
+
+
+
+
+
 
