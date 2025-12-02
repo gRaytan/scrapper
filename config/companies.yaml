@@ -1533,10 +1533,10 @@ companies:
     search_url: https://traxretail.com/company/careers/
     wait_time: 5
     selectors:
-      job_item: '[data-location]'
-      job_title: 'a'
-      job_url: 'a'
-      job_location: '[data-location]'
+      job_item: '.comeet-position'
+      job_title: '.comeet-position-name'
+      job_url: '.comeet-position'
+      job_location: '.comeet-position-meta'
 
 - name: Innoviz
   website: https://innoviz.tech

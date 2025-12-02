@@ -53,7 +53,22 @@ class WorkdayParser(BaseJobParser):
             
             # Extract location
             location = job_data.get("locationsText", "")
-            
+
+            # If locationsText is generic (e.g., "2 Locations"), extract from externalPath
+            if location and ("location" in location.lower() or location.isdigit()):
+                # Extract location from path: /job/City-State-Country/Title_ID
+                external_path = job_data.get("externalPath", "")
+                if external_path and "/job/" in external_path:
+                    try:
+                        # Split path and get location part (between /job/ and next /)
+                        parts = external_path.split("/")
+                        if len(parts) >= 3:
+                            location_part = parts[2]  # e.g., "Chicago-Illinois-United-States-of-America"
+                            # Replace hyphens with spaces and clean up
+                            location = location_part.replace("-", " ")
+                    except Exception as e:
+                        logger.debug(f"Could not extract location from path: {e}")
+
             # Parse posted date (Workday uses relative dates like "Posted Today", "Posted 2 Days Ago")
             posted_date = None
             posted_on = job_data.get("postedOn", "")

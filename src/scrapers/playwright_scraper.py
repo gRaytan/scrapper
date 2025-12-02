@@ -1163,7 +1163,7 @@ class PlaywrightScraper(BaseScraper):
                     elif len(positions) < page_size:
                         logger.info(f"Reached end of results at page {page + 1}")
                         break
-                    elif offset + len(positions) >= total_hits:
+                    elif total_hits > 0 and offset + len(positions) >= total_hits:
                         logger.info(f"Reached total hits ({total_hits}) at page {page + 1}")
                         break
                 else:
