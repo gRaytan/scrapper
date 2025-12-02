@@ -64,6 +64,11 @@ def migrate_companies():
                 existing_company = company_repo.get_by_name(company_name)
                 
                 # Prepare company data
+                # Merge location_filter into scraping_config if it exists
+                scraping_config = company_config.get("scraping_config", {}).copy()
+                if "location_filter" in company_config:
+                    scraping_config["location_filter"] = company_config["location_filter"]
+
                 company_data = {
                     "name": company_name,
                     "website": company_config.get("website"),
@@ -72,7 +77,7 @@ def migrate_companies():
                     "size": company_config.get("size"),
                     "location": company_config.get("location"),
                     "is_active": company_config.get("is_active", True),
-                    "scraping_config": company_config.get("scraping_config", {}),
+                    "scraping_config": scraping_config,
                     "scraping_frequency": company_config.get("scraping_frequency", "0 0 * * *"),
                 }
                 
