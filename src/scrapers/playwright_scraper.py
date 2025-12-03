@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright, Browser, Page
 
 from .base_scraper import BaseScraper
-from .parsers import ComeetParser, GreenhouseParser, AmazonParser, EightfoldParser, SmartRecruitersParser, RSSParser, MetaParser, SalesforceParser, JibeParser, PhenomParser, AshbyParser, LinkedInParser
+from .parsers import ComeetParser, GreenhouseParser, AmazonParser, EightfoldParser, SmartRecruitersParser, RSSParser, MetaParser, SalesforceParser, JibeParser, PhenomParser, AshbyParser, LinkedInParser, APIParser
 from src.utils.logger import logger
 from urllib.parse import urljoin, urlparse
 
@@ -53,6 +53,10 @@ class PlaywrightScraper(BaseScraper):
             'phenom': PhenomParser,
             'ashby': lambda: AshbyParser(self.scraping_config.get('company_identifier', '')),
             'linkedin': LinkedInParser,
+            'generic': lambda: APIParser(
+                field_mapping=self.scraping_config.get('field_mapping', {}),
+                url_template=self.scraping_config.get('url_template')
+            ),
         }
     
     def _get_parser(self, parser_name: str) -> Any:
@@ -260,13 +264,13 @@ class PlaywrightScraper(BaseScraper):
 
     def _detect_api_format(self, data: Any) -> str:
         """Detect API format from response structure.
-        
+
         Args:
             data: API response data
-            
+
         Returns:
-            API format name ('jibe', 'greenhouse', 'comeet')
-            
+            API format name ('jibe', 'greenhouse', 'comeet', 'generic')
+
         Raises:
             ValueError: If format cannot be detected
         """
@@ -275,7 +279,7 @@ class PlaywrightScraper(BaseScraper):
         if configured_format:
             logger.info(f"Using configured API format: {configured_format}")
             return configured_format
-        
+
         # Auto-detect format based on structure
         if isinstance(data, dict) and "jobs" in data:
             sample_job = data["jobs"][0] if data["jobs"] else {}
@@ -291,10 +295,17 @@ class PlaywrightScraper(BaseScraper):
         elif isinstance(data, dict) and "positions" in data:
             logger.info("Auto-detected Comeet API format (dict)")
             return 'comeet'
+        elif isinstance(data, dict):
+            # Check if response_structure is configured for generic API
+            response_structure = self.scraping_config.get("response_structure", {})
+            if response_structure.get("jobs_key"):
+                logger.info("Using generic API format with configured response_structure")
+                return 'generic'
+            logger.error(f"Unknown API format. Type: {type(data)}")
+            logger.error(f"Response keys: {list(data.keys())}")
+            raise ValueError(f"Unsupported API response format: {type(data)}")
         else:
             logger.error(f"Unknown API format. Type: {type(data)}")
-            if isinstance(data, dict):
-                logger.error(f"Response keys: {list(data.keys())}")
             raise ValueError(f"Unsupported API response format: {type(data)}")
 
     def _get_api_parser_for_pagination(self) -> Any:
@@ -341,11 +352,11 @@ class PlaywrightScraper(BaseScraper):
 
     def _extract_positions_from_response(self, data: Any, api_format: str) -> List[Dict[str, Any]]:
         """Extract job positions from API response.
-        
+
         Args:
             data: API response data
             api_format: Detected API format
-            
+
         Returns:
             List of position dictionaries
         """
@@ -356,9 +367,14 @@ class PlaywrightScraper(BaseScraper):
                 positions = data
             else:
                 positions = data.get("positions", [])
+        elif api_format == 'generic':
+            # Use configured jobs_key to extract positions
+            response_structure = self.scraping_config.get("response_structure", {})
+            jobs_key = response_structure.get("jobs_key", "result")
+            positions = data.get(jobs_key, [])
         else:
             positions = []
-        
+
         logger.info(f"Extracted {len(positions)} positions from {api_format} API")
         return positions
 
