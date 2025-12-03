@@ -7,7 +7,7 @@ from typing import Dict, Any, Optional, List
 from uuid import UUID
 
 from celery import Task
-from sqlalchemy import and_
+from sqlalchemy import and_, or_
 
 from src.workers.celery_app import celery_app
 from src.orchestrator.scraper_orchestrator import ScraperOrchestrator
@@ -269,47 +269,61 @@ def cleanup_old_sessions(self: Task, days: int = 90) -> Dict[str, Any]:
 @celery_app.task(bind=True, name='src.workers.tasks.mark_stale_jobs_inactive', max_retries=2)
 def mark_stale_jobs_inactive(self: Task, days: int = 60) -> Dict[str, Any]:
     """
-    Mark jobs as inactive if they haven't been seen in recent scrapes.
-    
+    Mark jobs as inactive if they haven't been seen in recent scrapes OR if posted_date is older than 3 months.
+
     Jobs that haven't been updated in N days are likely no longer available
     and should be marked as inactive.
-    
+
+    Additionally, jobs with posted_date older than 3 months are marked inactive.
+    Jobs without posted_date are kept active (only deactivated based on last_seen_at).
+
     Args:
         days: Number of days without updates before marking inactive (default: 60)
-        
+
     Returns:
         Dictionary with statistics
     """
     try:
-        logger.info(f"Marking jobs inactive that haven't been updated in {days} days...")
-        
+        logger.info(f"Marking jobs inactive that haven't been updated in {days} days or posted >3 months ago...")
+
         with db.get_session() as session:
-            cutoff = datetime.utcnow() - timedelta(days=days)
-            
-            # Find active jobs that haven't been updated recently
+            cutoff_updated = datetime.utcnow() - timedelta(days=days)
+            cutoff_posted = datetime.utcnow() - timedelta(days=90)  # 3 months
+
+            # Find active jobs that should be marked inactive:
+            # 1. Haven't been updated recently (last_seen_at < cutoff)
+            # 2. OR have posted_date older than 3 months
+            # Note: Jobs without posted_date are only deactivated based on last_seen_at
             stale_jobs = session.query(JobPosition).filter(
                 and_(
                     JobPosition.is_active == True,
-                    JobPosition.updated_at < cutoff
+                    or_(
+                        JobPosition.updated_at < cutoff_updated,
+                        and_(
+                            JobPosition.posted_date.isnot(None),
+                            JobPosition.posted_date < cutoff_posted
+                        )
+                    )
                 )
             ).all()
-            
+
             # Mark them as inactive
             for job in stale_jobs:
                 job.is_active = False
-            
+
             session.commit()
-            
+
             result = {
                 'status': 'success',
                 'marked_inactive': len(stale_jobs),
-                'cutoff_date': cutoff.isoformat(),
+                'cutoff_updated_date': cutoff_updated.isoformat(),
+                'cutoff_posted_date': cutoff_posted.isoformat(),
                 'days': days
             }
-            
+
             logger.success(f"Marked {len(stale_jobs)} stale jobs as inactive")
             return result
-            
+
     except Exception as exc:
         logger.error(f"Mark stale jobs failed: {exc}")
         raise self.retry(exc=exc, countdown=600)
