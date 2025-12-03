@@ -37,6 +37,10 @@ class Settings(BaseSettings):
     scraper_retry_delay: int = 5
     scraper_concurrent_workers: int = 5
     scraper_rate_limit: int = 10
+
+    # Job Lifecycle
+    job_stale_days: int = 90  # Days without updates before marking inactive
+    job_posted_cutoff_days: int = 120  # Days since posted_date before marking inactive
     
     # Proxy
     use_proxy: bool = False

@@ -21,6 +21,7 @@ from src.scrapers.playwright_scraper import PlaywrightScraper
 from src.services.company_matching_service import CompanyMatchingService
 from src.services.deduplication_service import JobDeduplicationService
 from src.utils.logger import logger
+from config.settings import settings
 
 
 @celery_app.task(bind=True, name='src.workers.tasks.run_daily_scraping', max_retries=3)
@@ -267,32 +268,44 @@ def cleanup_old_sessions(self: Task, days: int = 90) -> Dict[str, Any]:
 
 
 @celery_app.task(bind=True, name='src.workers.tasks.mark_stale_jobs_inactive', max_retries=2)
-def mark_stale_jobs_inactive(self: Task, days: int = 60) -> Dict[str, Any]:
+def mark_stale_jobs_inactive(
+    self: Task,
+    stale_days: Optional[int] = None,
+    posted_cutoff_days: Optional[int] = None
+) -> Dict[str, Any]:
     """
-    Mark jobs as inactive if they haven't been seen in recent scrapes OR if posted_date is older than 3 months.
+    Mark jobs as inactive if they haven't been seen in recent scrapes OR if posted_date is older than cutoff.
 
     Jobs that haven't been updated in N days are likely no longer available
     and should be marked as inactive.
 
-    Additionally, jobs with posted_date older than 3 months are marked inactive.
+    Additionally, jobs with posted_date older than the cutoff are marked inactive.
     Jobs without posted_date are kept active (only deactivated based on last_seen_at).
 
     Args:
-        days: Number of days without updates before marking inactive (default: 60)
+        stale_days: Number of days without updates before marking inactive (default: from config)
+        posted_cutoff_days: Number of days since posted_date before marking inactive (default: from config)
 
     Returns:
         Dictionary with statistics
     """
     try:
-        logger.info(f"Marking jobs inactive that haven't been updated in {days} days or posted >3 months ago...")
+        # Use config values if not provided
+        stale_days = stale_days or settings.job_stale_days
+        posted_cutoff_days = posted_cutoff_days or settings.job_posted_cutoff_days
+
+        logger.info(
+            f"Marking jobs inactive that haven't been updated in {stale_days} days "
+            f"or posted >{posted_cutoff_days} days ago..."
+        )
 
         with db.get_session() as session:
-            cutoff_updated = datetime.utcnow() - timedelta(days=days)
-            cutoff_posted = datetime.utcnow() - timedelta(days=90)  # 3 months
+            cutoff_updated = datetime.utcnow() - timedelta(days=stale_days)
+            cutoff_posted = datetime.utcnow() - timedelta(days=posted_cutoff_days)
 
             # Find active jobs that should be marked inactive:
             # 1. Haven't been updated recently (last_seen_at < cutoff)
-            # 2. OR have posted_date older than 3 months
+            # 2. OR have posted_date older than cutoff
             # Note: Jobs without posted_date are only deactivated based on last_seen_at
             stale_jobs = session.query(JobPosition).filter(
                 and_(
@@ -318,7 +331,8 @@ def mark_stale_jobs_inactive(self: Task, days: int = 60) -> Dict[str, Any]:
                 'marked_inactive': len(stale_jobs),
                 'cutoff_updated_date': cutoff_updated.isoformat(),
                 'cutoff_posted_date': cutoff_posted.isoformat(),
-                'days': days
+                'stale_days': stale_days,
+                'posted_cutoff_days': posted_cutoff_days
             }
 
             logger.success(f"Marked {len(stale_jobs)} stale jobs as inactive")
