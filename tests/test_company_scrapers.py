@@ -2840,6 +2840,102 @@ class CompanyScraperTests:
         finally:
             await scraper.teardown()
 
+    async def test_kodem_security_scraper(self):
+        """Test Kodem Security scraper using BambooHR."""
+        logger.info("=" * 80)
+        logger.info("Testing Kodem Security Scraper (BambooHR)")
+        logger.info("=" * 80)
+
+        try:
+            # Load full company config from YAML file
+            full_config = self.load_full_company_config('Kodem Security')
+
+            company_config = {
+                "name": full_config.get("name"),
+                "website": full_config.get("website"),
+                "careers_url": full_config.get("careers_url"),
+                "location_filter": full_config.get("location_filter", {})
+            }
+
+            scraping_config = full_config.get("scraping_config", {})
+
+            scraper = PlaywrightScraper(company_config, scraping_config)
+
+            await scraper.setup()
+            jobs = await scraper.scrape()
+
+            success = len(jobs) > 0
+            self.results['Kodem Security'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+
+            if success:
+                logger.success(f"✓ Kodem Security: Found {len(jobs)} jobs")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ Kodem Security: No jobs found")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"✗ Kodem Security test failed: {e}")
+            self.results['Kodem Security'] = {'success': False, 'jobs_count': 0, 'sample_jobs': []}
+            return False
+
+        finally:
+            await scraper.teardown()
+
+    async def test_thetaray_scraper(self):
+        """Test ThetaRay scraper using Comeet API."""
+        logger.info("=" * 80)
+        logger.info("Testing ThetaRay Scraper (Comeet API)")
+        logger.info("=" * 80)
+
+        try:
+            # Load full company config from YAML file
+            full_config = self.load_full_company_config('ThetaRay')
+
+            company_config = {
+                "name": full_config.get("name"),
+                "website": full_config.get("website"),
+                "careers_url": full_config.get("careers_url"),
+                "location_filter": full_config.get("location_filter", {})
+            }
+
+            scraping_config = full_config.get("scraping_config", {})
+
+            scraper = PlaywrightScraper(company_config, scraping_config)
+
+            await scraper.setup()
+            jobs = await scraper.scrape()
+
+            success = len(jobs) > 0
+            self.results['ThetaRay'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+
+            if success:
+                logger.success(f"✓ ThetaRay: Found {len(jobs)} jobs")
+                for i, job in enumerate(jobs[:3], 1):
+                    logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
+            else:
+                logger.error("✗ ThetaRay: No jobs found")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"✗ ThetaRay test failed: {e}")
+            self.results['ThetaRay'] = {'success': False, 'jobs_count': 0, 'sample_jobs': []}
+            return False
+
+        finally:
+            await scraper.teardown()
+
 
     async def test_linkedin_scraper(self):
         """Test LinkedIn job scraper."""
@@ -2982,6 +3078,8 @@ class CompanyScraperTests:
         lemonade_result = await self.test_lemonade_scraper()
         zafran_security_result = await self.test_zafran_security_scraper()
         cynet_security_result = await self.test_cynet_security_scraper()
+        kodem_security_result = await self.test_kodem_security_scraper()
+        thetaray_result = await self.test_thetaray_scraper()
         linkedin_result = await self.test_linkedin_scraper()
 
         # Print summary
@@ -3006,7 +3104,7 @@ class CompanyScraperTests:
             sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result, buildots_result,
             conifers_result, blink_ops_result, torq_result, crowdstrike_result, lusha_result,
             similarweb_result, paypal_result, sap_result, elementor_result, broadcom_result, lemonade_result,
-            zafran_security_result, cynet_security_result
+            zafran_security_result, cynet_security_result, kodem_security_result, thetaray_result
         ])
 
         if all_passed:

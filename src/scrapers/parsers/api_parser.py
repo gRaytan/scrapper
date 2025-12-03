@@ -206,6 +206,27 @@ class APIParser(BaseJobParser):
                 return None
             return value
 
+        elif transform == "bamboohr_location":
+            # Format BambooHR location object to string
+            if isinstance(value, dict):
+                city = value.get("city", "")
+                state = value.get("state", "")
+                if city and state:
+                    return f"{city}, {state}"
+                elif city:
+                    return city
+                elif state:
+                    return state
+            return value
+
+        elif transform == "bamboohr_url":
+            # Build BambooHR job URL from ID
+            if value:
+                url_template = config.get("url_template", "")
+                if url_template:
+                    return url_template.format(id=value)
+            return value
+
         else:
             logger.warning(f"Unknown transformation: {transform}")
             return value

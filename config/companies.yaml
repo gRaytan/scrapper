@@ -1345,7 +1345,6 @@ companies:
     api_endpoint: https://broadcom.wd1.myworkdayjobs.com/wday/cxs/broadcom/External_Career/jobs
     pagination_type: offset
     page_size: 20
-
 - name: Elementor
   website: https://elementor.com
   careers_url: https://elementor.careers/explore/
@@ -1436,14 +1435,14 @@ companies:
       page_size: 100
       max_pages: 10
     query_params:
-      onlyData: "true"
-      expand: "requisitionList.secondaryLocations"
-      finder: "findReqs;siteNumber=CX,location=Israel"
+      onlyData: 'true'
+      expand: requisitionList.secondaryLocations
+      finder: findReqs;siteNumber=CX,location=Israel
     wait_time: 1
     response_structure:
       jobs_key: items.0.requisitionList
       total_key: items.0.TotalJobsCount
-    url_template: "https://careers.oracle.com/jobs/#en/sites/jobsearch/job/{Id}"
+    url_template: https://careers.oracle.com/jobs/#en/sites/jobsearch/job/{Id}
     field_mapping:
       external_id: Id
       title: Title
@@ -1452,7 +1451,6 @@ companies:
       posted_date:
         field: PostedDate
         transform: parse_date
-
 - name: SimilarWeb
   website: https://www.similarweb.com
   careers_url: https://www.similarweb.com/corp/careers/
@@ -1464,23 +1462,22 @@ companies:
   location_filter:
     enabled: true
     countries:
-      - Israel
+    - Israel
     match_keywords:
-      - Israel
-      - Tel Aviv
-      - Herzliya
-      - Haifa
-      - Jerusalem
-      - Petach Tikva
-      - Ramat Gan
-      - IL
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Petach Tikva
+    - Ramat Gan
+    - IL
   scraping_config:
     scraper_type: api
     api_endpoint: https://boards-api.greenhouse.io/v1/boards/similarweb/jobs
     api_method: GET
     pagination_type: none
     wait_time: 1
-
 - name: Taboola
   website: https://www.taboola.com
   careers_url: https://www.taboola.com/careers
@@ -1492,22 +1489,21 @@ companies:
   location_filter:
     enabled: true
     countries:
-      - Israel
+    - Israel
     match_keywords:
-      - Israel
-      - Tel Aviv
-      - Herzliya
-      - Haifa
-      - Jerusalem
-      - Petach Tikva
-      - IL
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Petach Tikva
+    - IL
   scraping_config:
     scraper_type: api
     api_endpoint: https://www.comeet.com/careers-api/2.0/company/taboola/positions
     api_method: GET
     pagination_type: none
     wait_time: 1
-
 - name: Trax
   website: https://traxretail.com
   careers_url: https://traxretail.com/company/careers/
@@ -1519,25 +1515,24 @@ companies:
   location_filter:
     enabled: true
     countries:
-      - Israel
+    - Israel
     match_keywords:
-      - Israel
-      - Tel Aviv
-      - Herzliya
-      - Haifa
-      - Jerusalem
-      - Petach Tikva
-      - IL
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Petach Tikva
+    - IL
   scraping_config:
     scraper_type: playwright
     search_url: https://traxretail.com/company/careers/
     wait_time: 5
     selectors:
-      job_item: '.comeet-position'
-      job_title: '.comeet-position-name'
-      job_url: '.comeet-position'
-      job_location: '.comeet-position-meta'
-
+      job_item: .comeet-position
+      job_title: .comeet-position-name
+      job_url: .comeet-position
+      job_location: .comeet-position-meta
 - name: Innoviz
   website: https://innoviz.tech
   careers_url: https://innoviz.tech/careers
@@ -1549,24 +1544,23 @@ companies:
   location_filter:
     enabled: true
     countries:
-      - Israel
+    - Israel
     match_keywords:
-      - Israel
-      - Tel Aviv
-      - Herzliya
-      - Haifa
-      - Jerusalem
-      - Petach Tikva
-      - Rosh HaAyin
-      - Rosh Ha'ayin
-      - IL
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Petach Tikva
+    - Rosh HaAyin
+    - Rosh Ha'ayin
+    - IL
   scraping_config:
     scraper_type: api
     api_endpoint: https://www.comeet.com/careers-api/2.0/company/innoviz/positions
     api_method: GET
     pagination_type: none
     wait_time: 1
-
 - name: Lemonade
   website: https://www.lemonade.com
   careers_url: https://makers.lemonade.com/
@@ -1578,23 +1572,22 @@ companies:
   location_filter:
     enabled: true
     countries:
-      - Israel
+    - Israel
     match_keywords:
-      - Israel
-      - Tel Aviv
-      - Herzliya
-      - Haifa
-      - Jerusalem
-      - Petach Tikva
-      - TLV
-      - IL
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Petach Tikva
+    - TLV
+    - IL
   scraping_config:
     scraper_type: ashby_graphql
     api_endpoint: https://jobs.ashbyhq.com/api/non-user-graphql?op=ApiJobBoardWithTeams
     api_method: POST
     company_identifier: lemonade
     wait_time: 1
-
 - name: PayPal
   website: https://www.paypal.com
   careers_url: https://careers.pypl.com/home/
@@ -1606,15 +1599,15 @@ companies:
   location_filter:
     enabled: true
     countries:
-      - Israel
+    - Israel
     match_keywords:
-      - Israel
-      - Tel Aviv
-      - Herzliya
-      - Haifa
-      - Jerusalem
-      - Petach Tikva
-      - IL
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Petach Tikva
+    - IL
   scraping_config:
     scraper_type: workday
     api_endpoint: https://paypal.wd1.myworkdayjobs.com/wday/cxs/paypal/jobs/jobs
@@ -1626,7 +1619,6 @@ companies:
       page_size: 20
       max_pages: 50
     wait_time: 1
-
 - name: SAP
   website: https://www.sap.com
   careers_url: https://jobs.sap.com/
@@ -1638,17 +1630,17 @@ companies:
   location_filter:
     enabled: true
     countries:
-      - Israel
+    - Israel
     match_keywords:
-      - Israel
-      - Tel Aviv
-      - Herzliya
-      - Haifa
-      - Jerusalem
-      - Petach Tikva
-      - Ra'anana
-      - Raanana
-      - IL
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Petach Tikva
+    - Ra'anana
+    - Raanana
+    - IL
   scraping_config:
     scraper_type: playwright
     search_url: https://jobs.sap.com/search/?createNewAlert=false&q=&locationsearch=Israel
@@ -1660,7 +1652,6 @@ companies:
       job_location: .jobLocation
       job_url: .jobTitle a
       pagination: .next
-
 - name: Cisco
   website: https://www.cisco.com
   careers_url: https://careers.cisco.com/global/en/search-results
@@ -1672,30 +1663,29 @@ companies:
   location_filter:
     enabled: true
     countries:
-      - Israel
+    - Israel
     match_keywords:
-      - Israel
-      - Tel Aviv
-      - Herzliya
-      - Haifa
-      - Jerusalem
-      - Petach Tikva
-      - IL
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Petach Tikva
+    - IL
   scraping_config:
     scraper_type: playwright
     search_url: https://careers.cisco.com/global/en/search-results
     wait_time: 10
-    wait_for_selector: 'a[data-ph-at-id*="job-link"]'
+    wait_for_selector: a[data-ph-at-id*="job-link"]
     max_pages: 20
     pagination_type: button
     pagination_selector: button:has-text("Next"), a:has-text("Next"), [aria-label*="Next"]
     selectors:
-      job_item: 'a[data-ph-at-id*="job-link"]'
-      job_title: 'a[data-ph-at-id*="job-link"]'
-      job_url: 'a[data-ph-at-id*="job-link"]'
-      job_location: 'span'
+      job_item: a[data-ph-at-id*="job-link"]
+      job_title: a[data-ph-at-id*="job-link"]
+      job_url: a[data-ph-at-id*="job-link"]
+      job_location: span
     extract_location_from_job_page: true
-
 - name: Zafran Security
   website: https://www.zafran.io
   careers_url: https://www.zafran.io/careers
@@ -1707,29 +1697,28 @@ companies:
   location_filter:
     enabled: true
     countries:
-      - Israel
+    - Israel
     match_keywords:
-      - Israel
-      - Tel Aviv
-      - Herzliya
-      - Haifa
-      - Jerusalem
-      - Petach Tikva
-      - Raanana
-      - IL
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Petach Tikva
+    - Raanana
+    - IL
   scraping_config:
     scraper_type: playwright
     search_url: https://www.zafran.io/careers
     wait_time: 3
-    wait_for_selector: '.careers-jobs_department_item'
+    wait_for_selector: .careers-jobs_department_item
     max_pages: 1
     pagination_type: none
     selectors:
-      job_item: '.careers-jobs_department_item'
-      job_title: '.careers-jobs_card_title'
-      job_location: '.careers-jobs_card_detail-text'
-      job_url: 'a.g_clickable_link'
-
+      job_item: .careers-jobs_department_item
+      job_title: .careers-jobs_card_title
+      job_location: .careers-jobs_card_detail-text
+      job_url: a.g_clickable_link
 - name: Cynet Security
   website: https://www.cynet.com
   careers_url: https://www.cynet.com/careers/
@@ -1741,18 +1730,92 @@ companies:
   location_filter:
     enabled: true
     countries:
-      - Israel
+    - Israel
     match_keywords:
-      - Israel
-      - Tel Aviv
-      - Herzliya
-      - Haifa
-      - Jerusalem
-      - Petach Tikva
-      - Raanana
-      - IL
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Petach Tikva
+    - Raanana
+    - IL
   scraping_config:
     scraper_type: comeet
-    api_endpoint: https://www.comeet.co/careers-api/2.0/company/33.00D/positions
-    company_uid: 33.00D
-    token: 33D103133D19E8136E1D25103133D10311D25
+    api_endpoint: https://www.comeet.co/careers-api/2.0/company/33.00D/positions?token=33D103133D19E8136E1D25103133D10311D25
+    pagination_type: none
+- name: Kodem Security
+  website: https://www.kodemsecurity.com
+  careers_url: https://kodem.bamboohr.com/careers?source=aWQ9MjU%3D
+  industry: Cybersecurity
+  size: 51-200
+  location: Tel Aviv, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    - United States
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Petach Tikva
+    - Raanana
+    - IL
+    - United States
+    - US
+    - New York
+    - Remote
+  scraping_config:
+    scraper_type: api
+    api_endpoint: https://kodem.bamboohr.com/careers/list
+    api_method: GET
+    api_format: generic
+    pagination_type: none
+    wait_time: 1
+    response_structure:
+      jobs_key: result
+      total_key: meta.totalCount
+    field_mapping:
+      external_id: id
+      title: jobOpeningName
+      department: departmentLabel
+      employment_type: employmentStatusLabel
+      location:
+        field: location
+        transform: bamboohr_location
+      job_url:
+        field: id
+        transform: bamboohr_url
+        url_template: https://kodem.bamboohr.com/careers/{id}
+- name: ThetaRay
+  website: https://www.thetaray.com
+  careers_url: https://www.comeet.com/jobs/thetaray/72.00F
+  industry: Financial Technology
+  size: 201-500
+  location: Hod HaSharon, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Herzliya
+    - Haifa
+    - Jerusalem
+    - Hod HaSharon
+    - Hod Hasharon
+    - Petach Tikva
+    - Raanana
+    - IL
+  scraping_config:
+    scraper_type: comeet
+    api_endpoint: https://www.comeet.co/careers-api/2.0/company/72.00F/positions?token=27F9FC16779FC13F8EFA13F84FE27F77D
+    pagination_type: none
