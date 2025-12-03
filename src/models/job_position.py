@@ -70,7 +70,20 @@ class JobPosition(Base, UUIDMixin, TimestampMixin):
     
     # Additional metadata
     extra_metadata: Mapped[Optional[dict]] = mapped_column(JSON, default=dict, name="metadata")
-    
+
+    # Source tracking and duplicate detection
+    source_type: Mapped[str] = mapped_column(
+        String(50),
+        default='company_direct',
+        nullable=False,
+        index=True
+    )  # company_direct, linkedin_aggregator, other_aggregator
+
+    duplicate_metadata: Mapped[Optional[dict]] = mapped_column(
+        JSON,
+        nullable=True
+    )  # Stores: {potential_duplicate_of_id, confidence_score, needs_manual_review, checked_at}
+
     # Relationships
     company = relationship("Company", back_populates="job_positions")
     

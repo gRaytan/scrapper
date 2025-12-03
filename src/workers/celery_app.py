@@ -72,6 +72,20 @@ celery_app.conf.update(
                 'expires': 3600,
             }
         },
+
+        # LinkedIn job scraping daily
+        'daily-linkedin-scraping': {
+            'task': 'src.workers.tasks.scrape_linkedin_jobs',
+            'schedule': crontab(hour=8, minute=0),  # 8:00 AM UTC daily (after company scraping)
+            'kwargs': {
+                'keywords': None,  # Search for all job roles
+                'location': 'Israel',
+                'max_pages': 40  # ~1000 jobs per role
+            },
+            'options': {
+                'expires': 7200,  # Task expires after 2 hours if not picked up
+            }
+        },
     },
 )
 

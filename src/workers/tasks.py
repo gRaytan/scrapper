@@ -3,7 +3,8 @@ Celery tasks for background job processing.
 """
 import asyncio
 from datetime import datetime, timedelta
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
+from uuid import UUID
 
 from celery import Task
 from sqlalchemy import and_
@@ -12,7 +13,13 @@ from src.workers.celery_app import celery_app
 from src.orchestrator.scraper_orchestrator import ScraperOrchestrator
 from src.storage.database import db
 from src.models.job_position import JobPosition
+from src.models.company import Company
 from src.models.scraping_session import ScrapingSession
+from src.storage.repositories.company_repo import CompanyRepository
+from src.storage.repositories.job_repo import JobPositionRepository
+from src.scrapers.playwright_scraper import PlaywrightScraper
+from src.services.company_matching_service import CompanyMatchingService
+from src.services.deduplication_service import JobDeduplicationService
 from src.utils.logger import logger
 
 
@@ -424,17 +431,30 @@ def scrape_linkedin_jobs(
         import httpx
         from bs4 import BeautifulSoup
         
-        # Get all active companies if no keywords specified
+        # Define search queries - use job roles if no keywords specified
         search_queries = []
         if keywords:
             search_queries.append(keywords)
         else:
-            with db.get_session() as session:
-                company_repo = CompanyRepository(session)
-                companies = company_repo.get_active_companies()
-                search_queries = [company.name for company in companies]
-        
-        logger.info(f"Will search LinkedIn for {len(search_queries)} queries")
+            # Search for common tech job roles in Israel
+            search_queries = [
+                "Software Engineer",
+                "Backend Developer",
+                "Frontend Developer",
+                "Full Stack Developer",
+                "DevOps Engineer",
+                "Data Engineer",
+                "Data Scientist",
+                "Machine Learning Engineer",
+                "Product Manager",
+                "QA Engineer",
+                "Security Engineer",
+                "Cloud Engineer",
+                "Mobile Developer",
+                "Site Reliability Engineer",
+            ]
+
+        logger.info(f"Will search LinkedIn for {len(search_queries)} queries: {', '.join(search_queries[:5])}...")
         
         # LinkedIn API configuration
         linkedin_config = {
@@ -497,39 +517,59 @@ def scrape_linkedin_jobs(
                 
                 logger.info(f"Found {len(jobs)} jobs for query: {query}")
                 
-                # Store jobs in database
+                # Store jobs in database with company matching and de-duplication
                 with db.get_session() as session:
                     company_repo = CompanyRepository(session)
-                    
+                    job_repo = JobPositionRepository(session)
+                    company_matcher = CompanyMatchingService(session)
+                    dedup_service = JobDeduplicationService(session)
+
                     jobs_new = 0
                     jobs_updated = 0
-                    
+                    jobs_skipped_duplicate = 0
+                    jobs_flagged_review = 0
+
                     for job in jobs:
-                        # Try to find the company in our database
-                        company_name = job.get('company', '')
-                        company = company_repo.get_by_name(company_name)
-                        
-                        # If company doesn't exist, create it
-                        if not company:
-                            company = Company(
-                                name=company_name,
-                                website=f"https://www.linkedin.com/company/{company_name.lower().replace(' ', '-')}",
-                                careers_url=job.get('job_url', ''),
-                                industry="Unknown",
-                                is_active=False,  # Don't auto-activate LinkedIn-discovered companies
-                                location=job.get('location', ''),
-                                scraping_config={}
-                            )
-                            session.add(company)
-                            session.flush()  # Get the ID
-                            logger.info(f"Created new company from LinkedIn: {company_name}")
-                        
-                        # Check if job already exists
-                        existing_job = session.query(JobPosition).filter(
-                            JobPosition.company_id == company.id,
-                            JobPosition.external_id == job.get('external_id', '')
-                        ).first()
-                        
+                        # Extract company name from LinkedIn data
+                        linkedin_company_name = job.get('company', '')
+                        if not linkedin_company_name:
+                            logger.warning(f"Job missing company name: {job.get('title', 'Unknown')}")
+                            continue
+
+                        # Try to match with existing company in database
+                        matched_company, confidence = company_matcher.find_matching_company(linkedin_company_name)
+
+                        if matched_company:
+                            # Use matched company
+                            company = matched_company
+                            logger.debug(f"Matched '{linkedin_company_name}' to '{company.name}' (confidence: {confidence:.2f})")
+                        else:
+                            # Create new company for unmatched LinkedIn companies
+                            company = company_repo.get_by_name(linkedin_company_name)
+                            if not company:
+                                company = Company(
+                                    name=linkedin_company_name,
+                                    website=f"https://www.linkedin.com/company/{linkedin_company_name.lower().replace(' ', '-')}",
+                                    careers_url=job.get('job_url', ''),
+                                    industry="Unknown",
+                                    is_active=False,  # Don't auto-activate LinkedIn-discovered companies
+                                    location=job.get('location', ''),
+                                    scraping_config={}
+                                )
+                                session.add(company)
+                                session.flush()  # Get the ID
+                                logger.info(f"Created new company from LinkedIn: {linkedin_company_name}")
+
+                        # Check for duplicate jobs using de-duplication service
+                        duplicate_job, dup_score, needs_review = dedup_service.check_for_duplicate(
+                            company_id=str(company.id),
+                            title=job.get('title', ''),
+                            location=job.get('location', '')
+                        )
+
+                        # Check if job already exists by external_id
+                        existing_job = job_repo.get_by_external_id(job.get('external_id', ''), company.id)
+
                         if existing_job:
                             # Update existing job
                             existing_job.title = job.get('title', '')
@@ -539,9 +579,24 @@ def scrape_linkedin_jobs(
                             existing_job.last_seen_at = datetime.utcnow()
                             existing_job.scraped_at = datetime.utcnow()
                             jobs_updated += 1
+                        elif duplicate_job and dup_score >= dedup_service.HIGH_CONFIDENCE_THRESHOLD:
+                            # High confidence duplicate - skip creating new job
+                            logger.info(f"Skipping duplicate job: '{job.get('title')}' (matches existing job ID: {duplicate_job.id})")
+                            jobs_skipped_duplicate += 1
                         else:
                             # Create new job
                             now = datetime.utcnow()
+
+                            # Build duplicate metadata if there's a potential duplicate
+                            dup_metadata = None
+                            if duplicate_job:
+                                dup_metadata = {
+                                    'potential_duplicate_of_id': str(duplicate_job.id),
+                                    'confidence_score': dup_score,
+                                    'needs_manual_review': needs_review,
+                                    'checked_at': now.isoformat()
+                                }
+
                             new_job = JobPosition(
                                 company_id=company.id,
                                 external_id=job.get('external_id', ''),
@@ -554,25 +609,34 @@ def scrape_linkedin_jobs(
                                 first_seen_at=now,
                                 last_seen_at=now,
                                 status='active',
-                                is_active=True
+                                is_active=True,
+                                source_type='linkedin_aggregator',
+                                duplicate_metadata=dup_metadata
                             )
                             session.add(new_job)
                             jobs_new += 1
-                    
+
+                            if needs_review:
+                                jobs_flagged_review += 1
+                                logger.warning(f"Job flagged for review: '{job.get('title')}' (possible duplicate, score: {dup_score:.2f})")
+
                     session.commit()
                     
                     total_jobs_found += len(jobs)
                     total_jobs_new += jobs_new
                     total_jobs_updated += jobs_updated
-                    
+
                     results_by_query[query] = {
                         'jobs_found': len(jobs),
                         'jobs_new': jobs_new,
-                        'jobs_updated': jobs_updated
+                        'jobs_updated': jobs_updated,
+                        'jobs_skipped_duplicate': jobs_skipped_duplicate,
+                        'jobs_flagged_review': jobs_flagged_review
                     }
-                    
+
                     logger.success(
-                        f"Processed {query}: {jobs_new} new, {jobs_updated} updated"
+                        f"Processed {query}: {jobs_new} new, {jobs_updated} updated, "
+                        f"{jobs_skipped_duplicate} skipped (duplicates), {jobs_flagged_review} flagged for review"
                     )
                 
                 # Small delay between queries to be respectful
