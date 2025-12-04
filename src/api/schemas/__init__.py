@@ -1,4 +1,14 @@
 """API schemas."""
+from .auth import (
+    UserRegister,
+    UserLogin,
+    Token,
+    TokenData,
+    RefreshTokenRequest,
+    PasswordChange,
+    PasswordReset,
+    PasswordResetConfirm,
+)
 from .user import (
     UserCreate,
     UserUpdate,
@@ -35,6 +45,15 @@ from .alert import (
 )
 
 __all__ = [
+    # Auth
+    "UserRegister",
+    "UserLogin",
+    "Token",
+    "TokenData",
+    "RefreshTokenRequest",
+    "PasswordChange",
+    "PasswordReset",
+    "PasswordResetConfirm",
     # User
     "UserCreate",
     "UserUpdate",

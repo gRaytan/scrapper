@@ -42,9 +42,12 @@ class UserStats(BaseModel):
 class UserResponse(UserBase):
     """Schema for user response."""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: UUID
     is_active: bool
+    subscription_tier: str
+    phone_number: Optional[str] = None
+    phone_verified: bool
     last_login_at: Optional[datetime] = None
     preferences: dict
     created_at: datetime
