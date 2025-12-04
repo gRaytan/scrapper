@@ -62,11 +62,17 @@ class Settings(BaseSettings):
     api_port: int = 8000
     api_workers: int = 4
     api_reload: bool = False
-    
+
+    # JWT Authentication
+    jwt_secret_key: str = "your-secret-key-change-in-production-use-openssl-rand-hex-32"
+    jwt_algorithm: str = "HS256"
+    jwt_access_token_expire_minutes: int = 30  # 30 minutes
+    jwt_refresh_token_expire_days: int = 7     # 7 days
+
     # Monitoring
     sentry_dsn: Optional[str] = None
     prometheus_port: int = 9090
-    
+
     # Application
     environment: str = "development"
     debug: bool = True
