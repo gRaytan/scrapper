@@ -87,11 +87,19 @@ class JobListResponse(BaseModel):
     filters_applied: dict = Field(default_factory=dict)
 
 
+class PersonalizedJobItem(BaseModel):
+    """Schema for a personalized job with match information."""
+    job: JobListItem
+    matched_alerts: List[str] = Field(description="Names of alerts that matched this job")
+    match_count: int = Field(description="Number of alerts that matched this job")
+
+
 class PersonalizedJobsResponse(BaseModel):
     """Schema for personalized jobs response."""
-    total: int
-    page: int
-    page_size: int
-    jobs: List[JobListItem]
-    matching_alerts: dict = Field(default_factory=dict)  # job_id -> [alert_ids]
+    total: int = Field(description="Total number of matching jobs")
+    page: int = Field(description="Current page number")
+    page_size: int = Field(description="Number of items per page")
+    total_pages: int = Field(description="Total number of pages")
+    jobs: List[PersonalizedJobItem] = Field(description="List of personalized jobs with match info")
+    alert_count: int = Field(description="Number of active alerts used for matching")
 

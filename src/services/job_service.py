@@ -1,7 +1,7 @@
 """Job service for business logic."""
 import logging
 import math
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Set
 from uuid import UUID
 from datetime import datetime
 
@@ -141,14 +141,95 @@ class JobService:
     def get_job(self, job_id: UUID) -> Optional[JobPosition]:
         """
         Get job by ID with company details.
-        
+
         Args:
             job_id: Job UUID
-            
+
         Returns:
             Job position or None if not found
         """
         return self.session.query(JobPosition).options(
             joinedload(JobPosition.company)
         ).filter(JobPosition.id == job_id).first()
+
+    def get_personalized_jobs(
+        self,
+        user_id: UUID,
+        page: int = 1,
+        page_size: int = 20
+    ) -> Dict[str, Any]:
+        """
+        Get personalized jobs for a user based on their active alerts.
+
+        Returns jobs that match ANY of the user's active alerts, sorted by posted date.
+        Each job includes information about which alerts it matched.
+
+        Args:
+            user_id: User UUID
+            page: Page number (1-indexed)
+            page_size: Number of items per page
+
+        Returns:
+            Dictionary with jobs, pagination info, and match information
+        """
+        # Get user's active alerts
+        user_alerts = self.alert_repo.get_by_user(user_id, is_active=True)
+
+        if not user_alerts:
+            # No active alerts, return empty result
+            return {
+                "total": 0,
+                "page": page,
+                "page_size": page_size,
+                "total_pages": 0,
+                "jobs": [],
+                "alert_count": 0,
+            }
+
+        # Get all active jobs
+        active_jobs = self.session.query(JobPosition).filter(
+            JobPosition.is_active == True
+        ).options(joinedload(JobPosition.company)).all()
+
+        # Find jobs that match any alert
+        matching_jobs_map: Dict[UUID, Set[str]] = {}  # job_id -> set of matching alert names
+
+        for job in active_jobs:
+            for alert in user_alerts:
+                if alert.matches_position(job):
+                    if job.id not in matching_jobs_map:
+                        matching_jobs_map[job.id] = set()
+                    matching_jobs_map[job.id].add(alert.name)
+
+        # Get matching jobs and sort by posted date (newest first)
+        matching_jobs = [
+            job for job in active_jobs
+            if job.id in matching_jobs_map
+        ]
+        matching_jobs.sort(key=lambda j: j.posted_date, reverse=True)
+
+        # Calculate pagination
+        total = len(matching_jobs)
+        total_pages = math.ceil(total / page_size) if total > 0 else 0
+        offset = (page - 1) * page_size
+        paginated_jobs = matching_jobs[offset:offset + page_size]
+
+        # Add match information to jobs
+        jobs_with_matches = []
+        for job in paginated_jobs:
+            job_dict = {
+                "job": job,
+                "matched_alerts": list(matching_jobs_map[job.id]),
+                "match_count": len(matching_jobs_map[job.id])
+            }
+            jobs_with_matches.append(job_dict)
+
+        return {
+            "total": total,
+            "page": page,
+            "page_size": page_size,
+            "total_pages": total_pages,
+            "jobs": jobs_with_matches,
+            "alert_count": len(user_alerts),
+        }
 

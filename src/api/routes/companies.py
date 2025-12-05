@@ -9,6 +9,8 @@ from sqlalchemy.orm import Session
 from src.storage.database import db
 from src.services.company_service import CompanyService
 from src.services.job_service import JobService
+from src.auth.dependencies import get_current_active_user
+from src.models.user import User
 from src.api.schemas.company import (
     CompanyCreate,
     CompanyUpdate,
@@ -35,18 +37,21 @@ def list_companies(
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     search: Optional[str] = Query(None, description="Search company name"),
+    current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
     """
     List companies with pagination and filtering.
-    
+
     **Filters:**
     - **is_active**: Filter by active status
     - **search**: Search in company name
-    
+
     **Pagination:**
     - **page**: Page number (default: 1)
     - **page_size**: Items per page (default: 20, max: 100)
+
+    Requires JWT authentication.
     """
     try:
         service = CompanyService(session)
@@ -85,6 +90,7 @@ def list_companies(
 def get_company(
     company_id: UUID,
     include_stats: bool = Query(False, description="Include company statistics"),
+    current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
     """
@@ -123,6 +129,7 @@ def get_company(
 @router.post("", response_model=CompanyResponse, status_code=status.HTTP_201_CREATED)
 def create_company(
     company_data: CompanyCreate,
+    current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
     """
@@ -157,6 +164,7 @@ def create_company(
 def update_company(
     company_id: UUID,
     update_data: CompanyUpdate,
+    current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
     """
@@ -196,6 +204,7 @@ def update_company(
 @router.delete("/{company_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_company(
     company_id: UUID,
+    current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
     """
@@ -232,6 +241,7 @@ def get_company_jobs(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     is_active: Optional[bool] = Query(True, description="Filter by active status"),
+    current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
     """

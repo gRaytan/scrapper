@@ -5,12 +5,9 @@ from uuid import UUID
 
 from sqlalchemy import Boolean, String, DateTime, JSON
 from sqlalchemy.orm import Mapped, mapped_column, relationship
-from passlib.context import CryptContext
+import bcrypt
 
 from .base import Base, TimestampMixin, UUIDMixin
-
-# Password hashing context
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 
 class User(Base, UUIDMixin, TimestampMixin):
@@ -56,13 +53,20 @@ class User(Base, UUIDMixin, TimestampMixin):
 
     def set_password(self, password: str) -> None:
         """Hash and set user password."""
-        self.password_hash = pwd_context.hash(password)
+        # Bcrypt has a 72-byte limit, truncate if necessary
+        password_bytes = password.encode('utf-8')[:72]
+        salt = bcrypt.gensalt()
+        hashed = bcrypt.hashpw(password_bytes, salt)
+        self.password_hash = hashed.decode('utf-8')
 
     def verify_password(self, password: str) -> bool:
         """Verify password against hash."""
         if not self.password_hash:
             return False
-        return pwd_context.verify(password, self.password_hash)
+        # Bcrypt has a 72-byte limit, truncate if necessary
+        password_bytes = password.encode('utf-8')[:72]
+        hash_bytes = self.password_hash.encode('utf-8')
+        return bcrypt.checkpw(password_bytes, hash_bytes)
 
     @property
     def notification_email(self) -> str:

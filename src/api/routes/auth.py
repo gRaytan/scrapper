@@ -8,9 +8,8 @@ from sqlalchemy.orm import Session
 from src.api.schemas.auth import UserRegister, UserLogin, Token, RefreshTokenRequest
 from src.api.schemas.user import UserResponse
 from src.auth.security import create_access_token, create_refresh_token, decode_token
-from src.auth.dependencies import get_current_active_user
+from src.auth.dependencies import get_current_active_user, get_db_session
 from src.models.user import User
-from src.storage.database import get_db
 
 router = APIRouter()
 
@@ -18,7 +17,7 @@ router = APIRouter()
 @router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 async def register(
     user_data: UserRegister,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ):
     """
     Register a new user.
@@ -74,7 +73,7 @@ async def register(
 @router.post("/login", response_model=Token)
 async def login(
     form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ):
     """
     Login with email and password.
@@ -122,7 +121,7 @@ async def login(
 @router.post("/refresh", response_model=Token)
 async def refresh_token(
     refresh_data: RefreshTokenRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db_session)
 ):
     """
     Refresh access token using refresh token.

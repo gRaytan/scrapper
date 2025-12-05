@@ -9,15 +9,21 @@ from sqlalchemy.orm import Session
 
 from src.auth.security import decode_token
 from src.models.user import User
-from src.storage.database import get_db
+from src.storage.database import db
 
 # OAuth2 scheme for token extraction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
 
 
+def get_db_session():
+    """Dependency to get database session."""
+    with db.get_session() as session:
+        yield session
+
+
 async def get_current_user(
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(get_db)
+    session: Session = Depends(get_db_session)
 ) -> User:
     """
     Get the current authenticated user from JWT token.
@@ -55,7 +61,7 @@ async def get_current_user(
         raise credentials_exception
     
     # Get user from database
-    user = db.query(User).filter(User.id == user_id).first()
+    user = session.query(User).filter(User.id == user_id).first()
     
     if user is None:
         raise credentials_exception
