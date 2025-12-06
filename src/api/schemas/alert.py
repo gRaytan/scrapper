@@ -100,3 +100,30 @@ class AlertTestResponse(BaseModel):
     sample_jobs: List[JobMatchPreview]
     total_active_jobs: int
 
+
+class JobMatchFull(BaseModel):
+    """Schema for full job match details."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    title: str
+    company: dict
+    location: Optional[str] = None
+    department: Optional[str] = None
+    description: Optional[str] = None
+    posted_date: Optional[datetime] = None
+    job_url: Optional[str] = None
+    external_id: Optional[str] = None
+    is_remote: Optional[bool] = None
+    employment_type: Optional[str] = None
+    match_score: float = 1.0
+    matched_criteria: List[str] = Field(default_factory=list)
+
+
+class AlertMatchingJobsResponse(BaseModel):
+    """Schema for alert matching jobs response (all jobs, not just samples)."""
+    matching_jobs_count: int
+    jobs: List[JobMatchFull]
+    total_active_jobs: int
+    retrieved_at: datetime
+

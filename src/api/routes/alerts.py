@@ -18,6 +18,8 @@ from src.api.schemas.alert import (
     AlertListResponse,
     AlertTestResponse,
     JobMatchPreview,
+    AlertMatchingJobsResponse,
+    JobMatchFull,
 )
 
 logger = logging.getLogger(__name__)
@@ -381,4 +383,82 @@ def test_alert(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to test alert"
         )
+
+@router.get("/alerts/{alert_id}/matches", response_model=AlertMatchingJobsResponse)
+def get_alert_matching_jobs(
+    alert_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_db_session)
+):
+    """
+    Get ALL jobs matching an alert.
+
+    - **alert_id**: Alert UUID
+
+    Returns all jobs that match the alert criteria (not just a sample).
+    Users can only access their own alerts.
+    Requires JWT authentication.
+    """
+    try:
+        from datetime import datetime
+
+        service = AlertService(session)
+
+        # First get the alert to check ownership
+        alert = service.get_alert(alert_id, include_stats=False)
+        if not alert:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Alert {alert_id} not found"
+            )
+
+        # Check ownership
+        if alert.user_id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="You can only access your own alerts"
+            )
+
+        result = service.get_all_matching_jobs(alert_id)
+
+        # Transform jobs to match schema
+        jobs = []
+        for job in result["jobs"]:
+            jobs.append(JobMatchFull(
+                id=job.id,
+                title=job.title,
+                company={
+                    "id": str(job.company.id),
+                    "name": job.company.name,
+                },
+                location=job.location,
+                department=job.department,
+                description=job.description,
+                posted_date=job.posted_date,
+                job_url=job.job_url,
+                external_id=job.external_id,
+                is_remote=job.is_remote,
+                employment_type=job.employment_type,
+                match_score=1.0,  # TODO: Implement actual match scoring
+                matched_criteria=["keywords"],  # TODO: Implement criteria tracking
+            ))
+
+        return AlertMatchingJobsResponse(
+            matching_jobs_count=result["matching_jobs_count"],
+            jobs=jobs,
+            total_active_jobs=result["total_active_jobs"],
+            retrieved_at=datetime.utcnow(),
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error getting matching jobs for alert {alert_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get matching jobs"
+        )
+
 

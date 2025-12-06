@@ -192,6 +192,40 @@ class AlertService:
             "total_active_jobs": len(active_jobs),
         }
 
+    def get_all_matching_jobs(self, alert_id: UUID) -> Dict[str, Any]:
+        """
+        Get ALL jobs matching an alert (not just samples).
+
+        Args:
+            alert_id: Alert UUID
+
+        Returns:
+            Dictionary with all matching jobs
+
+        Raises:
+            ValueError: If alert not found
+        """
+        alert = self.alert_repo.get_by_id(alert_id)
+        if not alert:
+            raise ValueError(f"Alert {alert_id} not found")
+
+        # Get all active jobs
+        active_jobs = self.session.query(JobPosition).filter(
+            JobPosition.is_active == True
+        ).options(joinedload(JobPosition.company)).all()
+
+        # Find ALL matching jobs
+        matching_jobs = []
+        for job in active_jobs:
+            if alert.matches_position(job):
+                matching_jobs.append(job)
+
+        return {
+            "matching_jobs_count": len(matching_jobs),
+            "jobs": matching_jobs,
+            "total_active_jobs": len(active_jobs),
+        }
+
     def _get_alert_stats(self, alert_id: UUID) -> AlertStats:
         """
         Get alert statistics.
