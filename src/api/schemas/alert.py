@@ -114,7 +114,7 @@ class JobMatchFull(BaseModel):
     posted_date: Optional[datetime] = None
     job_url: Optional[str] = None
     external_id: Optional[str] = None
-    is_remote: Optional[bool] = None
+    remote_type: Optional[str] = None
     employment_type: Optional[str] = None
     match_score: float = 1.0
     matched_criteria: List[str] = Field(default_factory=list)

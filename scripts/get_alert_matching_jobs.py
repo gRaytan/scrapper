@@ -80,7 +80,7 @@ def get_all_matching_jobs(alert_id: str, export_json: bool = False):
                 logger.info(f"   Posted: {job.posted_date or 'N/A'}")
                 logger.info(f"   URL: {job.job_url}")
                 logger.info(f"   External ID: {job.external_id}")
-                logger.info(f"   Remote: {job.is_remote}")
+                logger.info(f"   Remote Type: {job.remote_type or 'N/A'}")
         
         # Export to JSON if requested
         if export_json:
@@ -113,7 +113,7 @@ def get_all_matching_jobs(alert_id: str, export_json: bool = False):
                         "posted_date": job.posted_date.isoformat() if job.posted_date else None,
                         "job_url": job.job_url,
                         "external_id": job.external_id,
-                        "is_remote": job.is_remote,
+                        "remote_type": job.remote_type,
                         "employment_type": job.employment_type,
                         "description": job.description[:500] + "..." if job.description and len(job.description) > 500 else job.description,
                     }

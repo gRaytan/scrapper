@@ -437,7 +437,7 @@ def get_alert_matching_jobs(
                 posted_date=job.posted_date,
                 job_url=job.job_url,
                 external_id=job.external_id,
-                is_remote=job.is_remote,
+                remote_type=job.remote_type,
                 employment_type=job.employment_type,
                 match_score=1.0,  # TODO: Implement actual match scoring
                 matched_criteria=["keywords"],  # TODO: Implement criteria tracking
