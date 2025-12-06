@@ -40,7 +40,7 @@ class JobListItem(JobBase):
 
     id: UUID
     company: CompanyBrief
-    description: Optional[str] = Field(None, max_length=500)  # Truncated for list view
+    description: Optional[str] = None  # Full description, can be truncated by frontend
     salary_range: Optional[SalaryRange] = None
     requirements: Optional[List[str]] = None
     benefits: Optional[List[str]] = None

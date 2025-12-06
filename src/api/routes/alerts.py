@@ -44,8 +44,11 @@ def list_current_user_alerts(
     """
     try:
         service = AlertService(session)
-        result = service.list_user_alerts(current_user.id, is_active=is_active)
-        return result
+        alerts = service.list_user_alerts(current_user.id, is_active=is_active)
+        return {
+            "total": len(alerts),
+            "alerts": alerts
+        }
     except Exception as e:
         logger.error(f"Error listing alerts: {e}")
         raise HTTPException(

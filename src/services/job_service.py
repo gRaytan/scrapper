@@ -202,11 +202,12 @@ class JobService:
                     matching_jobs_map[job.id].add(alert.name)
 
         # Get matching jobs and sort by posted date (newest first)
+        # Use created_at as fallback for jobs without posted_date
         matching_jobs = [
             job for job in active_jobs
             if job.id in matching_jobs_map
         ]
-        matching_jobs.sort(key=lambda j: j.posted_date, reverse=True)
+        matching_jobs.sort(key=lambda j: j.posted_date or j.created_at, reverse=True)
 
         # Calculate pagination
         total = len(matching_jobs)
