@@ -28,6 +28,7 @@ class UserCreate(UserBase):
 class UserUpdate(BaseModel):
     """Schema for updating a user."""
     full_name: Optional[str] = None
+    phone_number: Optional[str] = None
     preferences: Optional[dict] = None
     is_active: Optional[bool] = None
 

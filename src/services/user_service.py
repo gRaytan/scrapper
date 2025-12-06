@@ -88,6 +88,8 @@ class UserService:
         update_dict = {}
         if update_data.full_name is not None:
             update_dict["full_name"] = update_data.full_name
+        if update_data.phone_number is not None:
+            update_dict["phone_number"] = update_data.phone_number
         if update_data.preferences is not None:
             update_dict["preferences"] = update_data.preferences
         if update_data.is_active is not None:
