@@ -1,0 +1,13 @@
+# SSL certificates
+ssl/
+*.pem
+*.key
+*.crt
+
+# Backup files
+*.sql
+*.sql.gz
+
+# Logs
+*.log
+
