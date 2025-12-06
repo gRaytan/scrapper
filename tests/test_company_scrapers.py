@@ -2937,6 +2937,49 @@ class CompanyScraperTests:
             await scraper.teardown()
 
 
+    async def test_tenable_scraper(self):
+        """Test Tenable scraper using Greenhouse API."""
+        logger.info("=" * 80)
+        logger.info("Testing Tenable Scraper (Greenhouse API)")
+        logger.info("=" * 80)
+
+        company_config = {
+            "name": "Tenable",
+            "website": "https://www.tenable.com",
+            "careers_url": "https://www.tenable.com/careers",
+        }
+
+        scraping_config = {
+            "scraper_type": "api",
+            "pagination_type": "none",
+            "requires_js": False,
+            "api_endpoint": "https://boards-api.greenhouse.io/v1/boards/tenableinc/jobs",
+            "api_method": "GET",
+        }
+
+        scraper = PlaywrightScraper(company_config, scraping_config)
+
+        try:
+            await scraper.setup()
+            jobs = await scraper.scrape()
+
+            success = len(jobs) > 0
+            self.results['Tenable'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+
+            if success:
+                logger.success(f"✓ Tenable: Found {len(jobs)} jobs")
+            else:
+                logger.error("✗ Tenable: No jobs found")
+
+            return success
+
+        finally:
+            await scraper.teardown()
+
     async def test_linkedin_scraper(self):
         """Test LinkedIn job scraper."""
         logger.info("\n" + "=" * 80)
@@ -3080,6 +3123,7 @@ class CompanyScraperTests:
         cynet_security_result = await self.test_cynet_security_scraper()
         kodem_security_result = await self.test_kodem_security_scraper()
         thetaray_result = await self.test_thetaray_scraper()
+        tenable_result = await self.test_tenable_scraper()
         linkedin_result = await self.test_linkedin_scraper()
 
         # Print summary
@@ -3104,7 +3148,7 @@ class CompanyScraperTests:
             sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result, buildots_result,
             conifers_result, blink_ops_result, torq_result, crowdstrike_result, lusha_result,
             similarweb_result, paypal_result, sap_result, elementor_result, broadcom_result, lemonade_result,
-            zafran_security_result, cynet_security_result, kodem_security_result, thetaray_result
+            zafran_security_result, cynet_security_result, kodem_security_result, thetaray_result, tenable_result
         ])
 
         if all_passed:
