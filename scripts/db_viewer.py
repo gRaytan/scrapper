@@ -174,6 +174,15 @@ HTML_TEMPLATE = """
                         </select>
                     </div>
                     <div>
+                        <label>Role:</label>
+                        <select id="role-filter" onchange="filterJobs()">
+                            <option value="">All Roles</option>
+                            {% for role in roles %}
+                            <option value="{{ role }}">{{ role }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div>
                         <label>Source:</label>
                         <select id="source-filter" onchange="filterJobs()">
                             <option value="">All Sources</option>
@@ -203,7 +212,7 @@ HTML_TEMPLATE = """
                 </thead>
                 <tbody id="jobs-tbody">
                     {% for job in jobs %}
-                    <tr data-company="{{ job.company_name }}" data-title="{{ job.title }}" data-source="{{ job.source_type }}">
+                    <tr data-company="{{ job.company_name }}" data-title="{{ job.title }}" data-source="{{ job.source_type }}" data-role="{{ job.role }}">
                         <td>{{ job.company_name }}</td>
                         <td><a href="{{ job.job_url }}" target="_blank" class="job-link">{{ job.title }}</a></td>
                         <td>{{ job.location or 'N/A' }}</td>
@@ -321,6 +330,7 @@ HTML_TEMPLATE = """
 
         function filterJobs() {
             const companyFilter = document.getElementById('company-filter').value.toLowerCase();
+            const roleFilter = document.getElementById('role-filter').value.toLowerCase();
             const sourceFilter = document.getElementById('source-filter').value.toLowerCase();
             const searchFilter = document.getElementById('search-filter').value.toLowerCase();
 
@@ -328,16 +338,18 @@ HTML_TEMPLATE = """
 
             rows.forEach(row => {
                 const company = row.dataset.company.toLowerCase();
+                const role = (row.dataset.role || '').toLowerCase();
                 const source = (row.dataset.source || '').toLowerCase();
                 const title = row.dataset.title.toLowerCase();
 
                 const matchCompany = !companyFilter || company.includes(companyFilter);
+                const matchRole = !roleFilter || role === roleFilter;
                 const matchSource = !sourceFilter ||
                     (sourceFilter === 'linkedin_aggregator' && source === 'linkedin_aggregator') ||
                     (sourceFilter === 'company' && source !== 'linkedin_aggregator' && source !== '');
                 const matchSearch = !searchFilter || title.includes(searchFilter);
 
-                if (matchCompany && matchSource && matchSearch) {
+                if (matchCompany && matchRole && matchSource && matchSearch) {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
@@ -348,6 +360,41 @@ HTML_TEMPLATE = """
 </body>
 </html>
 """
+
+# Role categories for filtering
+ROLE_PATTERNS = {
+    'Software Engineer': ['software engineer', 'software developer', 'backend engineer', 'frontend engineer',
+                          'fullstack engineer', 'full-stack engineer', 'full stack engineer', 'backend developer',
+                          'frontend developer', 'fullstack developer', 'full-stack developer'],
+    'DevOps/SRE': ['devops', 'sre', 'site reliability', 'platform engineer', 'infrastructure engineer',
+                   'cloud engineer', 'systems engineer'],
+    'Data Engineer': ['data engineer', 'data platform', 'etl developer', 'analytics engineer'],
+    'Data Scientist': ['data scientist', 'machine learning', 'ml engineer', 'ai engineer', 'research scientist',
+                       'deep learning', 'nlp engineer'],
+    'Product Manager': ['product manager', 'product owner', 'pm ', 'group product manager'],
+    'Engineering Manager': ['engineering manager', 'r&d manager', 'team lead', 'tech lead', 'vp r&d',
+                            'vp engineering', 'director of engineering', 'head of engineering', 'cto'],
+    'QA/Testing': ['qa engineer', 'quality assurance', 'test engineer', 'sdet', 'automation engineer',
+                   'quality engineer'],
+    'Security': ['security engineer', 'security analyst', 'appsec', 'infosec', 'penetration', 'security researcher'],
+    'Designer': ['designer', 'ux', 'ui ', 'product designer', 'graphic designer'],
+    'Sales/BD': ['sales', 'business development', 'account executive', 'account manager', 'bdr', 'sdr'],
+    'Marketing': ['marketing', 'growth', 'content', 'brand', 'communications'],
+    'HR/Recruiting': ['recruiter', 'talent acquisition', 'hr ', 'human resources', 'people operations'],
+    'Finance': ['finance', 'accountant', 'controller', 'fp&a', 'financial analyst'],
+    'Support': ['support engineer', 'customer success', 'technical support', 'customer support'],
+    'Operations': ['operations', 'office manager', 'admin', 'procurement'],
+}
+
+def extract_role(title: str) -> str:
+    """Extract role category from job title."""
+    title_lower = title.lower()
+    for role, patterns in ROLE_PATTERNS.items():
+        for pattern in patterns:
+            if pattern in title_lower:
+                return role
+    return 'Other'
+
 
 @app.route('/')
 def index():
@@ -400,6 +447,7 @@ def index():
                 'location': job.location,
                 'remote_type': job.remote_type,
                 'source_type': job.source_type,
+                'role': extract_role(job.title),
                 'department': job.department,
                 'posted_date': job.posted_date,
                 'job_url': job.job_url,
@@ -407,6 +455,9 @@ def index():
             }
             for job in jobs
         ]
+
+        # Get unique roles for the filter dropdown
+        roles = sorted(set(job['role'] for job in jobs_data))
         
         # Get recent scraping sessions
         sessions = session.query(ScrapingSession).join(Company).order_by(desc(ScrapingSession.started_at)).limit(50).all()
@@ -430,6 +481,7 @@ def index():
             companies=companies,
             companies_with_stats=companies_with_stats,
             jobs=jobs_data,
+            roles=roles,
             sessions=sessions_data
         )
 
