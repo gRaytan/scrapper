@@ -27,6 +27,7 @@ class CompanyMatchingService:
         "Mobileye": ["Mobileye Global", "Mobileye Inc"],
         "SentinelOne": ["Sentinel One", "SentinelOne Inc"],
         "Palo Alto Networks": ["Palo Alto", "PANW"],
+        "Trigo Vision": ["Trigo", "Trigo Retail"],
     }
     
     # Minimum similarity threshold for fuzzy matching

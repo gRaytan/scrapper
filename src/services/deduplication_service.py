@@ -74,35 +74,81 @@ class JobDeduplicationService:
         # Use SequenceMatcher for fuzzy matching
         return SequenceMatcher(None, norm1, norm2).ratio()
     
+    # Israeli city name variations for normalization
+    CITY_ALIASES = {
+        'tel aviv': ['tel aviv yafo', 'tel aviv-yafo', 'tel-aviv', 'tlv'],
+        'herzliya': ['herzliya pituach', 'herzliya pituah'],
+        'ramat gan': ['ramat-gan'],
+        'petah tikva': ['petach tikva', 'petah-tikva', 'petach-tikva'],
+        'beer sheva': ["be'er sheva", 'beersheva', 'beer-sheva'],
+        'raanana': ["ra'anana", 'ra anana'],
+        'kfar saba': ['kfar-saba'],
+        'rishon lezion': ['rishon le zion', 'rishon-lezion'],
+        'netanya': ['netania'],
+        'haifa': [],
+        'jerusalem': ['yerushalayim'],
+        'yokneam': ["yoqne'am", 'yokneam illit'],
+    }
+
+    def normalize_city_name(self, location: str) -> str:
+        """
+        Normalize city name to a canonical form.
+
+        Args:
+            location: Raw location string
+
+        Returns:
+            Normalized city name
+        """
+        if not location:
+            return ""
+
+        loc_lower = location.lower()
+
+        # Check each canonical city and its aliases
+        for canonical, aliases in self.CITY_ALIASES.items():
+            if canonical in loc_lower:
+                return canonical
+            for alias in aliases:
+                if alias in loc_lower:
+                    return canonical
+
+        return loc_lower
+
     def calculate_location_similarity(self, loc1: str, loc2: str) -> float:
         """
         Calculate similarity between two locations.
-        Handles variations like "Tel Aviv" vs "Tel Aviv, Israel".
-        
+        Handles variations like "Tel Aviv" vs "Tel Aviv-Yafo, Tel Aviv District, Israel".
+
         Args:
             loc1: First location
             loc2: Second location
-            
+
         Returns:
             Similarity score between 0.0 and 1.0
         """
         norm1 = self.normalize_text(loc1)
         norm2 = self.normalize_text(loc2)
-        
+
         if not norm1 or not norm2:
             return 0.0
-        
+
         # Exact match
         if norm1 == norm2:
             return 1.0
-        
+
+        # Normalize city names and compare
+        city1 = self.normalize_city_name(loc1)
+        city2 = self.normalize_city_name(loc2)
+
+        # If both locations resolve to the same city, they're the same
+        if city1 and city2 and city1 == city2:
+            return 1.0
+
         # Check if one location contains the other (e.g., "Tel Aviv" in "Tel Aviv, Israel")
         if norm1 in norm2 or norm2 in norm1:
-            # Calculate how much of the shorter string is in the longer one
-            shorter = min(norm1, norm2, key=len)
-            longer = max(norm1, norm2, key=len)
-            return len(shorter) / len(longer)
-        
+            return 0.95  # High confidence if one contains the other
+
         # Fuzzy match
         return SequenceMatcher(None, norm1, norm2).ratio()
     
