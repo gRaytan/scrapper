@@ -91,6 +91,9 @@ HTML_TEMPLATE = """
         .badge.remote { background: #dbeafe; color: #1e40af; }
         .badge.onsite { background: #fef3c7; color: #92400e; }
         .badge.hybrid { background: #e9d5ff; color: #6b21a8; }
+        .badge.linkedin { background: #0077b5; color: white; }
+        .badge.company { background: #10b981; color: white; }
+        .badge.other { background: #6b7280; color: white; }
         .filters {
             background: white;
             padding: 20px;
@@ -171,12 +174,11 @@ HTML_TEMPLATE = """
                         </select>
                     </div>
                     <div>
-                        <label>Remote Type:</label>
-                        <select id="remote-filter" onchange="filterJobs()">
-                            <option value="">All Types</option>
-                            <option value="remote">Remote</option>
-                            <option value="onsite">Onsite</option>
-                            <option value="hybrid">Hybrid</option>
+                        <label>Source:</label>
+                        <select id="source-filter" onchange="filterJobs()">
+                            <option value="">All Sources</option>
+                            <option value="linkedin_aggregator">LinkedIn</option>
+                            <option value="company">Company Page</option>
                         </select>
                     </div>
                     <div>
@@ -193,7 +195,7 @@ HTML_TEMPLATE = """
                         <th>Company</th>
                         <th>Title</th>
                         <th>Location</th>
-                        <th>Remote</th>
+                        <th>Source</th>
                         <th>Department</th>
                         <th>Posted Date</th>
                         <th>Status</th>
@@ -201,15 +203,17 @@ HTML_TEMPLATE = """
                 </thead>
                 <tbody id="jobs-tbody">
                     {% for job in jobs %}
-                    <tr data-company="{{ job.company_name }}" data-remote="{{ job.remote_type }}" data-title="{{ job.title }}">
+                    <tr data-company="{{ job.company_name }}" data-title="{{ job.title }}" data-source="{{ job.source_type }}">
                         <td>{{ job.company_name }}</td>
                         <td><a href="{{ job.job_url }}" target="_blank" class="job-link">{{ job.title }}</a></td>
                         <td>{{ job.location or 'N/A' }}</td>
                         <td>
-                            {% if job.remote_type %}
-                            <span class="badge {{ job.remote_type }}">{{ job.remote_type }}</span>
+                            {% if job.source_type == 'linkedin_aggregator' %}
+                            <span class="badge linkedin">LinkedIn</span>
+                            {% elif job.source_type %}
+                            <span class="badge company">Company Page</span>
                             {% else %}
-                            N/A
+                            <span class="badge other">Other</span>
                             {% endif %}
                         </td>
                         <td>{{ job.department or 'N/A' }}</td>
@@ -317,21 +321,23 @@ HTML_TEMPLATE = """
 
         function filterJobs() {
             const companyFilter = document.getElementById('company-filter').value.toLowerCase();
-            const remoteFilter = document.getElementById('remote-filter').value.toLowerCase();
+            const sourceFilter = document.getElementById('source-filter').value.toLowerCase();
             const searchFilter = document.getElementById('search-filter').value.toLowerCase();
-            
+
             const rows = document.querySelectorAll('#jobs-tbody tr');
-            
+
             rows.forEach(row => {
                 const company = row.dataset.company.toLowerCase();
-                const remote = row.dataset.remote.toLowerCase();
+                const source = (row.dataset.source || '').toLowerCase();
                 const title = row.dataset.title.toLowerCase();
-                
+
                 const matchCompany = !companyFilter || company.includes(companyFilter);
-                const matchRemote = !remoteFilter || remote === remoteFilter;
+                const matchSource = !sourceFilter ||
+                    (sourceFilter === 'linkedin_aggregator' && source === 'linkedin_aggregator') ||
+                    (sourceFilter === 'company' && source !== 'linkedin_aggregator' && source !== '');
                 const matchSearch = !searchFilter || title.includes(searchFilter);
-                
-                if (matchCompany && matchRemote && matchSearch) {
+
+                if (matchCompany && matchSource && matchSearch) {
                     row.style.display = '';
                 } else {
                     row.style.display = 'none';
@@ -393,6 +399,7 @@ def index():
                 'title': job.title,
                 'location': job.location,
                 'remote_type': job.remote_type,
+                'source_type': job.source_type,
                 'department': job.department,
                 'posted_date': job.posted_date,
                 'job_url': job.job_url,

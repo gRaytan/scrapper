@@ -76,7 +76,12 @@ class Settings(BaseSettings):
     # Application
     environment: str = "development"
     debug: bool = True
-    
+
+    # LinkedIn Job Search
+    linkedin_job_positions: str = "Software Engineer,Backend Developer,Frontend Developer,Full Stack Developer,DevOps Engineer,Data Engineer,Data Scientist,Machine Learning Engineer,Product Manager,QA Engineer,Security Engineer,Cloud Engineer,Mobile Developer,Site Reliability Engineer,VP Engineering,VP R&D,VP of Engineering,VP of R&D,Vice President Engineering,Vice President R&D,Director of Engineering,Director of R&D,Engineering Director,R&D Director,Head of Engineering,Head of R&D,CTO,Chief Technology Officer"
+    linkedin_search_location: str = "Israel"
+    linkedin_max_pages: int = 10
+
     @property
     def is_production(self) -> bool:
         """Check if running in production."""
@@ -107,6 +112,13 @@ class Settings(BaseSettings):
         """Get base directory of the project."""
         from pathlib import Path
         return Path(__file__).parent.parent
+
+    @property
+    def linkedin_positions_list(self) -> list[str]:
+        """Get LinkedIn job positions as a list."""
+        if not self.linkedin_job_positions:
+            return []
+        return [pos.strip() for pos in self.linkedin_job_positions.split(',') if pos.strip()]
 
 
 # Global settings instance

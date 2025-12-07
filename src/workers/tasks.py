@@ -304,14 +304,14 @@ def mark_stale_jobs_inactive(
             cutoff_posted = datetime.utcnow() - timedelta(days=posted_cutoff_days)
 
             # Find active jobs that should be marked inactive:
-            # 1. Haven't been updated recently (last_seen_at < cutoff)
+            # 1. Haven't been seen recently (last_seen_at < cutoff)
             # 2. OR have posted_date older than cutoff
             # Note: Jobs without posted_date are only deactivated based on last_seen_at
             stale_jobs = session.query(JobPosition).filter(
                 and_(
                     JobPosition.is_active == True,
                     or_(
-                        JobPosition.updated_at < cutoff_updated,
+                        JobPosition.last_seen_at < cutoff_updated,
                         and_(
                             JobPosition.posted_date.isnot(None),
                             JobPosition.posted_date < cutoff_posted
@@ -329,7 +329,7 @@ def mark_stale_jobs_inactive(
             result = {
                 'status': 'success',
                 'marked_inactive': len(stale_jobs),
-                'cutoff_updated_date': cutoff_updated.isoformat(),
+                'cutoff_last_seen_date': cutoff_updated.isoformat(),
                 'cutoff_posted_date': cutoff_posted.isoformat(),
                 'stale_days': stale_days,
                 'posted_cutoff_days': posted_cutoff_days
@@ -414,42 +414,51 @@ def get_scraping_stats(days: int = 7) -> Dict[str, Any]:
 def scrape_linkedin_jobs(
     self: Task,
     keywords: Optional[str] = None,
-    location: str = "Israel",
-    max_pages: int = 10
+    location: Optional[str] = None,
+    max_pages: Optional[int] = None
 ) -> Dict[str, Any]:
     """
     Scrape LinkedIn jobs for all active companies or specific keywords.
-    
+
     This task searches LinkedIn for jobs matching company names and/or keywords,
     then stores the results in the database. Unlike company-specific scrapers,
     this aggregates jobs from LinkedIn's job board.
-    
+
     Args:
         keywords: Optional job title/keywords to search for (e.g., "Software Engineer")
-                 If None, will search for each active company name
-        location: Location to filter jobs (default: "Israel")
-        max_pages: Maximum pages to scrape per search (default: 10)
-        
+                 If None, will use positions from LINKEDIN_JOB_POSITIONS env variable
+        location: Location to filter jobs (default: from LINKEDIN_SEARCH_LOCATION env)
+        max_pages: Maximum pages to scrape per search (default: from LINKEDIN_MAX_PAGES env)
+
     Returns:
         Dictionary with scraping statistics
-        
+
     Example:
-        # Search for all companies
+        # Search for all configured positions
         scrape_linkedin_jobs.delay()
-        
+
         # Search for specific role
         scrape_linkedin_jobs.delay(keywords="Software Engineer", location="Israel")
     """
     try:
+        # Import settings
+        from config.settings import settings
+
+        # Use environment variables as defaults
+        if location is None:
+            location = settings.linkedin_search_location
+        if max_pages is None:
+            max_pages = settings.linkedin_max_pages
+
         logger.info("=" * 80)
         logger.info(f"Starting LinkedIn scraping job...")
-        logger.info(f"Keywords: {keywords or 'All active companies'}")
+        logger.info(f"Keywords: {keywords or 'Configured positions from env'}")
         logger.info(f"Location: {location}")
         logger.info(f"Max pages: {max_pages}")
         logger.info("=" * 80)
-        
+
         start_time = datetime.utcnow()
-        
+
         # Import here to avoid circular dependencies
         from src.storage.repositories.company_repo import CompanyRepository
         # JobPositionRepository not needed - we'll use direct model access
@@ -458,29 +467,21 @@ def scrape_linkedin_jobs(
         from src.models.company import Company
         import httpx
         from bs4 import BeautifulSoup
-        
-        # Define search queries - use job roles if no keywords specified
+
+        # Define search queries - use job roles from settings if no keywords specified
         search_queries = []
         if keywords:
             search_queries.append(keywords)
         else:
-            # Search for common tech job roles in Israel
-            search_queries = [
-                "Software Engineer",
-                "Backend Developer",
-                "Frontend Developer",
-                "Full Stack Developer",
-                "DevOps Engineer",
-                "Data Engineer",
-                "Data Scientist",
-                "Machine Learning Engineer",
-                "Product Manager",
-                "QA Engineer",
-                "Security Engineer",
-                "Cloud Engineer",
-                "Mobile Developer",
-                "Site Reliability Engineer",
-            ]
+            # Get positions from environment variable
+            search_queries = settings.linkedin_positions_list
+            if not search_queries:
+                # Fallback to default positions from Settings class default value
+                logger.warning("LINKEDIN_JOB_POSITIONS is empty, using default positions from settings")
+                # Get default value from Settings class definition
+                from config.settings import Settings
+                default_positions = Settings.model_fields['linkedin_job_positions'].default
+                search_queries = [pos.strip() for pos in default_positions.split(',') if pos.strip()]
 
         logger.info(f"Will search LinkedIn for {len(search_queries)} queries: {', '.join(search_queries[:5])}...")
         
