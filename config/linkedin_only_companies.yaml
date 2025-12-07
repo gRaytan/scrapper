@@ -414,3 +414,33 @@ companies:
 - name: yad2
   website: https://www.linkedin.com/company/yad2
   industry: Unknown
+- name: Apiiro
+  website: https://www.apiiro.com
+  industry: Security
+- name: Armis
+  website: https://www.armis.com
+  industry: Cybersecurity
+- name: Guardio
+  website: https://www.guard.io
+  industry: Cybersecurity
+- name: Hud
+  website: https://www.hud.io
+  industry: Technology
+- name: Justt
+  website: https://www.justt.ai
+  industry: Fintech
+- name: Lasso
+  website: https://www.lasso.security
+  industry: Security
+- name: Navan
+  website: https://www.navan.com
+  industry: Travel Tech
+- name: Utila
+  website: https://www.utila.io
+  industry: Security
+- name: Vega
+  website: https://www.vegacloud.io
+  industry: Cloud
+- name: Zenity
+  website: https://www.zenity.io
+  industry: Security
