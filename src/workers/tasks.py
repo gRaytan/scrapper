@@ -704,12 +704,215 @@ def scrape_linkedin_jobs(
         logger.success(f"  Updated jobs: {total_jobs_updated}")
         logger.success(f"  Duration: {duration:.2f}s")
         logger.success("=" * 80)
-        
+
         return result
-        
+
     except Exception as exc:
         logger.error(f"LinkedIn scraping failed: {exc}")
         logger.exception(exc)
-        
+
+        # Retry with exponential backoff
+        raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))
+
+
+@celery_app.task(
+    bind=True,
+    name='scrape_linkedin_jobs_by_company',
+    max_retries=2,
+    default_retry_delay=300,
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    retry_backoff_max=3600,
+    acks_late=True,
+    reject_on_worker_lost=True
+)
+def scrape_linkedin_jobs_by_company(self) -> Dict[str, Any]:
+    """
+    Scrape LinkedIn for jobs from all companies in the database.
+
+    This task fetches all companies from the DB and searches LinkedIn
+    for each company name, saving any matching jobs found.
+
+    Unlike scrape_linkedin_jobs which searches by job position/keyword,
+    this task searches by company name to ensure comprehensive coverage
+    of jobs from known companies.
+
+    Returns:
+        Dict with scraping results
+    """
+    import asyncio
+    from datetime import datetime
+    from src.storage.database import db
+    from src.models.company import Company
+    from src.models.job_position import JobPosition
+    from src.scrapers.playwright_scraper import PlaywrightScraper
+    from src.services.deduplication_service import JobDeduplicationService
+
+    logger.info("=" * 80)
+    logger.info("STARTING LINKEDIN SCRAPING BY COMPANY")
+    logger.info("=" * 80)
+
+    start_time = datetime.utcnow()
+
+    try:
+        # Get all companies from DB
+        with db.get_session() as session:
+            all_companies = session.query(Company).order_by(Company.name).all()
+            company_data = [(str(c.id), c.name) for c in all_companies]
+
+        logger.info(f"Found {len(company_data)} companies to search on LinkedIn")
+
+        async def scrape_companies():
+            total_jobs_found = 0
+            total_jobs_new = 0
+            total_jobs_updated = 0
+            total_jobs_skipped = 0
+            companies_with_jobs = 0
+
+            location = settings.linkedin_search_location
+
+            for company_id, company_name in company_data:
+                try:
+                    # Skip generic names
+                    if company_name.lower() in ['confidential', 'stealth', 'unknown', 'n/a']:
+                        continue
+
+                    linkedin_config = {
+                        'scraper_type': 'linkedin',
+                        'api_endpoint': 'https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search',
+                        'query_params': {
+                            'keywords': company_name,
+                            'location': location
+                        },
+                        'pagination_params': {
+                            'offset_param': 'start',
+                            'page_size': 25,
+                            'max_pages': 2  # Limit pages per company
+                        },
+                        'timeout': 30.0,
+                        'wait_time': 1
+                    }
+
+                    linkedin_company_config = {
+                        'name': 'LinkedIn',
+                        'website': 'https://www.linkedin.com',
+                        'careers_url': 'https://www.linkedin.com/jobs',
+                        'location_filter': {
+                            'enabled': True,
+                            'countries': [location],
+                            'match_keywords': ['Israel', 'Tel Aviv', 'Herzliya', 'Haifa',
+                                             'Jerusalem', 'Ramat Gan', 'Petah Tikva',
+                                             'Netanya', 'Kfar Saba', 'Raanana']
+                        }
+                    }
+
+                    scraper = PlaywrightScraper(
+                        company_config=linkedin_company_config,
+                        scraping_config=linkedin_config
+                    )
+
+                    jobs = await scraper.scrape()
+
+                    # Filter to only jobs that match this company name (case-insensitive)
+                    matched_jobs = [
+                        j for j in jobs
+                        if j.get('company', '').lower() == company_name.lower()
+                    ]
+
+                    if matched_jobs:
+                        logger.info(f"{company_name}: Found {len(matched_jobs)} jobs")
+                        companies_with_jobs += 1
+                        total_jobs_found += len(matched_jobs)
+
+                        # Save to DB
+                        with db.get_session() as session:
+                            dedup_service = JobDeduplicationService(session)
+
+                            for job in matched_jobs:
+                                # Check for existing job by external_id
+                                existing = session.query(JobPosition).filter(
+                                    JobPosition.external_id == job.get('external_id', ''),
+                                    JobPosition.company_id == company_id
+                                ).first()
+
+                                if existing:
+                                    existing.last_seen_at = datetime.utcnow()
+                                    existing.scraped_at = datetime.utcnow()
+                                    total_jobs_updated += 1
+                                else:
+                                    # Check for duplicates by title
+                                    duplicate_job, dup_score, _ = dedup_service.check_for_duplicate(
+                                        company_id=company_id,
+                                        title=job.get('title', ''),
+                                        location=job.get('location', '')
+                                    )
+
+                                    if duplicate_job and dup_score >= dedup_service.HIGH_CONFIDENCE_THRESHOLD:
+                                        # Update last_seen_at on the existing job
+                                        duplicate_job.last_seen_at = datetime.utcnow()
+                                        total_jobs_skipped += 1
+                                    else:
+                                        now = datetime.utcnow()
+                                        new_job = JobPosition(
+                                            company_id=company_id,
+                                            external_id=job.get('external_id', ''),
+                                            title=job.get('title', ''),
+                                            location=job.get('location', ''),
+                                            job_url=job.get('job_url', ''),
+                                            remote_type='remote' if job.get('is_remote', False) else 'onsite',
+                                            posted_date=job.get('posted_date'),
+                                            scraped_at=now,
+                                            first_seen_at=now,
+                                            last_seen_at=now,
+                                            status='active',
+                                            is_active=True,
+                                            source_type='linkedin_aggregator'
+                                        )
+                                        session.add(new_job)
+                                        total_jobs_new += 1
+
+                            session.commit()
+
+                    # Small delay between companies
+                    await asyncio.sleep(1)
+
+                except Exception as e:
+                    logger.warning(f"{company_name}: Error - {str(e)[:100]}")
+                    continue
+
+            return {
+                'companies_searched': len(company_data),
+                'companies_with_jobs': companies_with_jobs,
+                'total_jobs_found': total_jobs_found,
+                'new_jobs': total_jobs_new,
+                'updated_jobs': total_jobs_updated,
+                'skipped_duplicates': total_jobs_skipped
+            }
+
+        # Run the async scraping
+        result = asyncio.run(scrape_companies())
+
+        end_time = datetime.utcnow()
+        duration = (end_time - start_time).total_seconds()
+        result['duration_seconds'] = duration
+        result['status'] = 'success'
+
+        logger.success("=" * 80)
+        logger.success("LINKEDIN BY COMPANY SCRAPING COMPLETED")
+        logger.success(f"  Companies searched: {result['companies_searched']}")
+        logger.success(f"  Companies with jobs: {result['companies_with_jobs']}")
+        logger.success(f"  Jobs found: {result['total_jobs_found']}")
+        logger.success(f"  New jobs: {result['new_jobs']}")
+        logger.success(f"  Updated jobs: {result['updated_jobs']}")
+        logger.success(f"  Skipped (duplicates): {result['skipped_duplicates']}")
+        logger.success(f"  Duration: {duration:.2f}s")
+        logger.success("=" * 80)
+
+        return result
+
+    except Exception as exc:
+        logger.error(f"LinkedIn by company scraping failed: {exc}")
+        logger.exception(exc)
+
         # Retry with exponential backoff
         raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))
