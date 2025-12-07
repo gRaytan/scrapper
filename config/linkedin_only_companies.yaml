@@ -1,0 +1,413 @@
+# LinkedIn-Only Companies
+# These companies are tracked via LinkedIn scraping only (no dedicated career page scraper)
+# They will be automatically scraped by the scrape_linkedin_jobs_by_company task
+#
+# To add a new company, add it to this file and run:
+#   python scripts/sync_linkedin_companies.py --import
+#
+# To export all LinkedIn-only companies from DB to this file:
+#   python scripts/sync_linkedin_companies.py --export
+
+companies:
+- name: BigPanda
+  website: https://www.bigpanda.io
+  industry: AIOps
+- name: Check Point
+  website: https://www.checkpoint.com
+  industry: Cybersecurity
+- name: Sentra
+  website: https://www.sentra.io
+  industry: Data Security
+- name: Payoneer
+  website: https://www.payoneer.com
+  industry: Fintech
+- name: Rapyd
+  website: https://www.rapyd.net
+  industry: Fintech
+- name: Moon Active
+  website: https://www.moonactive.com
+  industry: Gaming
+- name: Playtika
+  website: https://www.playtika.com
+  industry: Gaming
+- name: Remedio
+  website: https://www.remedio.ai
+  industry: Healthcare
+- name: Navina
+  website: https://www.navina.ai
+  industry: Healthcare AI
+- name: Nucleai
+  website: https://www.nucleai.com
+  industry: Healthcare AI
+- name: EverC
+  website: https://www.everc.com
+  industry: Risk Intelligence
+- name: Apono
+  website: https://www.apono.io
+  industry: Security
+- name: WSC Sports
+  website: https://www.wsc-sports.com
+  industry: Sports Tech
+- name: Gett
+  website: https://www.gett.com
+  industry: Transportation
+- name: Faye
+  website: https://www.withfaye.com
+  industry: Travel Tech
+- name: AT&T Israel R&D Center
+  website: https://www.linkedin.com/company/at&t-israel-r&d-center
+  industry: Unknown
+- name: Agora
+  website: https://www.linkedin.com/company/agora
+  industry: Unknown
+- name: Airwayz
+  website: https://www.linkedin.com/company/airwayz
+  industry: Unknown
+- name: Akeyless Security
+  website: https://www.linkedin.com/company/akeyless-security
+  industry: Unknown
+- name: AlgoSec
+  website: https://www.linkedin.com/company/algosec
+  industry: Unknown
+- name: Alma Lasers
+  website: https://www.linkedin.com/company/alma-lasers
+  industry: Unknown
+- name: Appdome
+  website: https://www.linkedin.com/company/appdome
+  industry: Unknown
+- name: Applift
+  website: https://www.linkedin.com/company/applift
+  industry: Unknown
+- name: Appsforce
+  website: https://www.linkedin.com/company/appsforce
+  industry: Unknown
+- name: AudioCodes
+  website: https://www.linkedin.com/company/audiocodes
+  industry: Unknown
+- name: Augury
+  website: https://www.linkedin.com/company/augury
+  industry: Unknown
+- name: Autobrains Technologies
+  website: https://www.linkedin.com/company/autobrains-technologies
+  industry: Unknown
+- name: BLeader
+  website: https://www.linkedin.com/company/bleader
+  industry: Unknown
+- name: Biobeat
+  website: https://www.linkedin.com/company/biobeat
+  industry: Unknown
+- name: Bright Minds AI
+  website: https://www.linkedin.com/company/bright-minds-ai
+  industry: Unknown
+- name: Bylith
+  website: https://www.linkedin.com/company/bylith
+  industry: Unknown
+- name: CONTROP Precision Technologies Ltd.
+  website: https://www.linkedin.com/company/controp-precision-technologies-ltd.
+  industry: Unknown
+- name: CYBERcom
+  website: https://www.linkedin.com/company/cybercom
+  industry: Unknown
+- name: Carbyne
+  website: https://www.linkedin.com/company/carbyne
+  industry: Unknown
+- name: Ceragon Networks
+  website: https://www.linkedin.com/company/ceragon-networks
+  industry: Unknown
+- name: Cloudinary
+  website: https://www.linkedin.com/company/cloudinary
+  industry: Unknown
+- name: Commit
+  website: https://www.linkedin.com/company/commit
+  industry: Unknown
+- name: Confidential
+  website: https://www.linkedin.com/company/confidential
+  industry: Unknown
+- name: Coralogix
+  website: https://www.linkedin.com/company/coralogix
+  industry: Unknown
+- name: Crossover
+  website: https://www.linkedin.com/company/crossover
+  industry: Unknown
+- name: Daisy
+  website: https://www.linkedin.com/company/daisy
+  industry: Unknown
+- name: Darrow AI
+  website: https://www.linkedin.com/company/darrow-ai
+  industry: Unknown
+- name: Deliveright
+  website: https://www.linkedin.com/company/deliveright
+  industry: Unknown
+- name: Dialog
+  website: https://www.linkedin.com/company/dialog
+  industry: Unknown
+- name: Droxi
+  website: https://www.linkedin.com/company/droxi
+  industry: Unknown
+- name: ENvue Medical
+  website: https://www.linkedin.com/company/envue-medical
+  industry: Unknown
+- name: Earth Force Technologies
+  website: https://www.linkedin.com/company/earth-force-technologies
+  industry: Unknown
+- name: Echo
+  website: https://www.linkedin.com/company/echo
+  industry: Unknown
+- name: Elad Software Systems
+  website: https://www.linkedin.com/company/elad-software-systems
+  industry: Unknown
+- name: Eon.io
+  website: https://www.linkedin.com/company/eon.io
+  industry: Unknown
+- name: Experis
+  website: https://www.linkedin.com/company/experis
+  industry: Unknown
+- name: Fido
+  website: https://www.linkedin.com/company/fido
+  industry: Unknown
+- name: Finubit
+  website: https://www.linkedin.com/company/finubit
+  industry: Unknown
+- name: Genpact
+  website: https://www.linkedin.com/company/genpact
+  industry: Unknown
+- name: Gini-Apps
+  website: https://www.linkedin.com/company/gini-apps
+  industry: Unknown
+- name: Global-e
+  website: https://www.linkedin.com/company/global-e
+  industry: Unknown
+- name: Grip Security
+  website: https://www.linkedin.com/company/grip-security
+  industry: Unknown
+- name: HUMAN
+  website: https://www.linkedin.com/company/human
+  industry: Unknown
+- name: Healthee
+  website: https://www.linkedin.com/company/healthee
+  industry: Unknown
+- name: Hello Heart
+  website: https://www.linkedin.com/company/hello-heart
+  industry: Unknown
+- name: Hey Seven
+  website: https://www.linkedin.com/company/hey-seven
+  industry: Unknown
+- name: Home365
+  website: https://www.linkedin.com/company/home365
+  industry: Unknown
+- name: HyperGuest
+  website: https://www.linkedin.com/company/hyperguest
+  industry: Unknown
+- name: IAI - Israel Aerospace Industries
+  website: https://www.linkedin.com/company/iai---israel-aerospace-industries
+  industry: Unknown
+- name: IFF
+  website: https://www.linkedin.com/company/iff
+  industry: Unknown
+- name: IPC (Israel Petroleum Company ltd)
+  website: https://www.linkedin.com/company/ipc-(israel-petroleum-company-ltd)
+  industry: Unknown
+- name: IPV Security
+  website: https://www.linkedin.com/company/ipv-security
+  industry: Unknown
+- name: Imagen
+  website: https://www.linkedin.com/company/imagen
+  industry: Unknown
+- name: Incredibuild
+  website: https://www.linkedin.com/company/incredibuild
+  industry: Unknown
+- name: Infinidat
+  website: https://www.linkedin.com/company/infinidat
+  industry: Unknown
+- name: Jeen.ai
+  website: https://www.linkedin.com/company/jeen.ai
+  industry: Unknown
+- name: Jether Energy Research
+  website: https://www.linkedin.com/company/jether-energy-research
+  industry: Unknown
+- name: KPMG Israel
+  website: https://www.linkedin.com/company/kpmg-israel
+  industry: Unknown
+- name: Kimonix
+  website: https://www.linkedin.com/company/kimonix
+  industry: Unknown
+- name: LTS Device Technologies
+  website: https://www.linkedin.com/company/lts-device-technologies
+  industry: Unknown
+- name: LocalizeOS
+  website: https://www.linkedin.com/company/localizeos
+  industry: Unknown
+- name: Madlan
+  website: https://www.linkedin.com/company/madlan
+  industry: Unknown
+- name: MarkeTeam.ai
+  website: https://www.linkedin.com/company/marketeam.ai
+  industry: Unknown
+- name: Medulla
+  website: https://www.linkedin.com/company/medulla
+  industry: Unknown
+- name: MetalBear
+  website: https://www.linkedin.com/company/metalbear
+  industry: Unknown
+- name: Mize
+  website: https://www.linkedin.com/company/mize
+  industry: Unknown
+- name: Moveo Group
+  website: https://www.linkedin.com/company/moveo-group
+  industry: Unknown
+- name: NTA - Metropolitan Mass Transit System Ltd
+  website: https://www.linkedin.com/company/nta---metropolitan-mass-transit-system-ltd
+  industry: Unknown
+- name: Nanit
+  website: https://www.linkedin.com/company/nanit
+  industry: Unknown
+- name: OX Security
+  website: https://www.linkedin.com/company/ox-security
+  industry: Unknown
+- name: Orchid Security
+  website: https://www.linkedin.com/company/orchid-security
+  industry: Unknown
+- name: PeerSpot
+  website: https://www.linkedin.com/company/peerspot
+  industry: Unknown
+- name: Penlink
+  website: https://www.linkedin.com/company/penlink
+  industry: Unknown
+- name: Phoenix Financial
+  website: https://www.linkedin.com/company/phoenix-financial
+  industry: Unknown
+- name: Portless
+  website: https://www.linkedin.com/company/portless
+  industry: Unknown
+- name: Q.ai
+  website: https://www.linkedin.com/company/q.ai
+  industry: Unknown
+- name: Qualitest acq
+  website: https://www.linkedin.com/company/qualitest-acq
+  industry: Unknown
+- name: Rail Vision Ltd
+  website: https://www.linkedin.com/company/rail-vision-ltd
+  industry: Unknown
+- name: Rakuten Viber
+  website: https://www.linkedin.com/company/rakuten-viber
+  industry: Unknown
+- name: Ready Group
+  website: https://www.linkedin.com/company/ready-group
+  industry: Unknown
+- name: Recruitx
+  website: https://www.linkedin.com/company/recruitx
+  industry: Unknown
+- name: Riverside
+  website: https://www.linkedin.com/company/riverside
+  industry: Unknown
+- name: ScaleOps
+  website: https://www.linkedin.com/company/scaleops
+  industry: Unknown
+- name: SeeHR Cyber & Tech Recruiting
+  website: https://www.linkedin.com/company/seehr-cyber-&-tech-recruiting
+  industry: Unknown
+- name: Sela
+  website: https://www.linkedin.com/company/sela
+  industry: Unknown
+- name: Semperis
+  website: https://www.linkedin.com/company/semperis
+  industry: Unknown
+- name: Sensi.AI
+  website: https://www.linkedin.com/company/sensi.ai
+  industry: Unknown
+- name: Shavit Software
+  website: https://www.linkedin.com/company/shavit-software
+  industry: Unknown
+- name: Sisense
+  website: https://www.linkedin.com/company/sisense
+  industry: Unknown
+- name: Stealth AI Startup
+  website: https://www.linkedin.com/company/stealth-ai-startup
+  industry: Unknown
+- name: Stigg
+  website: https://www.linkedin.com/company/stigg
+  industry: Unknown
+- name: SuperPlay
+  website: https://www.linkedin.com/company/superplay
+  industry: Unknown
+- name: Sysnet Group
+  website: https://www.linkedin.com/company/sysnet-group
+  industry: Unknown
+- name: Teads
+  website: https://www.linkedin.com/company/teads
+  industry: Unknown
+- name: Thales
+  website: https://www.linkedin.com/company/thales
+  industry: Unknown
+- name: The5ers.com
+  website: https://www.linkedin.com/company/the5ers.com
+  industry: Unknown
+- name: Tikal
+  website: https://www.linkedin.com/company/tikal
+  industry: Unknown
+- name: Travelier
+  website: https://www.linkedin.com/company/travelier
+  industry: Unknown
+- name: UR Tech Jobs
+  website: https://www.linkedin.com/company/ur-tech-jobs
+  industry: Unknown
+- name: UVeye
+  website: https://www.linkedin.com/company/uveye
+  industry: Unknown
+- name: Upstream Security
+  website: https://www.linkedin.com/company/upstream-security
+  industry: Unknown
+- name: VAST Data
+  website: https://www.linkedin.com/company/vast-data
+  industry: Unknown
+- name: Vee.com
+  website: https://www.linkedin.com/company/vee.com
+  industry: Unknown
+- name: Vi
+  website: https://www.linkedin.com/company/vi
+  industry: Unknown
+- name: Via
+  website: https://www.linkedin.com/company/via
+  industry: Unknown
+- name: WINN.AI
+  website: https://www.linkedin.com/company/winn.ai
+  industry: Unknown
+- name: Wenrix
+  website: https://www.linkedin.com/company/wenrix
+  industry: Unknown
+- name: Yahoo
+  website: https://www.linkedin.com/company/yahoo
+  industry: Unknown
+- name: ZEST Security
+  website: https://www.linkedin.com/company/zest-security
+  industry: Unknown
+- name: Zero Networks
+  website: https://www.linkedin.com/company/zero-networks
+  industry: Unknown
+- name: Zoom Real Estate Investments
+  website: https://www.linkedin.com/company/zoom-real-estate-investments
+  industry: Unknown
+- name: abra
+  website: https://www.linkedin.com/company/abra
+  industry: Unknown
+- name: aiOla
+  website: https://www.linkedin.com/company/aiola
+  industry: Unknown
+- name: aion
+  website: https://www.linkedin.com/company/aion
+  industry: Unknown
+- name: amp
+  website: https://www.linkedin.com/company/amp
+  industry: Unknown
+- name: eko
+  website: https://www.linkedin.com/company/eko
+  industry: Unknown
+- name: iLeadX - Executive search
+  website: https://www.linkedin.com/company/ileadx---executive-search
+  industry: Unknown
+- name: vHive
+  website: https://www.linkedin.com/company/vhive
+  industry: Unknown
+- name: yad2
+  website: https://www.linkedin.com/company/yad2
+  industry: Unknown
