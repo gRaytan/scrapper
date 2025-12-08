@@ -46,28 +46,28 @@ celery_app.conf.update(
     
     # Beat schedule for periodic tasks
     beat_schedule={
-        # Daily scraping at 2:00 AM UTC
+        # Daily scraping at 5:00 AM UTC
         'daily-scraping': {
             'task': 'src.workers.tasks.run_daily_scraping',
-            'schedule': crontab(hour=7, minute=0),  # 7:00 AM UTC daily
+            'schedule': crontab(hour=5, minute=0),  # 5:00 AM UTC daily
             'options': {
                 'expires': 3600,  # Task expires after 1 hour if not picked up
             }
         },
-        
+
         # Cleanup old scraping sessions every week
         'weekly-cleanup': {
             'task': 'src.workers.tasks.cleanup_old_sessions',
-            'schedule': crontab(hour=3, minute=0, day_of_week=0),  # Sunday 3:00 AM UTC
+            'schedule': crontab(hour=2, minute=0, day_of_week=5),  # Saturday 2:00 AM UTC
             'options': {
                 'expires': 3600,
             }
         },
-        
+
         # Mark stale jobs as inactive daily
         'daily-mark-stale-jobs': {
             'task': 'src.workers.tasks.mark_stale_jobs_inactive',
-            'schedule': crontab(hour=4, minute=0),  # 4:00 AM UTC daily
+            'schedule': crontab(hour=5, minute=0),  # 5:00 AM UTC daily
             'options': {
                 'expires': 3600,
             }
@@ -76,7 +76,7 @@ celery_app.conf.update(
         # LinkedIn job scraping daily (by job position/keyword)
         'daily-linkedin-scraping': {
             'task': 'src.workers.tasks.scrape_linkedin_jobs',
-            'schedule': crontab(hour=8, minute=0),  # 8:00 AM UTC daily (after company scraping)
+            'schedule': crontab(hour=5, minute=0),  # 5:00 AM UTC daily
             'kwargs': {
                 'keywords': None,  # Search for all job roles
                 'location': 'Israel',
@@ -90,7 +90,7 @@ celery_app.conf.update(
         # LinkedIn job scraping by company name daily
         'daily-linkedin-by-company-scraping': {
             'task': 'scrape_linkedin_jobs_by_company',
-            'schedule': crontab(hour=9, minute=0),  # 9:00 AM UTC daily (after LinkedIn keyword scraping)
+            'schedule': crontab(hour=5, minute=0),  # 5:00 AM UTC daily
             'options': {
                 'expires': 7200,  # Task expires after 2 hours if not picked up
             }
