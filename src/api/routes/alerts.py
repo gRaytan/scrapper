@@ -168,11 +168,20 @@ def create_alert_for_current_user(
     - **notification_config**: Notification configuration
 
     Requires JWT authentication.
+
+    Note: When an alert is created, it automatically matches against existing
+    jobs from the last 30 days and creates notifications for matching jobs.
     """
     try:
         service = AlertService(session)
-        alert = service.create_alert(current_user.id, alert_data)
-        return alert
+        result = service.create_alert(current_user.id, alert_data)
+        # Log matching stats if available
+        if result.get("existing_jobs_matched"):
+            matches = result["existing_jobs_matched"]
+            logger.info(
+                f"Alert created with {matches.get('matches_found', 0)} existing job matches"
+            )
+        return result["alert"]
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
@@ -198,6 +207,9 @@ def create_alert(
 
     Users can only create alerts for themselves.
     Requires JWT authentication.
+
+    Note: When an alert is created, it automatically matches against existing
+    jobs from the last 30 days and creates notifications for matching jobs.
     """
     # Users can only create alerts for themselves
     if user_id != current_user.id:
@@ -208,8 +220,14 @@ def create_alert(
 
     try:
         service = AlertService(session)
-        alert = service.create_alert(user_id, alert_data)
-        return alert
+        result = service.create_alert(user_id, alert_data)
+        # Log matching stats if available
+        if result.get("existing_jobs_matched"):
+            matches = result["existing_jobs_matched"]
+            logger.info(
+                f"Alert created with {matches.get('matches_found', 0)} existing job matches"
+            )
+        return result["alert"]
     except ValueError as e:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,

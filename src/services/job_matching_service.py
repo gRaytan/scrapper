@@ -1,0 +1,249 @@
+"""Job matching service for matching jobs to user alerts."""
+import logging
+from datetime import datetime
+from typing import List, Dict, Any, Optional
+from uuid import UUID
+
+from sqlalchemy.orm import Session, joinedload
+
+from src.models.alert import Alert
+from src.models.alert_notification import AlertNotification
+from src.models.job_position import JobPosition
+from src.models.user import User
+
+
+logger = logging.getLogger(__name__)
+
+
+class JobMatchingService:
+    """Service for matching jobs to user alerts and creating notifications."""
+    
+    def __init__(self, session: Session):
+        """Initialize service with database session."""
+        self.session = session
+    
+    def match_jobs_to_alerts(
+        self,
+        jobs: List[JobPosition],
+        alerts: Optional[List[Alert]] = None
+    ) -> Dict[UUID, List[Dict[str, Any]]]:
+        """
+        Match a list of jobs against all active alerts (or specified alerts).
+        
+        Args:
+            jobs: List of job positions to match
+            alerts: Optional list of alerts to match against (defaults to all active alerts)
+            
+        Returns:
+            Dictionary mapping user_id to list of {alert, jobs} matches
+        """
+        if not jobs:
+            return {}
+        
+        # Get all active alerts if not specified
+        if alerts is None:
+            alerts = self.session.query(Alert).filter(
+                Alert.is_active == True
+            ).options(joinedload(Alert.user)).all()
+        
+        if not alerts:
+            logger.info("No active alerts found")
+            return {}
+        
+        # Match jobs to alerts
+        user_matches: Dict[UUID, List[Dict[str, Any]]] = {}
+        
+        for alert in alerts:
+            matching_jobs = []
+            for job in jobs:
+                if alert.matches_position(job):
+                    # Check if we already notified about this job for this alert
+                    already_notified = self.session.query(AlertNotification).filter(
+                        AlertNotification.alert_id == alert.id,
+                        AlertNotification.job_position_id == job.id
+                    ).first()
+                    
+                    if not already_notified:
+                        matching_jobs.append(job)
+            
+            if matching_jobs:
+                if alert.user_id not in user_matches:
+                    user_matches[alert.user_id] = []
+                
+                user_matches[alert.user_id].append({
+                    'alert': alert,
+                    'jobs': matching_jobs
+                })
+                
+                logger.info(
+                    f"Alert '{alert.name}' (user {alert.user_id}) matched {len(matching_jobs)} jobs"
+                )
+        
+        return user_matches
+    
+    def create_notifications(
+        self,
+        user_matches: Dict[UUID, List[Dict[str, Any]]],
+        delivery_method: str = 'email'
+    ) -> Dict[str, Any]:
+        """
+        Create notification records for matched jobs.
+        
+        Args:
+            user_matches: Dictionary from match_jobs_to_alerts
+            delivery_method: Notification delivery method
+            
+        Returns:
+            Statistics about created notifications
+        """
+        total_notifications = 0
+        alerts_triggered = 0
+        
+        for user_id, alert_matches in user_matches.items():
+            for match in alert_matches:
+                alert = match['alert']
+                jobs = match['jobs']
+                
+                for job in jobs:
+                    notification = AlertNotification(
+                        alert_id=alert.id,
+                        job_position_id=job.id,
+                        user_id=user_id,
+                        delivery_method=alert.notification_method or delivery_method,
+                        delivery_status='pending',
+                        sent_at=datetime.utcnow()
+                    )
+                    self.session.add(notification)
+                    total_notifications += 1
+                
+                # Update alert tracking
+                alert.last_triggered_at = datetime.utcnow()
+                alert.trigger_count = (alert.trigger_count or 0) + 1
+                alerts_triggered += 1
+        
+        self.session.commit()
+        
+        return {
+            'notifications_created': total_notifications,
+            'alerts_triggered': alerts_triggered,
+            'users_notified': len(user_matches)
+        }
+    
+    def process_new_jobs(self, jobs: List[JobPosition]) -> Dict[str, Any]:
+        """
+        Process new jobs: match to alerts and create notifications.
+        
+        Args:
+            jobs: List of new job positions
+            
+        Returns:
+            Processing statistics
+        """
+        if not jobs:
+            return {'status': 'success', 'message': 'No jobs to process'}
+        
+        # Match jobs to alerts
+        user_matches = self.match_jobs_to_alerts(jobs)
+        
+        if not user_matches:
+            return {
+                'status': 'success',
+                'jobs_processed': len(jobs),
+                'matches_found': 0
+            }
+        
+        # Create notifications
+        notification_stats = self.create_notifications(user_matches)
+        
+        return {
+            'status': 'success',
+            'jobs_processed': len(jobs),
+            **notification_stats
+        }
+    
+    def process_alert_against_existing_jobs(
+        self,
+        alert: Alert,
+        days_back: int = 30
+    ) -> Dict[str, Any]:
+        """
+        Process a new/updated alert against existing jobs in the database.
+        
+        This is called when a new alert is created to find matching jobs
+        that were scraped before the alert existed.
+        
+        Args:
+            alert: The alert to process
+            days_back: How many days back to look for jobs (default: 30)
+            
+        Returns:
+            Processing statistics
+        """
+        from datetime import timedelta
+        
+        cutoff = datetime.utcnow() - timedelta(days=days_back)
+        
+        # Get active jobs from the last N days
+        existing_jobs = self.session.query(JobPosition).filter(
+            JobPosition.is_active == True,
+            JobPosition.created_at >= cutoff
+        ).options(joinedload(JobPosition.company)).all()
+        
+        if not existing_jobs:
+            return {
+                'status': 'success',
+                'message': 'No existing jobs found',
+                'jobs_checked': 0,
+                'matches_found': 0
+            }
+        
+        # Match jobs to this specific alert
+        matching_jobs = []
+        for job in existing_jobs:
+            if alert.matches_position(job):
+                # Check if already notified
+                already_notified = self.session.query(AlertNotification).filter(
+                    AlertNotification.alert_id == alert.id,
+                    AlertNotification.job_position_id == job.id
+                ).first()
+                
+                if not already_notified:
+                    matching_jobs.append(job)
+        
+        if not matching_jobs:
+            return {
+                'status': 'success',
+                'jobs_checked': len(existing_jobs),
+                'matches_found': 0
+            }
+        
+        # Create notifications for matching jobs
+        for job in matching_jobs:
+            notification = AlertNotification(
+                alert_id=alert.id,
+                job_position_id=job.id,
+                user_id=alert.user_id,
+                delivery_method=alert.notification_method or 'email',
+                delivery_status='pending',
+                sent_at=datetime.utcnow()
+            )
+            self.session.add(notification)
+        
+        # Update alert tracking
+        alert.last_triggered_at = datetime.utcnow()
+        alert.trigger_count = (alert.trigger_count or 0) + 1
+        
+        self.session.commit()
+        
+        logger.info(
+            f"Alert '{alert.name}' matched {len(matching_jobs)} existing jobs "
+            f"(checked {len(existing_jobs)} jobs from last {days_back} days)"
+        )
+        
+        return {
+            'status': 'success',
+            'jobs_checked': len(existing_jobs),
+            'matches_found': len(matching_jobs),
+            'notifications_created': len(matching_jobs)
+        }
+

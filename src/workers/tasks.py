@@ -158,19 +158,22 @@ def scrape_single_company(self: Task, company_name: str, incremental: bool = Fal
 def process_new_jobs(self: Task, hours: int = 24) -> Dict[str, Any]:
     """
     Process new jobs from the last N hours.
-    
-    This task is called after scraping completes and serves as a foundation
-    for future notification matching. Currently, it just logs statistics.
-    
+
+    This task is called after scraping completes. It matches new jobs
+    against user alerts and creates notifications.
+
     Args:
         hours: Number of hours to look back for new jobs
-        
+
     Returns:
         Dictionary with processing statistics
     """
+    from sqlalchemy.orm import joinedload
+    from src.services.job_matching_service import JobMatchingService
+
     try:
         logger.info(f"Processing new jobs from last {hours} hours...")
-        
+
         with db.get_session() as session:
             # Get jobs created in the last N hours
             cutoff = datetime.utcnow() - timedelta(hours=hours)
@@ -179,8 +182,8 @@ def process_new_jobs(self: Task, hours: int = 24) -> Dict[str, Any]:
                     JobPosition.created_at >= cutoff,
                     JobPosition.is_active == True
                 )
-            ).all()
-            
+            ).options(joinedload(JobPosition.company)).all()
+
             if not new_jobs:
                 logger.info("No new jobs to process")
                 return {
@@ -188,39 +191,43 @@ def process_new_jobs(self: Task, hours: int = 24) -> Dict[str, Any]:
                     'new_jobs_count': 0,
                     'hours': hours
                 }
-            
-            # Group jobs by company
+
+            # Group jobs by company for logging
             jobs_by_company = {}
             for job in new_jobs:
-                company_name = job.company.name
+                company_name = job.company.name if job.company else 'Unknown'
                 if company_name not in jobs_by_company:
                     jobs_by_company[company_name] = []
                 jobs_by_company[company_name].append(job)
-            
+
             # Log statistics
             logger.info(f"Found {len(new_jobs)} new jobs from {len(jobs_by_company)} companies:")
             for company_name, jobs in jobs_by_company.items():
                 logger.info(f"  - {company_name}: {len(jobs)} jobs")
-            
-            # TODO: In the future, this is where we'll:
-            # 1. Match jobs against user alerts
-            # 2. Generate notifications
-            # 3. Send emails/push notifications
-            
+
+            # Match jobs against user alerts and create notifications
+            matching_service = JobMatchingService(session)
+            matching_result = matching_service.process_new_jobs(new_jobs)
+
             result = {
                 'status': 'success',
                 'new_jobs_count': len(new_jobs),
                 'companies_count': len(jobs_by_company),
                 'hours': hours,
                 'jobs_by_company': {
-                    company: len(jobs) 
+                    company: len(jobs)
                     for company, jobs in jobs_by_company.items()
-                }
+                },
+                'matching': matching_result
             }
-            
-            logger.success(f"Processed {len(new_jobs)} new jobs")
+
+            logger.success(
+                f"Processed {len(new_jobs)} new jobs, "
+                f"created {matching_result.get('notifications_created', 0)} notifications "
+                f"for {matching_result.get('users_notified', 0)} users"
+            )
             return result
-            
+
     except Exception as exc:
         logger.error(f"Job processing failed: {exc}")
         raise self.retry(exc=exc, countdown=600 * (2 ** self.request.retries))
