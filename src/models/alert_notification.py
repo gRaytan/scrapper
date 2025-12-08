@@ -8,10 +8,10 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.sql import func
 
-from .base import Base, UUIDMixin
+from .base import Base, UUIDMixin, TimestampMixin
 
 
-class AlertNotification(Base, UUIDMixin):
+class AlertNotification(Base, UUIDMixin, TimestampMixin):
     """Alert notification model for tracking sent notifications."""
     
     __tablename__ = "alert_notifications"
@@ -39,10 +39,10 @@ class AlertNotification(Base, UUIDMixin):
     )
     
     # Notification details
-    sent_at: Mapped[datetime] = mapped_column(
+    # sent_at is set when the notification is actually sent, not when created
+    sent_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True),
-        server_default=func.now(),
-        nullable=False,
+        nullable=True,
         index=True
     )
     
@@ -70,6 +70,8 @@ class AlertNotification(Base, UUIDMixin):
         Index('ix_alert_notifications_user_sent', 'user_id', 'sent_at'),
         Index('ix_alert_notifications_alert_sent', 'alert_id', 'sent_at'),
         Index('ix_alert_notifications_status_sent', 'delivery_status', 'sent_at'),
+        # Unique constraint to prevent duplicate notifications for same alert+job
+        Index('ix_alert_notifications_alert_job', 'alert_id', 'job_position_id', unique=True),
     )
     
     def __repr__(self) -> str:
