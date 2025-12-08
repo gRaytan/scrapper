@@ -24,26 +24,28 @@ class JobMatchingService:
     def _create_notification(
         self,
         alert: Alert,
-        job: JobPosition,
+        jobs: List[JobPosition],
         user_id: UUID,
         delivery_method: str = 'email'
     ) -> AlertNotification:
         """
-        Create a single notification record.
+        Create a notification record with multiple jobs.
 
         Args:
             alert: The alert that matched
-            job: The job that matched
+            jobs: List of jobs that matched
             user_id: User to notify
             delivery_method: Fallback delivery method
 
         Returns:
             Created AlertNotification (not yet committed)
         """
+        job_ids = [str(job.id) for job in jobs]
         notification = AlertNotification(
             alert_id=alert.id,
-            job_position_id=job.id,
             user_id=user_id,
+            job_position_ids=job_ids,
+            job_count=len(job_ids),
             delivery_method=alert.notification_method or delivery_method,
             delivery_status='pending'
             # sent_at is set when notification is actually sent
@@ -62,26 +64,34 @@ class JobMatchingService:
         job_ids: List[UUID]
     ) -> set:
         """
-        Get set of (alert_id, job_position_id) pairs that already have notifications.
+        Get set of (alert_id, job_id) pairs that already have notifications.
 
         Args:
             alert_ids: List of alert IDs to check
             job_ids: List of job IDs to check
 
         Returns:
-            Set of (alert_id, job_position_id) tuples
+            Set of (alert_id, job_id_str) tuples
         """
         if not alert_ids or not job_ids:
             return set()
 
+        # Query notifications for these alerts
         existing = self.session.query(
             AlertNotification.alert_id,
-            AlertNotification.job_position_id
+            AlertNotification.job_position_ids
         ).filter(
-            AlertNotification.alert_id.in_(alert_ids),
-            AlertNotification.job_position_id.in_(job_ids)
+            AlertNotification.alert_id.in_(alert_ids)
         ).all()
-        return set((n.alert_id, n.job_position_id) for n in existing)
+
+        # Build set of (alert_id, job_id) pairs from JSONB arrays
+        pairs = set()
+        job_id_strs = set(str(jid) for jid in job_ids)
+        for notification in existing:
+            for job_id_str in notification.job_position_ids:
+                if job_id_str in job_id_strs:
+                    pairs.add((notification.alert_id, job_id_str))
+        return pairs
 
     def _get_notified_job_ids_for_alert(
         self,
@@ -96,18 +106,25 @@ class JobMatchingService:
             job_ids: List of job IDs to check
 
         Returns:
-            Set of job_position_id values
+            Set of job_id strings
         """
         if not job_ids:
             return set()
 
         existing = self.session.query(
-            AlertNotification.job_position_id
+            AlertNotification.job_position_ids
         ).filter(
-            AlertNotification.alert_id == alert_id,
-            AlertNotification.job_position_id.in_(job_ids)
+            AlertNotification.alert_id == alert_id
         ).all()
-        return set(n.job_position_id for n in existing)
+
+        # Collect all job IDs from JSONB arrays
+        notified = set()
+        job_id_strs = set(str(jid) for jid in job_ids)
+        for notification in existing:
+            for job_id_str in notification.job_position_ids:
+                if job_id_str in job_id_strs:
+                    notified.add(job_id_str)
+        return notified
 
     def match_jobs_to_alerts(
         self,
@@ -150,7 +167,8 @@ class JobMatchingService:
             for job in jobs:
                 if alert.matches_position(job):
                     # Check if we already notified about this job for this alert
-                    if (alert.id, job.id) not in notified_pairs:
+                    # notified_pairs uses string job IDs
+                    if (alert.id, str(job.id)) not in notified_pairs:
                         matching_jobs.append(job)
 
             if matching_jobs:
@@ -184,6 +202,7 @@ class JobMatchingService:
             Statistics about created notifications
         """
         total_notifications = 0
+        total_jobs = 0
         alerts_triggered = 0
 
         for user_id, alert_matches in user_matches.items():
@@ -191,18 +210,20 @@ class JobMatchingService:
                 alert = match['alert']
                 jobs = match['jobs']
 
-                for job in jobs:
-                    self._create_notification(alert, job, user_id, delivery_method)
-                    total_notifications += 1
+                # Create one notification per alert with all matching jobs
+                self._create_notification(alert, jobs, user_id, delivery_method)
+                total_notifications += 1
+                total_jobs += len(jobs)
 
                 # Update alert tracking
                 self._update_alert_triggered(alert)
                 alerts_triggered += 1
 
         self.session.commit()
-        
+
         return {
             'notifications_created': total_notifications,
+            'total_jobs_matched': total_jobs,
             'alerts_triggered': alerts_triggered,
             'users_notified': len(user_matches)
         }
@@ -280,11 +301,12 @@ class JobMatchingService:
         notified_job_ids = self._get_notified_job_ids_for_alert(alert.id, job_ids)
 
         # Match jobs to this specific alert
+        # notified_job_ids contains string job IDs
         matching_jobs = []
         for job in existing_jobs:
             if alert.matches_position(job):
                 # Check if already notified using pre-loaded set
-                if job.id not in notified_job_ids:
+                if str(job.id) not in notified_job_ids:
                     matching_jobs.append(job)
 
         if not matching_jobs:
@@ -294,24 +316,23 @@ class JobMatchingService:
                 'matches_found': 0
             }
 
-        # Create notifications for matching jobs
-        for job in matching_jobs:
-            self._create_notification(alert, job, alert.user_id)
+        # Create one notification with all matching jobs
+        self._create_notification(alert, matching_jobs, alert.user_id)
 
         # Update alert tracking
         self._update_alert_triggered(alert)
 
         self.session.commit()
-        
+
         logger.info(
             f"Alert '{alert.name}' matched {len(matching_jobs)} existing jobs "
             f"(checked {len(existing_jobs)} jobs from last {days_back} days)"
         )
-        
+
         return {
             'status': 'success',
             'jobs_checked': len(existing_jobs),
             'matches_found': len(matching_jobs),
-            'notifications_created': len(matching_jobs)
+            'notifications_created': 1  # One notification with all jobs
         }
 

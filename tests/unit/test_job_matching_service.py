@@ -89,15 +89,20 @@ class TestJobMatchingService:
 
     # Test _create_notification helper
     def test_create_notification(self, service, sample_alert, sample_job, sample_user):
-        """Test creating a single notification."""
+        """Test creating a notification with multiple jobs."""
+        job2 = MagicMock(spec=JobPosition)
+        job2.id = uuid4()
+
         notification = service._create_notification(
-            sample_alert, sample_job, sample_user.id
+            sample_alert, [sample_job, job2], sample_user.id
         )
 
         service.session.add.assert_called_once()
         assert notification.alert_id == sample_alert.id
-        assert notification.job_position_id == sample_job.id
         assert notification.user_id == sample_user.id
+        assert notification.job_count == 2
+        assert str(sample_job.id) in notification.job_position_ids
+        assert str(job2.id) in notification.job_position_ids
         assert notification.delivery_status == 'pending'
 
     # Test _update_alert_triggered helper
@@ -122,15 +127,17 @@ class TestJobMatchingService:
         alert_id = uuid4()
         job_id = uuid4()
 
+        # New model: job_position_ids is a list of string UUIDs
         mock_notification = MagicMock()
         mock_notification.alert_id = alert_id
-        mock_notification.job_position_id = job_id
+        mock_notification.job_position_ids = [str(job_id)]
 
         mock_session.query.return_value.filter.return_value.all.return_value = [mock_notification]
 
         result = service._get_notified_pairs([alert_id], [job_id])
 
-        assert (alert_id, job_id) in result
+        # Now returns (alert_id, job_id_str) pairs
+        assert (alert_id, str(job_id)) in result
 
     # Test match_jobs_to_alerts
     def test_match_jobs_to_alerts_empty_jobs(self, service):
@@ -164,10 +171,10 @@ class TestJobMatchingService:
         """Test that already notified jobs are skipped."""
         sample_alert.matches_position = MagicMock(return_value=True)
 
-        # Setup: job was already notified for this alert
+        # Setup: job was already notified for this alert (new model with job_position_ids list)
         mock_notification = MagicMock()
         mock_notification.alert_id = sample_alert.id
-        mock_notification.job_position_id = sample_job.id
+        mock_notification.job_position_ids = [str(sample_job.id)]
 
         mock_session.query.return_value.filter.return_value.all.return_value = [mock_notification]
 
@@ -192,21 +199,27 @@ class TestJobMatchingService:
         result = service.create_notifications({})
 
         assert result['notifications_created'] == 0
+        assert result['total_jobs_matched'] == 0
         assert result['alerts_triggered'] == 0
         assert result['users_notified'] == 0
 
     def test_create_notifications_with_matches(self, service, sample_job, sample_alert, sample_user):
         """Test creating notifications with matches."""
+        job2 = MagicMock(spec=JobPosition)
+        job2.id = uuid4()
+
         user_matches = {
             sample_user.id: [{
                 'alert': sample_alert,
-                'jobs': [sample_job]
+                'jobs': [sample_job, job2]  # Two jobs in one notification
             }]
         }
 
         result = service.create_notifications(user_matches)
 
+        # One notification per alert, but contains 2 jobs
         assert result['notifications_created'] == 1
+        assert result['total_jobs_matched'] == 2
         assert result['alerts_triggered'] == 1
         assert result['users_notified'] == 1
         service.session.commit.assert_called_once()
