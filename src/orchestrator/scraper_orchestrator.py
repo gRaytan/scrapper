@@ -18,6 +18,7 @@ from src.scrapers.static_scraper import StaticScraper
 from src.storage.database import db
 from src.storage.repositories.company_repo import CompanyRepository
 from src.storage.repositories.job_repo import JobPositionRepository
+from src.services.location_filter_service import location_filter
 from src.utils.logger import logger
 
 
@@ -195,13 +196,21 @@ class ScraperOrchestrator:
             "jobs_new": 0,
             "jobs_updated": 0,
             "jobs_removed": 0,
+            "jobs_filtered_location": 0,
         }
-        
-        # Get current external IDs from scrape
-        current_external_ids = [job.get("external_id") for job in scraped_jobs if job.get("external_id")]
-        
-        # Process each scraped job
-        for job_data in scraped_jobs:
+
+        # Filter jobs by location before processing
+        allowed_jobs, filtered_jobs = location_filter.filter_jobs(scraped_jobs)
+        stats["jobs_filtered_location"] = len(filtered_jobs)
+
+        if filtered_jobs:
+            logger.info(f"Filtered out {len(filtered_jobs)} jobs due to location restrictions")
+
+        # Get current external IDs from scrape (only from allowed jobs)
+        current_external_ids = [job.get("external_id") for job in allowed_jobs if job.get("external_id")]
+
+        # Process each allowed job
+        for job_data in allowed_jobs:
             # Normalize job data to match model
             job_data = self._normalize_job_data(job_data)
 

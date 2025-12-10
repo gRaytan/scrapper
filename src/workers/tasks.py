@@ -20,6 +20,7 @@ from src.storage.repositories.job_repo import JobPositionRepository
 from src.scrapers.playwright_scraper import PlaywrightScraper
 from src.services.company_matching_service import CompanyMatchingService
 from src.services.deduplication_service import JobDeduplicationService
+from src.services.location_filter_service import location_filter
 from src.utils.logger import logger
 from config.settings import settings
 
@@ -552,7 +553,12 @@ def scrape_linkedin_jobs(
                 jobs = asyncio.run(scraper.scrape())
                 
                 logger.info(f"Found {len(jobs)} jobs for query: {query}")
-                
+
+                # Filter jobs by location before processing
+                allowed_jobs, filtered_jobs = location_filter.filter_jobs(jobs)
+                if filtered_jobs:
+                    logger.info(f"Filtered out {len(filtered_jobs)} jobs due to location restrictions")
+
                 # Store jobs in database with company matching and de-duplication
                 with db.get_session() as session:
                     company_repo = CompanyRepository(session)
@@ -564,8 +570,9 @@ def scrape_linkedin_jobs(
                     jobs_updated = 0
                     jobs_skipped_duplicate = 0
                     jobs_flagged_review = 0
+                    jobs_filtered_location = len(filtered_jobs)
 
-                    for job in jobs:
+                    for job in allowed_jobs:
                         # Extract company name from LinkedIn data
                         linkedin_company_name = job.get('company', '')
                         if not linkedin_company_name:
@@ -825,6 +832,11 @@ def scrape_linkedin_jobs_by_company(self) -> Dict[str, Any]:
                         j for j in jobs
                         if j.get('company', '').lower() == company_name.lower()
                     ]
+
+                    # Filter by location
+                    matched_jobs, filtered_jobs = location_filter.filter_jobs(matched_jobs)
+                    if filtered_jobs:
+                        logger.debug(f"{company_name}: Filtered out {len(filtered_jobs)} jobs due to location")
 
                     if matched_jobs:
                         logger.info(f"{company_name}: Found {len(matched_jobs)} jobs")
