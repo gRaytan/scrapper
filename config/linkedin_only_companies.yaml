@@ -444,3 +444,12 @@ companies:
 - name: Zenity
   website: https://www.zenity.io
   industry: Security
+- name: Forter
+  website: https://www.forter.com
+  industry: Fraud Prevention
+- name: Bounce
+  website: https://www.bounce.io
+  industry: Technology
+- name: Remitly
+  website: https://www.remitly.com
+  industry: Fintech
