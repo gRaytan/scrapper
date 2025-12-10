@@ -477,3 +477,9 @@ companies:
 - name: Decart
   website: https://www.decart.ai
   industry: AI
+- name: Armis
+  website: https://www.armis.com
+  industry: Cybersecurity
+- name: Rakuten Viber
+  website: https://www.viber.com
+  industry: Messaging

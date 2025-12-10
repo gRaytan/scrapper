@@ -342,7 +342,7 @@ HTML_TEMPLATE = """
                 const source = (row.dataset.source || '').toLowerCase();
                 const title = row.dataset.title.toLowerCase();
 
-                const matchCompany = !companyFilter || company.includes(companyFilter);
+                const matchCompany = !companyFilter || company === companyFilter;
                 const matchRole = !roleFilter || role === roleFilter;
                 const matchSource = !sourceFilter ||
                     (sourceFilter === 'linkedin_aggregator' && source === 'linkedin_aggregator') ||
