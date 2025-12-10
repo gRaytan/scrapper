@@ -456,3 +456,15 @@ companies:
 - name: Wonderful
   website: https://www.wonderful.ai
   industry: AI
+- name: GlassesUSA.com
+  website: https://www.glassesusa.com
+  industry: E-commerce
+- name: Fireblocks
+  website: https://www.fireblocks.com
+  industry: Crypto/Fintech
+- name: Arbox
+  website: https://www.arboxapp.com
+  industry: Fitness Tech
+- name: Checkout.com
+  website: https://www.checkout.com
+  industry: Fintech
