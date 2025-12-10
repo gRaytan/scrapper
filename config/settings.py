@@ -82,6 +82,9 @@ class Settings(BaseSettings):
     linkedin_search_location: str = "Israel"
     linkedin_max_pages: int = 10
 
+    # Location filtering - comma-separated list of allowed countries
+    allowed_countries: str = "Israel"
+
     @property
     def is_production(self) -> bool:
         """Check if running in production."""
@@ -119,6 +122,13 @@ class Settings(BaseSettings):
         if not self.linkedin_job_positions:
             return []
         return [pos.strip() for pos in self.linkedin_job_positions.split(',') if pos.strip()]
+
+    @property
+    def allowed_countries_list(self) -> list[str]:
+        """Get allowed countries as a list."""
+        if not self.allowed_countries:
+            return ["Israel"]  # Default to Israel
+        return [country.strip() for country in self.allowed_countries.split(',') if country.strip()]
 
 
 # Global settings instance
