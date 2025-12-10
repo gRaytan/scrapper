@@ -483,3 +483,12 @@ companies:
 - name: Rakuten Viber
   website: https://www.viber.com
   industry: Messaging
+- name: Varonis
+  website: https://www.varonis.com
+  industry: Cybersecurity
+- name: Figma
+  website: https://www.figma.com
+  industry: Design Tech
+- name: Faye
+  website: https://www.withfaye.com
+  industry: Travel Tech
