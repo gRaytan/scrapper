@@ -34,6 +34,9 @@ class User(Base, UUIDMixin, TimestampMixin):
         index=True
     )  # free, basic, premium, enterprise
 
+    # PayMe subscription ID
+    payme_subscription_id: Mapped[Optional[str]] = mapped_column(String(255))
+
     # Status
     is_active: Mapped[bool] = mapped_column(Boolean, default=True, nullable=False, index=True)
 
