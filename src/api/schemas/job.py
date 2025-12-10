@@ -28,10 +28,10 @@ class JobBase(BaseModel):
     """Base job schema with common fields."""
     title: str
     location: Optional[str] = None
-    remote_type: Optional[str] = Field(None, pattern="(?i)^(remote|hybrid|onsite)$")
-    employment_type: Optional[str] = Field(None, pattern="(?i)^(full-time|part-time|contract|internship)$")
+    remote_type: Optional[str] = None
+    employment_type: Optional[str] = None
     department: Optional[str] = None
-    seniority_level: Optional[str] = Field(None, pattern="(?i)^(entry|mid|senior|lead|executive)$")
+    seniority_level: Optional[str] = None
 
 
 class JobListItem(JobBase):
