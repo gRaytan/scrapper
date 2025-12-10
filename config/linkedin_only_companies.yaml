@@ -453,3 +453,6 @@ companies:
 - name: Remitly
   website: https://www.remitly.com
   industry: Fintech
+- name: Wonderful
+  website: https://www.wonderful.ai
+  industry: AI
