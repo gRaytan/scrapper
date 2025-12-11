@@ -1120,10 +1120,10 @@ def scrape_vc_portfolio(self: Task, vc_name: str = None) -> Dict[str, Any]:
                                 remote_type='remote' if job.get('is_remote', False) else 'onsite',
                                 posted_date=job.get('posted_date'),
                                 scraped_at=datetime.utcnow(),
+                                first_seen_at=datetime.utcnow(),
                                 last_seen_at=datetime.utcnow(),
                                 is_active=True,
-                                source='vc_portfolio',
-                                metadata={'vc_source': vc_display_name}
+                                extra_metadata={'vc_source': vc_display_name}
                             )
                             session.add(new_job)
                             result['new_jobs'] += 1
