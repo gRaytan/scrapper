@@ -9,8 +9,8 @@ from pydantic import BaseModel, HttpUrl, Field, ConfigDict
 class CompanyBase(BaseModel):
     """Base company schema with common fields."""
     name: str = Field(..., min_length=1, max_length=255)
-    website: Optional[HttpUrl] = None
-    careers_url: Optional[HttpUrl] = None
+    website: Optional[str] = None
+    careers_url: Optional[str] = None
     industry: Optional[str] = None
     size: Optional[str] = None
     location: Optional[str] = None
@@ -25,8 +25,8 @@ class CompanyCreate(CompanyBase):
 class CompanyUpdate(BaseModel):
     """Schema for updating a company."""
     name: Optional[str] = Field(None, min_length=1, max_length=255)
-    website: Optional[HttpUrl] = None
-    careers_url: Optional[HttpUrl] = None
+    website: Optional[str] = None
+    careers_url: Optional[str] = None
     industry: Optional[str] = None
     size: Optional[str] = None
     location: Optional[str] = None
