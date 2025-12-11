@@ -1079,23 +1079,36 @@ def scrape_vc_portfolio(self: Task, vc_name: str = None) -> Dict[str, Any]:
                                 result['companies_created'] += 1
                                 logger.info(f"Created company from VC portfolio: {company_name}")
 
-                        # Check for duplicates
+                        # Check for duplicates - multiple layers:
+                        # 1. Check by external ID (same source)
+                        existing_job = job_repo.get_by_external_id(job.get('external_id', ''), company.id)
+
+                        # 2. Check by job URL (cross-source deduplication)
+                        job_url = job.get('job_url', '')
+                        url_duplicate = job_repo.get_by_job_url(job_url) if job_url else None
+
+                        # 3. Check by title+location fuzzy match (same company)
                         duplicate_job, dup_score, needs_review = dedup_service.check_for_duplicate(
                             company_id=str(company.id),
                             title=job.get('title', ''),
                             location=job.get('location', '')
                         )
 
-                        existing_job = job_repo.get_by_external_id(job.get('external_id', ''), company.id)
-
                         if existing_job:
+                            # Update existing job from same source
                             existing_job.title = job.get('title', '')
                             existing_job.location = job.get('location', '')
-                            existing_job.job_url = job.get('job_url', '')
+                            existing_job.job_url = job_url
                             existing_job.remote_type = 'remote' if job.get('is_remote', False) else 'onsite'
                             existing_job.last_seen_at = datetime.utcnow()
                             result['updated_jobs'] += 1
+                        elif url_duplicate:
+                            # Job URL already exists (from another source)
+                            url_duplicate.last_seen_at = datetime.utcnow()
+                            result['skipped_duplicates'] += 1
+                            logger.debug(f"URL duplicate: {job.get('title')} - {job_url}")
                         elif duplicate_job and dup_score >= dedup_service.HIGH_CONFIDENCE_THRESHOLD:
+                            # Fuzzy match found
                             result['skipped_duplicates'] += 1
                         else:
                             new_job = JobPosition(
@@ -1103,7 +1116,7 @@ def scrape_vc_portfolio(self: Task, vc_name: str = None) -> Dict[str, Any]:
                                 external_id=job.get('external_id', ''),
                                 title=job.get('title', ''),
                                 location=job.get('location', ''),
-                                job_url=job.get('job_url', ''),
+                                job_url=job_url,
                                 remote_type='remote' if job.get('is_remote', False) else 'onsite',
                                 posted_date=job.get('posted_date'),
                                 scraped_at=datetime.utcnow(),

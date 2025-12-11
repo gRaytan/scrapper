@@ -48,6 +48,26 @@ class JobPositionRepository:
                 JobPosition.company_id == company_id
             )
         ).first()
+
+    def get_by_job_url(self, job_url: str) -> Optional[JobPosition]:
+        """
+        Get job by URL (cross-company, cross-source deduplication).
+
+        Args:
+            job_url: The job posting URL
+
+        Returns:
+            JobPosition if found, None otherwise
+        """
+        if not job_url:
+            return None
+
+        # Normalize URL for comparison (remove trailing slashes, query params)
+        normalized_url = job_url.rstrip('/').split('?')[0]
+
+        return self.session.query(JobPosition).filter(
+            JobPosition.job_url.ilike(f"%{normalized_url}%")
+        ).first()
     
     def get_by_company(
         self,
