@@ -493,7 +493,7 @@ if __name__ == '__main__':
     print("=" * 80)
     print("🚀 Starting Database Viewer")
     print("=" * 80)
-    print("📊 Open your browser at: http://localhost:5001")
+    print("📊 Open your browser at: http://localhost:5002")
     print("=" * 80)
-    app.run(host='0.0.0.0', port=5001, debug=True)
+    app.run(host='0.0.0.0', port=5002, debug=True)
 

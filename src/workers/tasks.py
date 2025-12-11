@@ -1070,7 +1070,7 @@ def scrape_vc_portfolio(self: Task, vc_name: str = None) -> Dict[str, Any]:
                                     website=job.get('job_url', '').split('/careers')[0] if '/careers' in job.get('job_url', '') else '',
                                     careers_url=job.get('job_url', ''),
                                     industry=job.get('industry', 'Unknown'),
-                                    is_active=False,
+                                    is_active=True,  # VC portfolio companies are curated
                                     location=job.get('location', ''),
                                     scraping_config={}
                                 )
