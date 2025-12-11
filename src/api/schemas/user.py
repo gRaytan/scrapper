@@ -47,6 +47,7 @@ class UserResponse(UserBase):
     id: UUID
     is_active: bool
     subscription_tier: str
+    payme_subscription_id: Optional[str] = None
     phone_number: Optional[str] = None
     phone_verified: bool
     last_login_at: Optional[datetime] = None
