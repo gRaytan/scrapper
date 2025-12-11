@@ -1002,19 +1002,40 @@ def scrape_vc_portfolio(self: Task, vc_name: str = None) -> Dict[str, Any]:
             logger.info(f"Scraping VC portfolio: {vc_display_name}")
 
             try:
-                # Create scraper config
-                company_config = {
-                    'name': vc_display_name,
-                    'careers_url': careers_url,
-                }
-                scraping_config = {
-                    'scraper_type': scraper_type,
-                    'api_endpoint': careers_url,
-                }
+                # For Getro-powered sites, use the API directly
+                if scraper_type == 'getro':
+                    from src.scrapers.parsers.getro_parser import GetroParser
 
-                # Create and run scraper
-                scraper = PlaywrightScraper(company_config, scraping_config)
-                jobs = asyncio.run(scraper.scrape())
+                    # Get collection ID from config or discover it
+                    collection_id = vc.get('collection_id')
+                    if not collection_id:
+                        collection_id = GetroParser.get_collection_id_from_url(careers_url)
+
+                    if not collection_id:
+                        logger.error(f"Could not get Getro collection ID for {vc_display_name}")
+                        result['errors'].append({'vc': vc_display_name, 'error': 'No collection ID'})
+                        continue
+
+                    # Fetch all jobs from API
+                    origin_url = careers_url.rsplit('/jobs', 1)[0] if '/jobs' in careers_url else careers_url
+                    raw_jobs = GetroParser.fetch_all_jobs_from_api(collection_id, origin_url)
+
+                    # Parse jobs
+                    parser = GetroParser()
+                    jobs = [parser.parse(job) for job in raw_jobs]
+                    jobs = [j for j in jobs if j]  # Filter out empty results
+                else:
+                    # Fallback to Playwright for other scraper types
+                    company_config = {
+                        'name': vc_display_name,
+                        'careers_url': careers_url,
+                    }
+                    scraping_config = {
+                        'scraper_type': scraper_type,
+                        'api_endpoint': careers_url,
+                    }
+                    scraper = PlaywrightScraper(company_config, scraping_config)
+                    jobs = asyncio.run(scraper.scrape())
 
                 logger.info(f"Found {len(jobs)} jobs from {vc_display_name}")
                 result['total_jobs_found'] += len(jobs)
