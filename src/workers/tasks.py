@@ -29,10 +29,10 @@ from config.settings import settings
 def run_daily_scraping(self: Task) -> Dict[str, Any]:
     """
     Daily scraping task - scrapes all active companies.
-    
+
     This task runs at 2:00 AM UTC daily and scrapes all companies
     configured in companies.yaml with is_active=true.
-    
+
     Returns:
         Dictionary with scraping statistics
     """
@@ -40,25 +40,25 @@ def run_daily_scraping(self: Task) -> Dict[str, Any]:
         logger.info("=" * 80)
         logger.info("Starting daily scraping job...")
         logger.info("=" * 80)
-        
+
         start_time = datetime.utcnow()
-        
+
         # Create orchestrator
         orchestrator = ScraperOrchestrator()
-        
+
         # Run scraping for all active companies
         # Note: scrape_all_companies is async, so we need to run it in event loop
         results = asyncio.run(orchestrator.scrape_all_companies(incremental=False))
-        
+
         # Calculate statistics
         total_companies = len(results)
         total_new = sum(r.get('jobs_new', 0) for r in results.values())
         total_updated = sum(r.get('jobs_updated', 0) for r in results.values())
         total_found = sum(r.get('jobs_found', 0) for r in results.values())
         total_removed = sum(r.get('jobs_removed', 0) for r in results.values())
-        
+
         duration = (datetime.utcnow() - start_time).total_seconds()
-        
+
         result = {
             'status': 'success',
             'started_at': start_time.isoformat(),
@@ -71,7 +71,7 @@ def run_daily_scraping(self: Task) -> Dict[str, Any]:
             'total_jobs_removed': total_removed,
             'company_results': results
         }
-        
+
         logger.success("=" * 80)
         logger.success(f"Daily scraping completed successfully!")
         logger.success(f"  Companies: {total_companies}")
@@ -81,16 +81,16 @@ def run_daily_scraping(self: Task) -> Dict[str, Any]:
         logger.success(f"  Removed jobs: {total_removed}")
         logger.success(f"  Duration: {duration:.2f}s")
         logger.success("=" * 80)
-        
+
         # Trigger job processing task
         process_new_jobs.delay()
-        
+
         return result
-        
+
     except Exception as exc:
         logger.error(f"Daily scraping failed: {exc}")
         logger.exception(exc)
-        
+
         # Retry with exponential backoff
         raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))
 
@@ -99,11 +99,11 @@ def run_daily_scraping(self: Task) -> Dict[str, Any]:
 def scrape_single_company(self: Task, company_name: str, incremental: bool = False) -> Dict[str, Any]:
     """
     Scrape a single company.
-    
+
     Args:
         company_name: Name of the company to scrape
         incremental: If True, only fetch jobs from last 24 hours
-        
+
     Returns:
         Dictionary with scraping statistics
     """
@@ -149,7 +149,7 @@ def scrape_single_company(self: Task, company_name: str, incremental: bool = Fal
         )
 
         return result
-        
+
     except Exception as exc:
         logger.error(f"Scraping failed for {company_name}: {exc}")
         raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))
@@ -238,38 +238,38 @@ def process_new_jobs(self: Task, hours: int = 24) -> Dict[str, Any]:
 def cleanup_old_sessions(self: Task, days: int = 90) -> Dict[str, Any]:
     """
     Clean up old scraping sessions from the database.
-    
+
     Removes scraping sessions older than N days to prevent database bloat.
-    
+
     Args:
         days: Number of days to keep (default: 90)
-        
+
     Returns:
         Dictionary with cleanup statistics
     """
     try:
         logger.info(f"Cleaning up scraping sessions older than {days} days...")
-        
+
         with db.get_session() as session:
             cutoff = datetime.utcnow() - timedelta(days=days)
-            
+
             # Delete old sessions
             deleted_count = session.query(ScrapingSession).filter(
                 ScrapingSession.created_at < cutoff
             ).delete()
-            
+
             session.commit()
-            
+
             result = {
                 'status': 'success',
                 'deleted_sessions': deleted_count,
                 'cutoff_date': cutoff.isoformat(),
                 'days': days
             }
-            
+
             logger.success(f"Cleaned up {deleted_count} old scraping sessions")
             return result
-            
+
     except Exception as exc:
         logger.error(f"Cleanup failed: {exc}")
         raise self.retry(exc=exc, countdown=600)
@@ -355,29 +355,29 @@ def mark_stale_jobs_inactive(
 def get_scraping_stats(days: int = 7) -> Dict[str, Any]:
     """
     Get scraping statistics for the last N days.
-    
+
     Args:
         days: Number of days to look back (default: 7)
-        
+
     Returns:
         Dictionary with statistics
     """
     try:
         with db.get_session() as session:
             cutoff = datetime.utcnow() - timedelta(days=days)
-            
+
             # Get all sessions from the last N days
             sessions = session.query(ScrapingSession).filter(
                 ScrapingSession.created_at >= cutoff
             ).all()
-            
+
             # Calculate statistics
             total_sessions = len(sessions)
             successful_sessions = sum(1 for s in sessions if s.status == 'completed')
             failed_sessions = sum(1 for s in sessions if s.status == 'failed')
             total_new_jobs = sum(s.jobs_new for s in sessions)
             total_updated_jobs = sum(s.jobs_updated for s in sessions)
-            
+
             # Group by company
             by_company = {}
             for session in sessions:
@@ -390,7 +390,7 @@ def get_scraping_stats(days: int = 7) -> Dict[str, Any]:
                         'new_jobs': 0,
                         'updated_jobs': 0
                     }
-                
+
                 by_company[company_name]['sessions'] += 1
                 if session.status == 'completed':
                     by_company[company_name]['successful'] += 1
@@ -398,7 +398,7 @@ def get_scraping_stats(days: int = 7) -> Dict[str, Any]:
                     by_company[company_name]['failed'] += 1
                 by_company[company_name]['new_jobs'] += session.jobs_new
                 by_company[company_name]['updated_jobs'] += session.jobs_updated
-            
+
             result = {
                 'days': days,
                 'total_sessions': total_sessions,
@@ -409,9 +409,9 @@ def get_scraping_stats(days: int = 7) -> Dict[str, Any]:
                 'total_updated_jobs': total_updated_jobs,
                 'by_company': by_company
             }
-            
+
             return result
-            
+
     except Exception as exc:
         logger.error(f"Failed to get scraping stats: {exc}")
         raise
@@ -492,7 +492,7 @@ def scrape_linkedin_jobs(
                 search_queries = [pos.strip() for pos in default_positions.split(',') if pos.strip()]
 
         logger.info(f"Will search LinkedIn for {len(search_queries)} queries: {', '.join(search_queries[:5])}...")
-        
+
         # LinkedIn API configuration
         linkedin_config = {
             "scraper_type": "linkedin",
@@ -505,7 +505,7 @@ def scrape_linkedin_jobs(
             "timeout": 30.0,
             "wait_time": 2  # Be respectful with rate limiting
         }
-        
+
         # Create a pseudo-company config for LinkedIn
         linkedin_company_config = {
             "name": "LinkedIn",
@@ -526,32 +526,32 @@ def scrape_linkedin_jobs(
                 ] if location == "Israel" else [location]
             }
         }
-        
+
         total_jobs_found = 0
         total_jobs_new = 0
         total_jobs_updated = 0
         results_by_query = {}
-        
+
         # Search for each query
         for query in search_queries:
             try:
                 logger.info(f"Searching LinkedIn for: {query}")
-                
+
                 # Update query params
                 linkedin_config["query_params"] = {
                     "keywords": query,
                     "location": location
                 }
-                
+
                 # Create scraper
                 scraper = PlaywrightScraper(
                     company_config=linkedin_company_config,
                     scraping_config=linkedin_config
                 )
-                
+
                 # Scrape jobs (this is async, so we need to run it in event loop)
                 jobs = asyncio.run(scraper.scrape())
-                
+
                 logger.info(f"Found {len(jobs)} jobs for query: {query}")
 
                 # Filter jobs by location before processing
@@ -664,7 +664,7 @@ def scrape_linkedin_jobs(
                                 logger.warning(f"Job flagged for review: '{job.get('title')}' (possible duplicate, score: {dup_score:.2f})")
 
                     session.commit()
-                    
+
                     total_jobs_found += len(jobs)
                     total_jobs_new += jobs_new
                     total_jobs_updated += jobs_updated
@@ -681,11 +681,11 @@ def scrape_linkedin_jobs(
                         f"Processed {query}: {jobs_new} new, {jobs_updated} updated, "
                         f"{jobs_skipped_duplicate} skipped (duplicates), {jobs_flagged_review} flagged for review"
                     )
-                
+
                 # Small delay between queries to be respectful
                 import time
                 time.sleep(3)
-                
+
             except Exception as e:
                 logger.error(f"Failed to scrape LinkedIn for query '{query}': {e}")
                 results_by_query[query] = {
@@ -695,9 +695,9 @@ def scrape_linkedin_jobs(
                     'jobs_updated': 0
                 }
                 continue
-        
+
         duration = (datetime.utcnow() - start_time).total_seconds()
-        
+
         result = {
             'status': 'success',
             'started_at': start_time.isoformat(),
@@ -709,7 +709,7 @@ def scrape_linkedin_jobs(
             'total_jobs_updated': total_jobs_updated,
             'results_by_query': results_by_query
         }
-        
+
         logger.success("=" * 80)
         logger.success(f"LinkedIn scraping completed successfully!")
         logger.success(f"  Queries: {len(search_queries)}")
@@ -934,4 +934,190 @@ def scrape_linkedin_jobs_by_company(self) -> Dict[str, Any]:
         logger.exception(exc)
 
         # Retry with exponential backoff
+        raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))
+
+
+
+@celery_app.task(bind=True, name='src.workers.tasks.scrape_vc_portfolio', max_retries=3)
+def scrape_vc_portfolio(self: Task, vc_name: str = None) -> Dict[str, Any]:
+    """
+    Scrape jobs from VC portfolio career pages (Getro-powered).
+
+    These pages list jobs from multiple portfolio companies. Jobs are attributed
+    to the actual company, not the VC.
+
+    Args:
+        vc_name: Optional VC name to scrape. If None, scrapes all configured VCs.
+
+    Returns:
+        Dictionary with scraping statistics
+    """
+    import yaml
+    from pathlib import Path
+
+    try:
+        logger.info("=" * 80)
+        logger.info(f"Starting VC portfolio scraping: {vc_name or 'ALL'}")
+        logger.info("=" * 80)
+
+        start_time = datetime.utcnow()
+
+        # Load VC portfolio config
+        config_path = Path(__file__).parent.parent.parent / "config" / "vc_portfolios.yaml"
+        if not config_path.exists():
+            logger.warning(f"VC portfolios config not found: {config_path}")
+            return {"error": "VC portfolios config not found"}
+
+        with open(config_path, 'r') as f:
+            vc_config = yaml.safe_load(f)
+
+        vc_portfolios = vc_config.get('vc_portfolios', [])
+
+        # Filter by VC name if specified
+        if vc_name:
+            vc_portfolios = [vc for vc in vc_portfolios if vc.get('name') == vc_name]
+            if not vc_portfolios:
+                return {"error": f"VC not found: {vc_name}"}
+
+        result = {
+            'vcs_scraped': 0,
+            'total_jobs_found': 0,
+            'new_jobs': 0,
+            'updated_jobs': 0,
+            'skipped_duplicates': 0,
+            'filtered_location': 0,
+            'companies_created': 0,
+            'errors': []
+        }
+
+        for vc in vc_portfolios:
+            vc_display_name = vc.get('name', 'Unknown VC')
+            careers_url = vc.get('careers_url')
+            scraper_type = vc.get('scraper_type', 'getro')
+
+            if not careers_url:
+                logger.warning(f"No careers_url for VC: {vc_display_name}")
+                continue
+
+            logger.info(f"Scraping VC portfolio: {vc_display_name}")
+
+            try:
+                # Create scraper config
+                company_config = {
+                    'name': vc_display_name,
+                    'careers_url': careers_url,
+                }
+                scraping_config = {
+                    'scraper_type': scraper_type,
+                    'api_endpoint': careers_url,
+                }
+
+                # Create and run scraper
+                scraper = PlaywrightScraper(company_config, scraping_config)
+                jobs = asyncio.run(scraper.scrape())
+
+                logger.info(f"Found {len(jobs)} jobs from {vc_display_name}")
+                result['total_jobs_found'] += len(jobs)
+
+                # Filter jobs by location
+                allowed_jobs, filtered_jobs = location_filter.filter_jobs(jobs)
+                result['filtered_location'] += len(filtered_jobs)
+
+                # Store jobs with company matching
+                with db.get_session() as session:
+                    company_repo = CompanyRepository(session)
+                    job_repo = JobPositionRepository(session)
+                    company_matcher = CompanyMatchingService(session)
+                    dedup_service = JobDeduplicationService(session)
+
+                    for job in allowed_jobs:
+                        company_name = job.get('company', '')
+                        if not company_name:
+                            logger.warning(f"Job missing company name: {job.get('title')}")
+                            continue
+
+                        # Match or create company
+                        matched_company, confidence = company_matcher.find_matching_company(company_name)
+
+                        if matched_company:
+                            company = matched_company
+                        else:
+                            company = company_repo.get_by_name(company_name)
+                            if not company:
+                                company = Company(
+                                    name=company_name,
+                                    website=job.get('job_url', '').split('/careers')[0] if '/careers' in job.get('job_url', '') else '',
+                                    careers_url=job.get('job_url', ''),
+                                    industry=job.get('industry', 'Unknown'),
+                                    is_active=False,
+                                    location=job.get('location', ''),
+                                    scraping_config={}
+                                )
+                                session.add(company)
+                                session.flush()
+                                result['companies_created'] += 1
+                                logger.info(f"Created company from VC portfolio: {company_name}")
+
+                        # Check for duplicates
+                        duplicate_job, dup_score, needs_review = dedup_service.check_for_duplicate(
+                            company_id=str(company.id),
+                            title=job.get('title', ''),
+                            location=job.get('location', '')
+                        )
+
+                        existing_job = job_repo.get_by_external_id(job.get('external_id', ''), company.id)
+
+                        if existing_job:
+                            existing_job.title = job.get('title', '')
+                            existing_job.location = job.get('location', '')
+                            existing_job.job_url = job.get('job_url', '')
+                            existing_job.remote_type = 'remote' if job.get('is_remote', False) else 'onsite'
+                            existing_job.last_seen_at = datetime.utcnow()
+                            result['updated_jobs'] += 1
+                        elif duplicate_job and dup_score >= dedup_service.HIGH_CONFIDENCE_THRESHOLD:
+                            result['skipped_duplicates'] += 1
+                        else:
+                            new_job = JobPosition(
+                                company_id=company.id,
+                                external_id=job.get('external_id', ''),
+                                title=job.get('title', ''),
+                                location=job.get('location', ''),
+                                job_url=job.get('job_url', ''),
+                                remote_type='remote' if job.get('is_remote', False) else 'onsite',
+                                posted_date=job.get('posted_date'),
+                                scraped_at=datetime.utcnow(),
+                                last_seen_at=datetime.utcnow(),
+                                is_active=True,
+                                source='vc_portfolio',
+                                metadata={'vc_source': vc_display_name}
+                            )
+                            session.add(new_job)
+                            result['new_jobs'] += 1
+
+                    session.commit()
+
+                result['vcs_scraped'] += 1
+
+            except Exception as e:
+                logger.error(f"Error scraping VC {vc_display_name}: {e}")
+                result['errors'].append({'vc': vc_display_name, 'error': str(e)})
+
+        duration = (datetime.utcnow() - start_time).total_seconds()
+        result['duration_seconds'] = duration
+
+        logger.success("=" * 80)
+        logger.success("VC PORTFOLIO SCRAPING COMPLETED")
+        logger.success(f"  VCs scraped: {result['vcs_scraped']}")
+        logger.success(f"  Jobs found: {result['total_jobs_found']}")
+        logger.success(f"  New jobs: {result['new_jobs']}")
+        logger.success(f"  Updated jobs: {result['updated_jobs']}")
+        logger.success(f"  Companies created: {result['companies_created']}")
+        logger.success(f"  Duration: {duration:.2f}s")
+        logger.success("=" * 80)
+
+        return result
+
+    except Exception as exc:
+        logger.error(f"VC portfolio scraping failed: {exc}")
+        logger.exception(exc)
         raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))

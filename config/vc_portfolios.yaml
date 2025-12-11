@@ -1,0 +1,13 @@
+# VC Portfolio Career Pages Configuration
+# These are VC-hosted job boards that list jobs from multiple portfolio companies.
+# Jobs are attributed to the actual company, not the VC.
+
+vc_portfolios:
+  - name: Viola
+    website: https://www.viola-group.com
+    careers_url: https://careers.viola-group.com/jobs
+    scraper_type: getro
+    collection_id: 6263  # Getro collection ID for API access
+    description: Israeli VC with portfolio companies in various tech sectors
+    is_active: true
+

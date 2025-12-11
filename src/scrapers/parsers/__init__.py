@@ -46,3 +46,7 @@ __all__.append('AshbyParser')
 from .linkedin_parser import LinkedInParser
 
 __all__.append('LinkedInParser')
+
+from .getro_parser import GetroParser
+
+__all__.append('GetroParser')

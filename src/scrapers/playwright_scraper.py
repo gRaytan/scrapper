@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright, Browser, Page
 
 from .base_scraper import BaseScraper
-from .parsers import ComeetParser, GreenhouseParser, AmazonParser, EightfoldParser, SmartRecruitersParser, RSSParser, MetaParser, SalesforceParser, JibeParser, PhenomParser, AshbyParser, LinkedInParser, APIParser
+from .parsers import ComeetParser, GreenhouseParser, AmazonParser, EightfoldParser, SmartRecruitersParser, RSSParser, MetaParser, SalesforceParser, JibeParser, PhenomParser, AshbyParser, LinkedInParser, APIParser, GetroParser
 from src.utils.logger import logger
 from urllib.parse import urljoin, urlparse
 
@@ -22,22 +22,22 @@ from urllib.parse import urljoin, urlparse
 
 class PlaywrightScraper(BaseScraper):
     """Scraper using Playwright for dynamic content."""
-    
+
     def __init__(self, company_config: Dict[str, Any], scraping_config: Dict[str, Any], **kwargs):
         """Initialize PlaywrightScraper with lazy parser loading.
-        
+
         Args:
             company_config: Company configuration dictionary
             scraping_config: Scraping configuration dictionary
             **kwargs: Additional keyword arguments
         """
         super().__init__(company_config, scraping_config, **kwargs)
-        
+
         # Browser instances
         self.browser: Optional[Browser] = None
         self.page: Optional[Page] = None
         self.playwright: Optional[Any] = None
-        
+
         # Lazy-loaded parsers (instantiated only when needed)
         self._parsers: Dict[str, Any] = {}
         self._parser_classes = {
@@ -53,12 +53,13 @@ class PlaywrightScraper(BaseScraper):
             'phenom': PhenomParser,
             'ashby': lambda: AshbyParser(self.scraping_config.get('company_identifier', '')),
             'linkedin': LinkedInParser,
+            'getro': GetroParser,
             'generic': lambda: APIParser(
                 field_mapping=self.scraping_config.get('field_mapping', {}),
                 url_template=self.scraping_config.get('url_template')
             ),
         }
-    
+
     def _get_parser(self, parser_name: str) -> Any:
         """Get or create a parser instance lazily.
 
@@ -81,12 +82,12 @@ class PlaywrightScraper(BaseScraper):
             else:
                 self._parsers[parser_name] = parser_class
         return self._parsers[parser_name]
-    
+
     async def setup(self):
         """Initialize Playwright browser."""
         logger.info("Setting up Playwright browser")
         self.playwright = await async_playwright().start()
-        
+
         # Launch browser with stealth options
         self.browser = await self.playwright.chromium.launch(
             headless=True,
@@ -96,16 +97,16 @@ class PlaywrightScraper(BaseScraper):
                 '--no-sandbox',
             ]
         )
-        
+
         # Create context with realistic settings
         context = await self.browser.new_context(
             viewport={'width': 1920, 'height': 1080},
             user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
         )
-        
+
         self.page = await context.new_page()
         logger.success("Playwright browser ready")
-    
+
     async def teardown(self):
         """Close Playwright browser."""
         logger.info("Closing Playwright browser")
@@ -115,7 +116,7 @@ class PlaywrightScraper(BaseScraper):
             await self.browser.close()
         if self.playwright:
             await self.playwright.stop()
-    
+
     async def scrape(self) -> List[Dict[str, Any]]:
         """Main scraping method that routes to appropriate scraper based on configuration.
 
@@ -167,6 +168,7 @@ class PlaywrightScraper(BaseScraper):
             'api': self._get_api_scraper_method,
             'comeet': self._get_api_scraper_method,
             'playwright': self._get_playwright_scraper_method,
+            'getro': self._scrape_getro,
         }
 
         if scraper_type not in scraper_methods:
@@ -198,10 +200,10 @@ class PlaywrightScraper(BaseScraper):
 
     async def _scrape_api(self) -> List[Dict[str, Any]]:
         """Scrape jobs from API endpoint.
-        
+
         Returns:
             List of job dictionaries
-            
+
         Raises:
             ValueError: If api_endpoint is not configured
             httpx.HTTPError: If API request fails
@@ -209,30 +211,30 @@ class PlaywrightScraper(BaseScraper):
         api_endpoint = self.scraping_config.get("api_endpoint")
         if not api_endpoint:
             raise ValueError("api_endpoint is required for API scraping")
-        
+
         api_params = self.scraping_config.get("api_params", {})
         timeout = self.scraping_config.get("timeout", 30.0)
-        
+
         logger.info(f"Fetching jobs from API: {api_endpoint}")
         logger.debug(f"API params: {api_params}")
-        
+
         try:
             # Fetch data from API
             data = await self._fetch_api_data(api_endpoint, api_params, timeout)
-            
+
             # Detect format and get parser
             api_format = self._detect_api_format(data)
             parser = self._get_parser(api_format)
-            
+
             # Extract positions from response
             positions = self._extract_positions_from_response(data, api_format)
-            
+
             # Parse and filter jobs
             jobs = await self._parse_and_filter_jobs(positions, parser)
-            
+
             self.stats["requests_made"] += 1
             return jobs
-            
+
         except httpx.HTTPError as e:
             logger.error(f"API request failed: {e}")
             self.stats["requests_made"] += 1
@@ -244,15 +246,15 @@ class PlaywrightScraper(BaseScraper):
 
     async def _fetch_api_data(self, endpoint: str, params: Dict[str, Any], timeout: float) -> Any:
         """Fetch data from API endpoint.
-        
+
         Args:
             endpoint: API endpoint URL
             params: Query parameters
             timeout: Request timeout in seconds
-            
+
         Returns:
             Parsed JSON response
-            
+
         Raises:
             httpx.HTTPError: If request fails
         """
@@ -380,16 +382,16 @@ class PlaywrightScraper(BaseScraper):
 
     async def _parse_and_filter_jobs(self, positions: List[Dict[str, Any]], parser: Any) -> List[Dict[str, Any]]:
         """Parse positions and apply filters.
-        
+
         Args:
             positions: List of raw position data
             parser: Parser instance to use
-            
+
         Returns:
             List of validated and filtered job dictionaries
         """
         jobs = []
-        
+
         for position in positions:
             try:
                 job = parser.parse(position)
@@ -397,35 +399,35 @@ class PlaywrightScraper(BaseScraper):
                     position_name = position.get('name') or position.get('title', 'Unknown')
                     logger.warning(f"Failed to parse position: {position_name}")
                     continue
-                
+
                 logger.debug(f"Parsed job: {job.get('title')} at {job.get('location')}")
-                
+
                 if not self.validate_job_data(job):
                     logger.warning(f"Job failed validation: {job.get('title')}")
                     continue
-                
+
                 if not self.matches_location_filter(job):
                     self.stats["jobs_filtered"] += 1
                     logger.debug(f"Filtered out job: {job.get('title')} at {job.get('location')}")
                     continue
-                
+
                 jobs.append(self.normalize_job_data(job))
-                
+
             except Exception as e:
                 logger.error(f"Error parsing position: {e}")
                 continue
-        
+
         return jobs
 
     def _make_absolute_url(self, href: str) -> str:
         """Convert relative URL to absolute URL.
-        
+
         Args:
             href: URL or path to convert (can be absolute, relative, or protocol-relative)
-            
+
         Returns:
             Absolute URL. Returns original href if it's already absolute or if base URL is not configured.
-            
+
         Examples:
             >>> self._make_absolute_url("https://example.com/jobs")
             "https://example.com/jobs"
@@ -434,34 +436,34 @@ class PlaywrightScraper(BaseScraper):
             >>> self._make_absolute_url("job/123")
             "https://company.com/job/123"
         """
-        
+
         # If already absolute URL, return as-is
         if href.startswith(("http://", "https://")):
             return href
-        
+
         # Get base URL from config
         base_url = self.company_config.get("website", "")
         if not base_url:
             logger.warning(f"No base URL configured, returning relative URL: {href}")
             return href
-        
+
         # Ensure base_url has a scheme
         if not base_url.startswith(("http://", "https://")):
             base_url = f"https://{base_url}"
-        
+
         # Use urljoin for proper URL joining (handles all edge cases)
         absolute_url = urljoin(base_url, href)
-        
+
         logger.debug(f"Converted URL: {href} -> {absolute_url}")
         return absolute_url
 
     async def _extract_jobs_from_page(self, selectors: Dict[str, str], page_num: int = 1) -> List[Dict[str, Any]]:
         """Extract job listings from current page.
-        
+
         Args:
             selectors: Dictionary of CSS selectors for job elements
             page_num: Page number for logging context (default: 1)
-            
+
         Returns:
             List of validated and normalized job dictionaries
         """
@@ -486,18 +488,18 @@ class PlaywrightScraper(BaseScraper):
         for idx, element in enumerate(job_elements, 1):
             try:
                 job = await self._extract_job_from_element(element, selectors)
-                
+
                 if not job:
                     logger.debug(f"Page {page_num}, Job {idx}: No data extracted")
                     continue
-                
+
                 if not self.validate_job_data(job):
                     logger.debug(f"Page {page_num}, Job {idx}: Failed validation - {job.get('title', 'Unknown')}")
                     continue
-                
+
                 jobs.append(self.normalize_job_data(job))
                 logger.debug(f"Page {page_num}, Job {idx}: ✓ {job.get('title')} at {job.get('location')}")
-                
+
             except Exception as e:
                 logger.error(f"Page {page_num}, Job {idx}: Error extracting - {e}")
                 self.stats["errors"] += 1
@@ -507,7 +509,7 @@ class PlaywrightScraper(BaseScraper):
 
     async def _debug_selectors(self, selectors: Dict[str, str]) -> None:
         """Debug helper to test all selectors when no jobs are found.
-        
+
         Args:
             selectors: Dictionary of CSS selectors to test
         """
@@ -516,7 +518,7 @@ class PlaywrightScraper(BaseScraper):
         for selector_name, selector_value in selectors.items():
             if not selector_value:
                 continue
-            
+
             try:
                 elements = await self.page.query_selector_all(selector_value)
                 logger.debug(f"Selector '{selector_name}' ({selector_value}): {len(elements)} elements")
@@ -529,11 +531,11 @@ class PlaywrightScraper(BaseScraper):
         selectors: Dict[str, str]
     ) -> Dict[str, Any]:
         """Extract job data from a single element.
-        
+
         Args:
             element: Playwright element handle
             selectors: Dictionary of CSS selectors for job fields
-            
+
         Returns:
             Dictionary containing extracted job data
         """
@@ -542,24 +544,24 @@ class PlaywrightScraper(BaseScraper):
         try:
             # Extract title
             title_el = await self._extract_text_field(element, selectors.get("job_title"), "title", job)
-            
+
             # Extract location
             await self._extract_text_field(element, selectors.get("job_location"), "location", job)
-            
+
             # Extract URL using multiple strategies
             await self._extract_job_url(element, selectors, job, title_el)
-            
+
             # Extract optional fields
             await self._extract_text_field(element, selectors.get("job_department"), "department", job)
             await self._extract_text_field(element, selectors.get("job_type"), "employment_type", job)
-            
+
             # Generate external_id
             self._generate_external_id(job)
-            
+
         except Exception as e:
             logger.error(f"Error extracting job from element: {e}")
             return {}
-        
+
         return job
 
     async def _extract_text_field(
@@ -570,19 +572,19 @@ class PlaywrightScraper(BaseScraper):
         job: Dict[str, Any]
     ) -> Optional[Any]:
         """Extract text from an element using a selector.
-        
+
         Args:
             element: Parent element to search within
             selector: CSS selector for the field
             field_name: Name of the field to store in job dict
             job: Job dictionary to update
-            
+
         Returns:
             The element if found, None otherwise
         """
         if not selector:
             return None
-        
+
         try:
             field_el = await element.query_selector(selector)
             if field_el:
@@ -591,7 +593,7 @@ class PlaywrightScraper(BaseScraper):
                 return field_el
         except Exception as e:
             logger.debug(f"Failed to extract {field_name} with selector '{selector}': {e}")
-        
+
         return None
 
     async def _extract_job_url(
@@ -602,13 +604,13 @@ class PlaywrightScraper(BaseScraper):
         title_el: Optional[Any] = None
     ) -> bool:
         """Extract job URL using multiple fallback strategies.
-        
+
         Args:
             element: Parent element to search within
             selectors: Dictionary of CSS selectors
             job: Job dictionary to update
             title_el: Optional title element (if already extracted)
-            
+
         Returns:
             True if URL was found, False otherwise
         """
@@ -618,7 +620,7 @@ class PlaywrightScraper(BaseScraper):
             if url:
                 job["job_url"] = self._make_absolute_url(url)
                 return True
-        
+
         # Strategy 2: Look for link using URL selector
         url_selector = selectors.get("job_url")
         if url_selector:
@@ -631,7 +633,7 @@ class PlaywrightScraper(BaseScraper):
                         return True
             except Exception as e:
                 logger.debug(f"Failed to extract URL with selector '{url_selector}': {e}")
-        
+
         # Strategy 3: Look for any job-related link in the element
         try:
             link_el = await element.query_selector("a[href]")
@@ -642,15 +644,15 @@ class PlaywrightScraper(BaseScraper):
                     return True
         except Exception as e:
             logger.debug(f"Failed to find fallback link: {e}")
-        
+
         return False
 
     async def _get_href_from_element(self, element) -> Optional[str]:
         """Safely extract href attribute from an element.
-        
+
         Args:
             element: Element to extract href from
-            
+
         Returns:
             href value or None
         """
@@ -662,15 +664,15 @@ class PlaywrightScraper(BaseScraper):
                 return href if href else None
         except Exception as e:
             logger.debug(f"Failed to get href: {e}")
-        
+
         return None
 
     def _is_job_url(self, url: str) -> bool:
         """Check if URL looks like a job posting URL.
-        
+
         Args:
             url: URL to check
-            
+
         Returns:
             True if URL appears to be a job posting
         """
@@ -680,11 +682,11 @@ class PlaywrightScraper(BaseScraper):
 
     def _generate_external_id(self, job: Dict[str, Any]) -> None:
         """Generate external_id for a job.
-        
+
         Args:
             job: Job dictionary to update with external_id
         """
-        
+
         if "job_url" in job:
             # Use last part of URL as ID, but include company name for uniqueness
             url_part = job["job_url"].split("/")[-1].split("?")[0]
@@ -699,9 +701,9 @@ class PlaywrightScraper(BaseScraper):
 
     async def _scrape_playwright_page(self) -> List[Dict[str, Any]]:
         """Scrape jobs from a page using Playwright.
-        
+
         Handles both static and dynamic pages based on configuration.
-        
+
         Configuration options:
             - search_url: URL to navigate to (defaults to careers_url)
             - wait_until: Page load strategy - 'domcontentloaded', 'load', or 'networkidle' (default: 'domcontentloaded')
@@ -709,24 +711,24 @@ class PlaywrightScraper(BaseScraper):
             - wait_for_selector: Optional selector to wait for after page load
             - selector_timeout: Timeout for wait_for_selector in ms (default: 30000)
             - debug_mode: Save page HTML for debugging (default: false)
-        
+
         Returns:
             List of job dictionaries
         """
         careers_url = self.company_config.get("careers_url")
         search_url = self.scraping_config.get("search_url", careers_url)
-        
+
         if not search_url:
             logger.error("No search_url or careers_url configured")
             return []
-        
+
         # Get configurable options
         wait_until = self.scraping_config.get("wait_until", "domcontentloaded")
         page_timeout = self.scraping_config.get("page_timeout", 90000)
         selector_timeout = self.scraping_config.get("selector_timeout", 30000)
 
         logger.info(f"Navigating to {search_url}")
-        
+
         try:
             await self.page.goto(search_url, wait_until=wait_until, timeout=page_timeout)
             logger.info(f"Page loaded successfully")
@@ -749,45 +751,45 @@ class PlaywrightScraper(BaseScraper):
 
         self.stats["pages_scraped"] += 1
         self.stats["requests_made"] += 1
-        
+
         logger.info(f"Scraped {len(jobs)} jobs from page")
         return jobs
 
     async def _save_page_debug_info(self) -> None:
         """Save page HTML for debugging purposes.
-        
+
         Only called when debug_mode is enabled in configuration.
         """
         try:
             html_content = await self.page.content()
             logger.debug(f"Page HTML length: {len(html_content)} characters")
-            
+
             # Get debug directory from config or use default
             debug_dir = self.scraping_config.get("debug_dir", "data/raw")
             os.makedirs(debug_dir, exist_ok=True)
-            
+
             company_name = self.company_config.get('name', 'unknown').replace(' ', '_')
             debug_file = os.path.join(debug_dir, f"{company_name}_page.html")
-            
+
             with open(debug_file, 'w', encoding='utf-8') as f:
                 f.write(html_content)
-            
+
             logger.debug(f"Saved page HTML to {debug_file}")
         except Exception as e:
             logger.warning(f"Failed to save debug info: {e}")
 
     async def _wait_for_content_load(self, timeout: int = 30000) -> None:
         """Wait for dynamic content to load.
-        
+
         Args:
             timeout: Maximum time to wait in milliseconds
         """
         wait_selector = self.scraping_config.get("wait_for_selector")
-        
+
         if not wait_selector:
             logger.debug("No wait_for_selector configured, skipping wait")
             return
-        
+
         try:
             await self.page.wait_for_selector(wait_selector, timeout=timeout)
             logger.info(f"Content loaded - found selector: {wait_selector}")
@@ -947,9 +949,9 @@ class PlaywrightScraper(BaseScraper):
     async def _scrape_api_with_pagination(self) -> List[Dict[str, Any]]:
         """
         Scrape jobs from API with offset-based pagination.
-        
+
         Used for APIs like Amazon and Nvidia (Eightfold) that support pagination.
-        
+
         Configuration:
             - api_endpoint: API URL (required)
             - timeout: Request timeout in seconds (default: 30)
@@ -962,7 +964,7 @@ class PlaywrightScraper(BaseScraper):
             - response_structure:
                 - jobs_key: Path to jobs array (default: "jobs")
                 - total_key: Path to total count (default: "hits")
-        
+
         Returns:
             List of job dictionaries
         """
@@ -971,12 +973,12 @@ class PlaywrightScraper(BaseScraper):
         if not api_endpoint:
             logger.error("No api_endpoint configured for API pagination scraping")
             return []
-        
+
         # Get configuration
         pagination_params = self.scraping_config.get("pagination_params", {})
         query_params = self.scraping_config.get("query_params", {})
         response_structure = self.scraping_config.get("response_structure", {})
-        
+
         offset_param = pagination_params.get("offset_param", "offset")
         limit_param = pagination_params.get("limit_param", "limit")
         page_size = pagination_params.get("page_size", 100)
@@ -984,43 +986,43 @@ class PlaywrightScraper(BaseScraper):
         jobs_key = response_structure.get("jobs_key", "jobs")
         total_key = response_structure.get("total_key", "hits")
         timeout = self.scraping_config.get("timeout", 30.0)
-        
+
         logger.info(f"Fetching jobs from API with pagination: {api_endpoint}")
         logger.info(f"Pagination: {offset_param}={page_size}, max_pages={max_pages}")
-        
+
         all_jobs = []
         offset = 0
         page = 0
-        
+
         # Get parser once (not in loop)
         parser = self._get_api_parser_for_pagination()
-        
+
         while page < max_pages:
             # Build params for this page
             params = dict(query_params)
             params[offset_param] = offset
             if limit_param:  # Only add limit if specified (Eightfold doesn't use it)
                 params[limit_param] = page_size
-            
+
             logger.info(f"Fetching page {page + 1} (offset={offset}, limit={page_size})")
-            
+
             try:
                 # Fetch page data
                 async with httpx.AsyncClient(timeout=timeout) as client:
                     response = await client.get(api_endpoint, params=params)
                     response.raise_for_status()
                     data = response.json()
-                
+
                 # Extract positions from response (supports nested keys)
                 positions = self._extract_nested_value(data, jobs_key)
-                
+
                 if positions and isinstance(positions, list):
                     # Get total hits if available
                     total_hits = self._extract_nested_value(data, total_key) if total_key else 0
-                    
+
                     logger.info(f"Found {len(positions)} jobs on page {page + 1}" +
                                (f" (total: {total_hits})" if total_hits else ""))
-                    
+
                     # Parse jobs from this page
                     jobs_on_page = []
                     for position in positions:
@@ -1031,10 +1033,10 @@ class PlaywrightScraper(BaseScraper):
                             else:
                                 self.stats["jobs_filtered"] += 1
                                 logger.debug(f'Filtered out job: {job.get("title")} at {job.get("location")}')
-                    
+
                     all_jobs.extend(jobs_on_page)
                     self.stats["requests_made"] += 1
-                    
+
                     # Check if we've reached the end
                     if len(positions) == 0:
                         logger.info(f"No more jobs found at page {page + 1}")
@@ -1049,14 +1051,14 @@ class PlaywrightScraper(BaseScraper):
                     logger.warning(f"Unexpected API format or no positions found")
                     logger.warning(f"Response keys: {list(data.keys()) if isinstance(data, dict) else type(data)}")
                     break
-                
+
                 # Move to next page
                 offset += len(positions)
                 page += 1
-                
+
                 # Delay between requests
                 await asyncio.sleep(self.scraping_config.get("wait_time", 1))
-                
+
             except httpx.HTTPError as e:
                 logger.error(f"HTTP error fetching page {page + 1} from {api_endpoint}: {e}")
                 self.stats["errors"] += 1
@@ -1065,7 +1067,7 @@ class PlaywrightScraper(BaseScraper):
                 logger.error(f"Error fetching page {page + 1} from {api_endpoint}: {e}")
                 self.stats["errors"] += 1
                 break
-        
+
         logger.info(f"Total jobs scraped: {len(all_jobs)} across {page} pages")
         return all_jobs
 
@@ -1507,10 +1509,10 @@ class PlaywrightScraper(BaseScraper):
     async def _scrape_linkedin(self) -> List[Dict[str, Any]]:
         """
         Scrape LinkedIn jobs using the hidden API endpoint.
-        
+
         LinkedIn provides a public API endpoint that returns HTML with job listings.
         This method handles pagination and parses the HTML response.
-        
+
         Configuration:
             - api_endpoint: LinkedIn jobs API URL (required)
             - query_params: Search parameters (keywords, location)
@@ -1518,56 +1520,56 @@ class PlaywrightScraper(BaseScraper):
                 - offset_param: Name of offset parameter (default: "start")
                 - page_size: Number of jobs per page (default: 25)
                 - max_pages: Maximum pages to fetch (default: 10)
-        
+
         Returns:
             List of job dictionaries
         """
         api_endpoint = self.scraping_config.get("api_endpoint")
         if not api_endpoint:
             raise ValueError("api_endpoint is required for LinkedIn scraping")
-        
+
         # Get configuration
         pagination_params = self.scraping_config.get("pagination_params", {})
         query_params = self.scraping_config.get("query_params", {})
-        
+
         offset_param = pagination_params.get("offset_param", "start")
         page_size = pagination_params.get("page_size", 25)
         max_pages = pagination_params.get("max_pages", 10)
         timeout = self.scraping_config.get("timeout", 30.0)
-        
+
         logger.info(f"Fetching jobs from LinkedIn API: {api_endpoint}")
         logger.info(f"Search params: {query_params}")
         logger.info(f"Pagination: {offset_param}={page_size}, max_pages={max_pages}")
-        
+
         all_jobs = []
         offset = 0
         page = 0
-        
+
         # Get LinkedIn parser
         parser = self._get_parser('linkedin')
-        
+
         while page < max_pages:
             # Build params for this page
             params = dict(query_params)
             params[offset_param] = offset
-            
+
             logger.info(f"Fetching page {page + 1} (offset={offset})")
-            
+
             try:
                 # Fetch page data (LinkedIn returns HTML, not JSON)
                 async with httpx.AsyncClient(timeout=timeout) as client:
                     response = await client.get(api_endpoint, params=params)
                     response.raise_for_status()
                     html_content = response.text
-                
+
                 # Parse HTML with BeautifulSoup
                 from bs4 import BeautifulSoup
                 soup = BeautifulSoup(html_content, 'html.parser')
                 job_elements = soup.select('li')
-                
+
                 if job_elements:
                     logger.info(f"Found {len(job_elements)} job elements on page {page + 1}")
-                    
+
                     # Parse each job element
                     jobs_on_page = []
                     for job_element in job_elements:
@@ -1583,11 +1585,11 @@ class PlaywrightScraper(BaseScraper):
                         except Exception as e:
                             logger.warning(f"Failed to parse job element: {e}")
                             self.stats["errors"] += 1
-                    
+
                     logger.info(f"Parsed {len(jobs_on_page)} jobs from page {page + 1}")
                     all_jobs.extend(jobs_on_page)
                     self.stats["requests_made"] += 1
-                    
+
                     # Check if we've reached the end
                     if len(job_elements) == 0:
                         logger.info(f"No more jobs found at page {page + 1}")
@@ -1598,14 +1600,14 @@ class PlaywrightScraper(BaseScraper):
                 else:
                     logger.warning(f"No job elements found on page {page + 1}")
                     break
-                
+
                 # Move to next page
                 offset += page_size
                 page += 1
-                
+
                 # Delay between requests to be respectful
                 await asyncio.sleep(self.scraping_config.get("wait_time", 2))
-                
+
             except httpx.HTTPError as e:
                 logger.error(f"LinkedIn API request failed: {e}")
                 self.stats["errors"] += 1
@@ -1615,6 +1617,62 @@ class PlaywrightScraper(BaseScraper):
                 logger.error(f"Error scraping LinkedIn page {page + 1}: {e}")
                 self.stats["errors"] += 1
                 break
-        
+
         logger.info(f"Total jobs scraped from LinkedIn: {len(all_jobs)}")
         return all_jobs
+
+
+
+    async def _scrape_getro(self) -> List[Dict[str, Any]]:
+        """Scrape jobs from Getro-powered VC portfolio job boards.
+
+        Getro embeds job data in __NEXT_DATA__ JSON. Each job includes the actual
+        company name, making it ideal for VC portfolio pages like Viola.
+
+        Returns:
+            List of job dictionaries with company names from portfolio companies
+        """
+        careers_url = self.scraping_config.get("api_endpoint") or self.careers_url
+        if not careers_url:
+            raise ValueError("careers_url or api_endpoint is required for Getro scraping")
+
+        logger.info(f"Scraping Getro job board: {careers_url}")
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(
+                    careers_url,
+                    headers={
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    }
+                )
+                response.raise_for_status()
+                self.stats["requests_made"] += 1
+
+            # Extract jobs from HTML using the parser's static method
+            parser = self._get_parser('getro')
+            raw_jobs = GetroParser.extract_jobs_from_html(response.text)
+
+            if not raw_jobs:
+                logger.warning("No jobs found in Getro page")
+                return []
+
+            # Parse each job
+            jobs = []
+            for raw_job in raw_jobs:
+                parsed = parser.parse(raw_job)
+                if parsed and parsed.get("title"):
+                    jobs.append(parsed)
+
+            logger.info(f"Parsed {len(jobs)} jobs from Getro")
+            return jobs
+
+        except httpx.HTTPError as e:
+            logger.error(f"Getro HTTP request failed: {e}")
+            self.stats["errors"] += 1
+            raise
+        except Exception as e:
+            logger.error(f"Error scraping Getro: {e}")
+            self.stats["errors"] += 1
+            raise
