@@ -39,19 +39,57 @@ celery_app.conf.update(
     # Worker settings
     worker_prefetch_multiplier=1,  # Only fetch one task at a time
     worker_max_tasks_per_child=50,  # Restart worker after 50 tasks (prevent memory leaks)
+    worker_concurrency=1,  # Only run 1 task at a time to prevent thread exhaustion
     
     # Retry settings
     task_default_retry_delay=300,  # 5 minutes
     task_max_retries=3,
     
     # Beat schedule for periodic tasks
+    # STAGGERED SCHEDULE to prevent thread exhaustion:
+    # - 2:00 AM: Mark stale jobs (quick task)
+    # - 2:30 AM: Company scraping (from companies.yaml)
+    # - 4:00 AM: LinkedIn by keyword (131 searches, ~1 hour)
+    # - 6:00 AM: LinkedIn by company name (~1 hour)
     beat_schedule={
-        # Daily scraping at 5:00 AM UTC
+        # Mark stale jobs as inactive daily - runs first, quick task
+        'daily-mark-stale-jobs': {
+            'task': 'src.workers.tasks.mark_stale_jobs_inactive',
+            'schedule': crontab(hour=2, minute=0),  # 2:00 AM UTC daily
+            'options': {
+                'expires': 1800,
+            }
+        },
+
+        # Daily scraping at 2:30 AM UTC - company page scrapers
         'daily-scraping': {
             'task': 'src.workers.tasks.run_daily_scraping',
-            'schedule': crontab(hour=5, minute=0),  # 5:00 AM UTC daily
+            'schedule': crontab(hour=2, minute=30),  # 2:30 AM UTC daily
             'options': {
-                'expires': 3600,  # Task expires after 1 hour if not picked up
+                'expires': 5400,  # 90 minutes
+            }
+        },
+
+        # LinkedIn job scraping daily (by job position/keyword) - 4:00 AM
+        'daily-linkedin-scraping': {
+            'task': 'src.workers.tasks.scrape_linkedin_jobs',
+            'schedule': crontab(hour=4, minute=0),  # 4:00 AM UTC daily
+            'kwargs': {
+                'keywords': None,  # Search for all job roles
+                'location': 'Israel',
+                'max_pages': 40  # ~1000 jobs per role
+            },
+            'options': {
+                'expires': 7200,  # 2 hours
+            }
+        },
+
+        # LinkedIn job scraping by company name daily - 6:00 AM
+        'daily-linkedin-by-company-scraping': {
+            'task': 'scrape_linkedin_jobs_by_company',
+            'schedule': crontab(hour=6, minute=0),  # 6:00 AM UTC daily
+            'options': {
+                'expires': 7200,  # 2 hours
             }
         },
 
@@ -61,38 +99,6 @@ celery_app.conf.update(
             'schedule': crontab(hour=2, minute=0, day_of_week=5),  # Saturday 2:00 AM UTC
             'options': {
                 'expires': 3600,
-            }
-        },
-
-        # Mark stale jobs as inactive daily
-        'daily-mark-stale-jobs': {
-            'task': 'src.workers.tasks.mark_stale_jobs_inactive',
-            'schedule': crontab(hour=5, minute=0),  # 5:00 AM UTC daily
-            'options': {
-                'expires': 3600,
-            }
-        },
-
-        # LinkedIn job scraping daily (by job position/keyword)
-        'daily-linkedin-scraping': {
-            'task': 'src.workers.tasks.scrape_linkedin_jobs',
-            'schedule': crontab(hour=5, minute=0),  # 5:00 AM UTC daily
-            'kwargs': {
-                'keywords': None,  # Search for all job roles
-                'location': 'Israel',
-                'max_pages': 40  # ~1000 jobs per role
-            },
-            'options': {
-                'expires': 7200,  # Task expires after 2 hours if not picked up
-            }
-        },
-
-        # LinkedIn job scraping by company name daily
-        'daily-linkedin-by-company-scraping': {
-            'task': 'scrape_linkedin_jobs_by_company',
-            'schedule': crontab(hour=5, minute=0),  # 5:00 AM UTC daily
-            'options': {
-                'expires': 7200,  # Task expires after 2 hours if not picked up
             }
         },
 
