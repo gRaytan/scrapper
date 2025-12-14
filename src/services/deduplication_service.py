@@ -93,6 +93,7 @@ class JobDeduplicationService:
     def normalize_city_name(self, location: str) -> str:
         """
         Normalize city name to a canonical form.
+        Returns the city that appears FIRST in the location string.
 
         Args:
             location: Raw location string
@@ -105,13 +106,23 @@ class JobDeduplicationService:
 
         loc_lower = location.lower()
 
-        # Check each canonical city and its aliases
+        # Find all matching cities and their positions in the string
+        matches = []
         for canonical, aliases in self.CITY_ALIASES.items():
-            if canonical in loc_lower:
-                return canonical
+            # Check canonical name
+            pos = loc_lower.find(canonical)
+            if pos != -1:
+                matches.append((pos, canonical))
+            # Check aliases
             for alias in aliases:
-                if alias in loc_lower:
-                    return canonical
+                pos = loc_lower.find(alias)
+                if pos != -1:
+                    matches.append((pos, canonical))
+
+        # Return the city that appears first in the string
+        if matches:
+            matches.sort(key=lambda x: x[0])
+            return matches[0][1]
 
         return loc_lower
 
