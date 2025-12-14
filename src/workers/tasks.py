@@ -579,6 +579,12 @@ def scrape_linkedin_jobs(
                             logger.warning(f"Job missing company name: {job.get('title', 'Unknown')}")
                             continue
 
+                        # Skip companies with non-Latin characters (Chinese, Japanese, Korean, etc.)
+                        import re
+                        if re.search(r'[一-龥ぁ-んァ-ン가-힣]', linkedin_company_name):
+                            logger.debug(f"Skipping company with non-Latin characters: {linkedin_company_name}")
+                            continue
+
                         # Try to match with existing company in database
                         matched_company, confidence = company_matcher.find_matching_company(linkedin_company_name)
 
