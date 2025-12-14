@@ -825,20 +825,21 @@ companies:
   industry: Health Tech
   size: 50-200
   location: Tel Aviv, Israel
+  is_active: true
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - IL
   scraping_config:
     scraper_type: api
     pagination_type: none
     requires_js: false
     api_endpoint: https://www.lumen.me/careers.json
     api_method: GET
-    location_filter:
-      enabled: true
-      countries:
-      - Israel
-      match_keywords:
-      - Israel
-      - Tel Aviv
-      - IL
     selectors:
       job_list: null
       job_item: null
@@ -848,32 +849,24 @@ companies:
   industry: Revenue Intelligence / Sales Tech
   size: 1000-2000
   location: Tel Aviv, Israel / San Francisco, USA
+  is_active: true
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Ramat Gan
+    - Haifa
+    - Jerusalem
+    - IL
   scraping_config:
     scraper_type: api
     pagination_type: none
     requires_js: false
     api_endpoint: https://boards-api.greenhouse.io/v1/boards/gongio/jobs
     api_method: GET
-    location_filter:
-      enabled: true
-      countries:
-      - Israel
-      - United States
-      match_keywords:
-      - Israel
-      - Tel Aviv
-      - Ramat Gan
-      - Haifa
-      - Jerusalem
-      - IL
-      - Remote
-      - United States
-      - US
-      - New York
-      - San Francisco
-      - Austin
-      - Chicago
-      - Salt Lake
     selectors:
       job_list: null
       job_item: null
@@ -936,31 +929,21 @@ companies:
   industry: Technology / Consumer Electronics
   size: 100000+
   location: Cupertino, USA / Herzliya, Israel
+  is_active: true
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Herzliya
+    - Haifa
+    - Tel Aviv
+    - IL
   scraping_config:
     scraper_type: playwright
     requires_js: true
     wait_for_selector: '[data-test=''search-result'']'
-    location_filter:
-      enabled: true
-      countries:
-      - Israel
-      - United States
-      match_keywords:
-      - Israel
-      - Herzliya
-      - Haifa
-      - Tel Aviv
-      - IL
-      - Remote
-      - United States
-      - US
-      - California
-      - Texas
-      - New York
-      - Washington
-      - Cupertino
-      - Austin
-      - Seattle
     selectors:
       job_list: '[data-test=''search-result'']'
       job_item: a[data-test='job-link']
