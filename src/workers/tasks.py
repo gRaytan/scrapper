@@ -595,7 +595,7 @@ def scrape_linkedin_jobs(
                                     website=f"https://www.linkedin.com/company/{linkedin_company_name.lower().replace(' ', '-')}",
                                     careers_url=job.get('job_url', ''),
                                     industry="Unknown",
-                                    is_active=False,  # Don't auto-activate LinkedIn-discovered companies
+                                    is_active=True,  # Auto-activate LinkedIn-discovered companies
                                     location=job.get('location', ''),
                                     scraping_config={}
                                 )
