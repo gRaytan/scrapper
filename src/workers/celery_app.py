@@ -95,6 +95,30 @@ celery_app.conf.update(
                 'expires': 7200,  # Task expires after 2 hours if not picked up
             }
         },
+
+        # Cleanup stuck sessions every 30 minutes
+        'cleanup-stuck-sessions': {
+            'task': 'src.workers.tasks.cleanup_stuck_sessions',
+            'schedule': crontab(minute='*/30'),  # Every 30 minutes
+            'kwargs': {
+                'stuck_hours': 2  # Sessions running > 2 hours are stuck
+            },
+            'options': {
+                'expires': 1800,
+            }
+        },
+
+        # Retry failed sessions every 15 minutes
+        'retry-failed-sessions': {
+            'task': 'src.workers.tasks.retry_failed_sessions',
+            'schedule': crontab(minute='*/15'),  # Every 15 minutes
+            'kwargs': {
+                'failed_minutes': 10  # Only retry sessions that failed within 10 minutes
+            },
+            'options': {
+                'expires': 900,
+            }
+        },
     },
 )
 
@@ -103,4 +127,15 @@ celery_app.conf.update(
     worker_log_format='[%(asctime)s: %(levelname)s/%(processName)s] %(message)s',
     worker_task_log_format='[%(asctime)s: %(levelname)s/%(processName)s] [%(task_name)s(%(task_id)s)] %(message)s',
 )
+
+
+# Worker startup signal - cleanup stuck sessions when worker starts
+from celery.signals import worker_ready
+
+@worker_ready.connect
+def on_worker_ready(sender, **kwargs):
+    """Cleanup stuck sessions when worker starts."""
+    from src.workers.tasks import cleanup_stuck_sessions
+    # Delay by 10 seconds to let worker fully initialize
+    cleanup_stuck_sessions.apply_async(countdown=10)
 

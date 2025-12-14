@@ -276,6 +276,126 @@ def cleanup_old_sessions(self: Task, days: int = 90) -> Dict[str, Any]:
         raise self.retry(exc=exc, countdown=600)
 
 
+@celery_app.task(bind=True, name='src.workers.tasks.cleanup_stuck_sessions', max_retries=1)
+def cleanup_stuck_sessions(self: Task, stuck_hours: int = 2) -> Dict[str, Any]:
+    """
+    Clean up stuck scraping sessions and optionally retry failed ones.
+
+    Sessions that have been 'running' for more than stuck_hours are marked as failed.
+    This handles cases where workers crash or restart during scraping.
+
+    Args:
+        stuck_hours: Hours after which a running session is considered stuck (default: 2)
+
+    Returns:
+        Dictionary with cleanup statistics
+    """
+    try:
+        logger.info(f"Cleaning up stuck sessions (running > {stuck_hours} hours)...")
+
+        with db.get_session() as session:
+            cutoff = datetime.utcnow() - timedelta(hours=stuck_hours)
+
+            # Find and mark stuck sessions as failed
+            stuck_sessions = session.query(ScrapingSession).filter(
+                ScrapingSession.status == 'running',
+                ScrapingSession.started_at < cutoff
+            ).all()
+
+            stuck_count = len(stuck_sessions)
+            for stuck_session in stuck_sessions:
+                stuck_session.status = 'failed'
+                stuck_session.completed_at = datetime.utcnow()
+                logger.warning(f"Marked stuck session as failed: {stuck_session.id} (company: {stuck_session.company_id})")
+
+            session.commit()
+
+            result = {
+                'status': 'success',
+                'stuck_sessions_fixed': stuck_count,
+                'cutoff_hours': stuck_hours
+            }
+
+            if stuck_count > 0:
+                logger.success(f"Fixed {stuck_count} stuck scraping sessions")
+            else:
+                logger.info("No stuck sessions found")
+
+            return result
+
+    except Exception as exc:
+        logger.error(f"Stuck session cleanup failed: {exc}")
+        raise self.retry(exc=exc, countdown=300)
+
+
+@celery_app.task(bind=True, name='src.workers.tasks.retry_failed_sessions', max_retries=1)
+def retry_failed_sessions(self: Task, failed_minutes: int = 10) -> Dict[str, Any]:
+    """
+    Retry scraping for companies whose sessions failed recently.
+
+    Finds sessions that failed in the last N minutes and triggers a new scrape
+    for those companies.
+
+    Args:
+        failed_minutes: Only retry sessions that failed within this many minutes (default: 10)
+
+    Returns:
+        Dictionary with retry statistics
+    """
+    try:
+        logger.info(f"Looking for failed sessions to retry (failed within {failed_minutes} minutes)...")
+
+        with db.get_session() as session:
+            cutoff = datetime.utcnow() - timedelta(minutes=failed_minutes)
+
+            # Find recently failed sessions
+            failed_sessions = session.query(ScrapingSession).filter(
+                ScrapingSession.status == 'failed',
+                ScrapingSession.completed_at >= cutoff
+            ).all()
+
+            retried_count = 0
+            company_ids = []
+
+            for failed_session in failed_sessions:
+                # Check if there's already a newer session for this company
+                newer_session = session.query(ScrapingSession).filter(
+                    ScrapingSession.company_id == failed_session.company_id,
+                    ScrapingSession.started_at > failed_session.started_at
+                ).first()
+
+                if not newer_session:
+                    company_ids.append(str(failed_session.company_id))
+                    retried_count += 1
+
+            # Trigger scraping for failed companies
+            if company_ids:
+                logger.info(f"Triggering retry for {len(company_ids)} companies")
+                # Import here to avoid circular imports
+                scrape_single_company.apply_async(
+                    kwargs={'company_ids': company_ids},
+                    countdown=60  # Wait 1 minute before starting
+                )
+
+            result = {
+                'status': 'success',
+                'failed_sessions_found': len(failed_sessions),
+                'companies_retried': retried_count,
+                'company_ids': company_ids
+            }
+
+            if retried_count > 0:
+                logger.success(f"Scheduled retry for {retried_count} companies")
+            else:
+                logger.info("No failed sessions to retry")
+
+            return result
+
+    except Exception as exc:
+        logger.error(f"Failed session retry failed: {exc}")
+        raise self.retry(exc=exc, countdown=300)
+
+
 @celery_app.task(bind=True, name='src.workers.tasks.mark_stale_jobs_inactive', max_retries=2)
 def mark_stale_jobs_inactive(
     self: Task,
