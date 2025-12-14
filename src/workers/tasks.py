@@ -2,6 +2,7 @@
 Celery tasks for background job processing.
 """
 import asyncio
+import re
 from datetime import datetime, timedelta
 from typing import Dict, Any, Optional, List
 from uuid import UUID
@@ -580,7 +581,6 @@ def scrape_linkedin_jobs(
                             continue
 
                         # Skip companies with non-Latin characters (Chinese, Japanese, Korean, etc.)
-                        import re
                         if re.search(r'[一-龥ぁ-んァ-ン가-힣]', linkedin_company_name):
                             logger.debug(f"Skipping company with non-Latin characters: {linkedin_company_name}")
                             continue
