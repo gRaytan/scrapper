@@ -883,6 +883,18 @@ companies:
   industry: Travel Technology
   size: 10000+
   location: Amsterdam, Netherlands / Tel Aviv, Israel
+  is_active: true
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Ramat Gan
+    - Haifa
+    - Jerusalem
+    - IL
   scraping_config:
     scraper_type: api
     pagination_type: none
@@ -892,26 +904,6 @@ companies:
     api_params:
       page: 1
       limit: 100
-    location_filter:
-      enabled: true
-      countries:
-      - Israel
-      - United States
-      match_keywords:
-      - Israel
-      - Tel Aviv
-      - Ramat Gan
-      - Haifa
-      - Jerusalem
-      - IL
-      - Remote
-      - United States
-      - US
-      - New York
-      - San Francisco
-      - Austin
-      - Chicago
-      - Seattle
     selectors:
       job_list: null
       job_item: null
