@@ -106,8 +106,10 @@ def import_from_yaml():
     
     with db.get_session() as session:
         for c in yaml_companies:
+            # Ensure name is a string (YAML may parse numeric names like "888" as integers)
+            company_name = str(c['name'])
             existing = session.query(Company).filter(
-                Company.name.ilike(c['name'])
+                Company.name.ilike(company_name)
             ).first()
             
             if existing:
@@ -118,11 +120,11 @@ def import_from_yaml():
             else:
                 # Add new company
                 company = Company(
-                    name=c['name'],
+                    name=company_name,
                     website=c.get('website', ''),
                     careers_url=c.get('careers_url', ''),
                     industry=c.get('industry', 'Unknown'),
-                    is_active=False,
+                    is_active=True,
                     location='Israel',
                     scraping_config={}
                 )
