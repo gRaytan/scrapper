@@ -1539,7 +1539,7 @@ companies:
       job_location: .comeet-position-meta
 - name: Innoviz
   website: https://innoviz.tech
-  careers_url: https://innoviz.tech/careers
+  careers_url: https://innoviz.tech/join-us/israel
   industry: Automotive / LiDAR Technology
   size: 201-500
   location: Rosh HaAyin, Israel
@@ -1560,11 +1560,15 @@ companies:
     - Rosh Ha'ayin
     - IL
   scraping_config:
-    scraper_type: api
-    api_endpoint: https://www.comeet.com/careers-api/2.0/company/innoviz/positions
-    api_method: GET
-    pagination_type: none
-    wait_time: 1
+    scraper_type: playwright
+    search_url: https://innoviz.tech/join-us/israel
+    wait_time: 3
+    wait_for_selector: .comeet-position
+    selectors:
+      job_item: dd.comeet-position
+      job_title: .comeet-position-name a
+      job_url: .comeet-position-name a
+      job_location: .comeet-position-meta
 - name: Lemonade
   website: https://www.lemonade.com
   careers_url: https://makers.lemonade.com/
