@@ -1563,12 +1563,12 @@ companies:
     scraper_type: playwright
     search_url: https://innoviz.tech/join-us/israel
     wait_time: 3
-    wait_for_selector: .comeet-position
+    wait_for_selector: .comeet-position-name
     selectors:
-      job_item: dd.comeet-position
-      job_title: .comeet-position-name a
-      job_url: .comeet-position-name a
-      job_location: .comeet-position-meta
+      job_item: .comeet-position-name
+      job_title: a
+      job_url: a
+      job_location: + .comeet-position-meta
 - name: Lemonade
   website: https://www.lemonade.com
   careers_url: https://makers.lemonade.com/

@@ -3025,6 +3025,51 @@ class CompanyScraperTests:
         finally:
             await scraper.teardown()
 
+    async def test_innoviz_scraper(self):
+        """Test Innoviz scraper using Playwright with Comeet widget."""
+        logger.info("=" * 80)
+        logger.info("Testing Innoviz Scraper (Playwright/Comeet Widget)")
+        logger.info("=" * 80)
+
+        location_filter, scraping_config = self.load_company_config("Innoviz")
+
+        company_config = {
+            "name": "Innoviz",
+            "website": "https://innoviz.tech",
+            "careers_url": "https://innoviz.tech/join-us/israel",
+            "location_filter": location_filter,
+        }
+
+        scraper = PlaywrightScraper(company_config, scraping_config)
+
+        try:
+            await scraper.setup()
+            jobs = await scraper.scrape()
+
+            success = len(jobs) > 0
+            self.results['Innoviz'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+
+            if success:
+                logger.success(f"✓ Innoviz: Found {len(jobs)} Israel jobs")
+                for job in jobs[:3]:
+                    logger.info(f"  - {job.get('title')} @ {job.get('location')}")
+            else:
+                logger.error("✗ Innoviz: No jobs found")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"✗ Innoviz test failed: {e}")
+            self.results['Innoviz'] = {'success': False, 'jobs_count': 0, 'sample_jobs': []}
+            return False
+
+        finally:
+            await scraper.teardown()
+
     async def test_linkedin_scraper(self):
         """Test LinkedIn job scraper."""
         logger.info("\n" + "=" * 80)
@@ -3170,6 +3215,7 @@ class CompanyScraperTests:
         thetaray_result = await self.test_thetaray_scraper()
         tenable_result = await self.test_tenable_scraper()
         taboola_result = await self.test_taboola_scraper()
+        innoviz_result = await self.test_innoviz_scraper()
         linkedin_result = await self.test_linkedin_scraper()
 
         # Print summary
@@ -3195,7 +3241,7 @@ class CompanyScraperTests:
             conifers_result, blink_ops_result, torq_result, crowdstrike_result, lusha_result,
             similarweb_result, paypal_result, sap_result, elementor_result, broadcom_result, lemonade_result,
             zafran_security_result, cynet_security_result, kodem_security_result, thetaray_result, tenable_result,
-            taboola_result
+            taboola_result, innoviz_result
         ])
 
         if all_passed:
