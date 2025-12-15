@@ -1504,10 +1504,9 @@ companies:
     - Petach Tikva
     - IL
   scraping_config:
-    scraper_type: api
-    api_endpoint: https://www.comeet.com/careers-api/2.0/company/taboola/positions
-    api_method: GET
-    pagination_type: none
+    scraper_type: embedded_js
+    api_endpoint: https://www.taboola.com/careers/jobs
+    embedded_js_site: taboola
     wait_time: 1
 - name: Trax
   website: https://traxretail.com

@@ -14,7 +14,7 @@ from bs4 import BeautifulSoup
 from playwright.async_api import async_playwright, Browser, Page
 
 from .base_scraper import BaseScraper
-from .parsers import ComeetParser, GreenhouseParser, AmazonParser, EightfoldParser, SmartRecruitersParser, RSSParser, MetaParser, SalesforceParser, JibeParser, PhenomParser, AshbyParser, LinkedInParser, APIParser, GetroParser
+from .parsers import ComeetParser, GreenhouseParser, AmazonParser, EightfoldParser, SmartRecruitersParser, RSSParser, MetaParser, SalesforceParser, JibeParser, PhenomParser, AshbyParser, LinkedInParser, APIParser, GetroParser, EmbeddedJSParser
 from src.utils.logger import logger
 from urllib.parse import urljoin, urlparse
 
@@ -54,6 +54,10 @@ class PlaywrightScraper(BaseScraper):
             'ashby': lambda: AshbyParser(self.scraping_config.get('company_identifier', '')),
             'linkedin': LinkedInParser,
             'getro': GetroParser,
+            'embedded_js': lambda: EmbeddedJSParser(
+                config=self.scraping_config.get('embedded_js_config'),
+                site_name=self.scraping_config.get('embedded_js_site')
+            ),
             'generic': lambda: APIParser(
                 field_mapping=self.scraping_config.get('field_mapping', {}),
                 url_template=self.scraping_config.get('url_template')
@@ -169,6 +173,7 @@ class PlaywrightScraper(BaseScraper):
             'comeet': self._get_api_scraper_method,
             'playwright': self._get_playwright_scraper_method,
             'getro': self._scrape_getro,
+            'embedded_js': self._scrape_embedded_js,
         }
 
         if scraper_type not in scraper_methods:
@@ -1674,5 +1679,62 @@ class PlaywrightScraper(BaseScraper):
             raise
         except Exception as e:
             logger.error(f"Error scraping Getro: {e}")
+            self.stats["errors"] += 1
+            raise
+
+    async def _scrape_embedded_js(self) -> List[Dict[str, Any]]:
+        """Scrape jobs from pages with embedded JavaScript job data.
+
+        This method fetches an HTML page and extracts job data from embedded
+        JavaScript variables (e.g., `var jobs = [...]`).
+
+        Returns:
+            List of job dictionaries
+        """
+        careers_url = self.scraping_config.get("api_endpoint") or self.company_config.get("careers_url")
+        if not careers_url:
+            logger.error("No careers URL configured for embedded_js scraper")
+            return []
+
+        logger.info(f"Scraping embedded JS jobs from: {careers_url}")
+
+        try:
+            async with httpx.AsyncClient(timeout=30.0) as client:
+                response = await client.get(
+                    careers_url,
+                    headers={
+                        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                    }
+                )
+                response.raise_for_status()
+                self.stats["requests_made"] += 1
+
+            # Get the parser and extract jobs from HTML
+            parser = self._get_parser('embedded_js')
+            raw_jobs = parser.extract_jobs_from_html(response.text)
+
+            if not raw_jobs:
+                logger.warning("No jobs found in embedded JS page")
+                return []
+
+            # Parse each job and apply filters
+            jobs = []
+            for raw_job in raw_jobs:
+                parsed = parser.parse(raw_job)
+                if parsed and parsed.get("title"):
+                    if self.validate_job_data(parsed):
+                        if self.matches_location_filter(parsed):
+                            jobs.append(self.normalize_job_data(parsed))
+
+            logger.info(f"Parsed {len(jobs)} jobs from embedded JS (after location filter)")
+            return jobs
+
+        except httpx.HTTPError as e:
+            logger.error(f"Embedded JS HTTP request failed: {e}")
+            self.stats["errors"] += 1
+            raise
+        except Exception as e:
+            logger.error(f"Error scraping embedded JS: {e}")
             self.stats["errors"] += 1
             raise

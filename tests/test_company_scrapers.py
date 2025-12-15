@@ -2980,6 +2980,51 @@ class CompanyScraperTests:
         finally:
             await scraper.teardown()
 
+    async def test_taboola_scraper(self):
+        """Test Taboola scraper using embedded JS parser."""
+        logger.info("=" * 80)
+        logger.info("Testing Taboola Scraper (Embedded JS)")
+        logger.info("=" * 80)
+
+        location_filter, scraping_config = self.load_company_config("Taboola")
+
+        company_config = {
+            "name": "Taboola",
+            "website": "https://www.taboola.com",
+            "careers_url": "https://www.taboola.com/careers/jobs",
+            "location_filter": location_filter,
+        }
+
+        scraper = PlaywrightScraper(company_config, scraping_config)
+
+        try:
+            await scraper.setup()
+            jobs = await scraper.scrape()
+
+            success = len(jobs) > 0
+            self.results['Taboola'] = {
+                'success': success,
+                'jobs_count': len(jobs),
+                'sample_jobs': jobs[:3] if jobs else []
+            }
+
+            if success:
+                logger.success(f"✓ Taboola: Found {len(jobs)} Israel jobs")
+                for job in jobs[:3]:
+                    logger.info(f"  - {job.get('title')} @ {job.get('location')}")
+            else:
+                logger.error("✗ Taboola: No jobs found")
+
+            return success
+
+        except Exception as e:
+            logger.error(f"✗ Taboola test failed: {e}")
+            self.results['Taboola'] = {'success': False, 'jobs_count': 0, 'sample_jobs': []}
+            return False
+
+        finally:
+            await scraper.teardown()
+
     async def test_linkedin_scraper(self):
         """Test LinkedIn job scraper."""
         logger.info("\n" + "=" * 80)
@@ -3124,6 +3169,7 @@ class CompanyScraperTests:
         kodem_security_result = await self.test_kodem_security_scraper()
         thetaray_result = await self.test_thetaray_scraper()
         tenable_result = await self.test_tenable_scraper()
+        taboola_result = await self.test_taboola_scraper()
         linkedin_result = await self.test_linkedin_scraper()
 
         # Print summary
@@ -3148,7 +3194,8 @@ class CompanyScraperTests:
             sentinelone_result, redis_result, samsung_result, intuit_result, servicenow_result, buildots_result,
             conifers_result, blink_ops_result, torq_result, crowdstrike_result, lusha_result,
             similarweb_result, paypal_result, sap_result, elementor_result, broadcom_result, lemonade_result,
-            zafran_security_result, cynet_security_result, kodem_security_result, thetaray_result, tenable_result
+            zafran_security_result, cynet_security_result, kodem_security_result, thetaray_result, tenable_result,
+            taboola_result
         ])
 
         if all_passed:

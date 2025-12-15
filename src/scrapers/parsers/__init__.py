@@ -50,3 +50,7 @@ __all__.append('LinkedInParser')
 from .getro_parser import GetroParser
 
 __all__.append('GetroParser')
+
+from .embedded_js_parser import EmbeddedJSParser
+
+__all__.append('EmbeddedJSParser')
