@@ -2278,16 +2278,16 @@ class CompanyScraperTests:
 
 
     async def test_blink_ops_scraper(self):
-        """Test Blink Ops scraper using Comeet API."""
+        """Test BlinkOps scraper using Comeet API."""
         logger.info("=" * 80)
-        logger.info("Testing Blink Ops Scraper (Comeet API)")
+        logger.info("Testing BlinkOps Scraper (Comeet API)")
         logger.info("=" * 80)
 
         # Load config from companies.yaml
-        location_filter, scraping_config = self.load_company_config('Blink Ops')
+        location_filter, scraping_config = self.load_company_config('BlinkOps')
 
         company_config = {
-            "name": "Blink Ops",
+            "name": "BlinkOps",
             "website": "https://www.blinkops.com",
             "careers_url": "https://www.blinkops.com/careers",
             "industry": "Security Automation"
@@ -2304,25 +2304,25 @@ class CompanyScraperTests:
             jobs = await scraper.scrape()
 
             success = len(jobs) > 0
-            self.results['Blink Ops'] = {
+            self.results['BlinkOps'] = {
                 'success': success,
                 'jobs_count': len(jobs),
                 'sample_jobs': jobs[:3] if jobs else []
             }
 
             if success:
-                logger.success(f"✓ Blink Ops: Found {len(jobs)} jobs")
+                logger.success(f"✓ BlinkOps: Found {len(jobs)} jobs")
                 logger.info("=== Sample Jobs ===")
                 for i, job in enumerate(jobs[:3], 1):
                     logger.info(f"{i}. {job.get('title')} - {job.get('location')}")
             else:
-                logger.error("✗ Blink Ops: No jobs found")
+                logger.error("✗ BlinkOps: No jobs found")
 
             return success
 
         except Exception as e:
-            logger.error(f"✗ Blink Ops test failed: {e}")
-            self.results['Blink Ops'] = {
+            logger.error(f"✗ BlinkOps test failed: {e}")
+            self.results['BlinkOps'] = {
                 'success': False,
                 'jobs_count': 0,
                 'sample_jobs': []
