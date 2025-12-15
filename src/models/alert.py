@@ -1,6 +1,7 @@
 """Alert data model."""
+import re
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Set
 from uuid import UUID
 
 from sqlalchemy import Boolean, String, Integer, DateTime, JSON, ForeignKey
@@ -8,6 +9,51 @@ from sqlalchemy.dialects.postgresql import UUID as PGUUID, ARRAY
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .base import Base, TimestampMixin, UUIDMixin
+
+
+# Common words to ignore when matching (articles, prepositions, etc.)
+STOP_WORDS = {'a', 'an', 'the', 'of', 'and', 'or', 'in', 'at', 'to', 'for', 'with', 'on', 'by', 'is', 'are'}
+
+
+def tokenize(text: str) -> Set[str]:
+    """
+    Tokenize text into a set of lowercase words, removing punctuation.
+
+    Args:
+        text: Text to tokenize
+
+    Returns:
+        Set of lowercase words
+    """
+    # Replace punctuation with spaces and split
+    words = re.sub(r'[^\w\s]', ' ', text.lower()).split()
+    return set(words)
+
+
+def keyword_matches(keyword: str, title: str) -> bool:
+    """
+    Check if a keyword matches a title using flexible word-based matching.
+
+    All significant words in the keyword must appear in the title.
+    Stop words (of, and, the, etc.) are ignored.
+
+    Examples:
+        - "engineering manager" matches "Senior Engineering Manager"
+        - "vp engineering" matches "VP, Engineering & GM"
+        - "vice president engineering" matches "Vice President of Engineering"
+
+    Args:
+        keyword: The keyword phrase to match
+        title: The job title to match against
+
+    Returns:
+        True if all significant words in keyword appear in title
+    """
+    keyword_words = tokenize(keyword) - STOP_WORDS
+    title_words = tokenize(title)
+
+    # All keyword words (except stop words) must be in the title
+    return keyword_words.issubset(title_words)
 
 
 class Alert(Base, UUIDMixin, TimestampMixin):
@@ -65,21 +111,29 @@ class Alert(Base, UUIDMixin, TimestampMixin):
         """
         Check if a job position matches this alert's criteria.
         All specified criteria must match (AND logic).
+
+        Keyword matching uses flexible word-based matching:
+        - All significant words in the keyword must appear in the title
+        - Stop words (of, and, the, etc.) are ignored
+        - Punctuation is ignored
+
+        Examples:
+            - "engineering manager" matches "Senior Engineering Manager"
+            - "vp engineering" matches "VP, Engineering & GM"
+            - "vice president engineering" matches "Vice President of Engineering"
         """
         # Company filter
         if self.company_ids and position.company_id not in self.company_ids:
             return False
-        
-        # Keywords filter (at least one keyword must match)
+
+        # Keywords filter (at least one keyword must match using flexible matching)
         if self.keywords:
-            title_lower = position.title.lower()
-            if not any(keyword.lower() in title_lower for keyword in self.keywords):
+            if not any(keyword_matches(kw, position.title) for kw in self.keywords):
                 return False
-        
-        # Excluded keywords filter (none should match)
+
+        # Excluded keywords filter (none should match using flexible matching)
         if self.excluded_keywords:
-            title_lower = position.title.lower()
-            if any(excluded.lower() in title_lower for excluded in self.excluded_keywords):
+            if any(keyword_matches(excluded, position.title) for excluded in self.excluded_keywords):
                 return False
         
         # Location filter

@@ -468,7 +468,7 @@ companies:
 - name: Checkout.com
   website: https://www.checkout.com
   industry: Fintech
-- name: 888
+- name: "888"
   website: https://www.888.com
   industry: Gaming/Gambling
 - name: Lightricks
