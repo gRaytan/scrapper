@@ -94,7 +94,9 @@ class UserService:
             update_dict["preferences"] = update_data.preferences
         if update_data.is_active is not None:
             update_dict["is_active"] = update_data.is_active
-        
+        if update_data.payme_subscription_id is not None:
+            update_dict["payme_subscription_id"] = update_data.payme_subscription_id
+
         if not update_dict:
             # No updates provided
             return self.user_repo.get_by_id(user_id)

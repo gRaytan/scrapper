@@ -31,6 +31,7 @@ class UserUpdate(BaseModel):
     phone_number: Optional[str] = None
     preferences: Optional[dict] = None
     is_active: Optional[bool] = None
+    payme_subscription_id: Optional[str] = None
 
 
 class UserStats(BaseModel):
