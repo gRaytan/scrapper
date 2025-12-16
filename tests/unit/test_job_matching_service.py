@@ -302,3 +302,103 @@ class TestJobMatchingServiceIntegration:
         result = service.process_new_jobs([])
         assert result['status'] == 'success'
 
+
+class TestUserService:
+    """Test cases for UserService."""
+
+    @pytest.fixture
+    def mock_session(self):
+        """Create a mock database session."""
+        session = MagicMock()
+        return session
+
+    @pytest.fixture
+    def mock_user(self):
+        """Create a mock user."""
+        user = MagicMock(spec=User)
+        user.id = uuid4()
+        user.email = "test@example.com"
+        user.full_name = "Test User"
+        user.payme_subscription_id = None
+        user.phone_number = None
+        user.is_active = True
+        user.preferences = {}
+        return user
+
+    def test_update_user_payme_subscription_id(self, mock_session, mock_user):
+        """Test updating user with payme_subscription_id."""
+        from src.services.user_service import UserService
+        from src.api.schemas.user import UserUpdate
+
+        # Setup mock
+        mock_session.query.return_value.filter.return_value.first.return_value = mock_user
+
+        with patch('src.services.user_service.UserRepository') as MockUserRepo:
+            mock_repo = MagicMock()
+            mock_repo.get_by_id.return_value = mock_user
+            mock_repo.update.return_value = mock_user
+            MockUserRepo.return_value = mock_repo
+
+            service = UserService(mock_session)
+
+            # Test updating payme_subscription_id
+            update_data = UserUpdate(payme_subscription_id="sub_12345")
+            result = service.update_user(mock_user.id, update_data)
+
+            # Verify update was called with correct data
+            mock_repo.update.assert_called_once()
+            call_args = mock_repo.update.call_args
+            assert call_args[0][0] == mock_user.id
+            assert call_args[0][1]["payme_subscription_id"] == "sub_12345"
+
+    def test_update_user_multiple_fields_including_payme(self, mock_session, mock_user):
+        """Test updating user with multiple fields including payme_subscription_id."""
+        from src.services.user_service import UserService
+        from src.api.schemas.user import UserUpdate
+
+        with patch('src.services.user_service.UserRepository') as MockUserRepo:
+            mock_repo = MagicMock()
+            mock_repo.get_by_id.return_value = mock_user
+            mock_repo.update.return_value = mock_user
+            MockUserRepo.return_value = mock_repo
+
+            service = UserService(mock_session)
+
+            # Test updating multiple fields
+            update_data = UserUpdate(
+                full_name="Updated Name",
+                payme_subscription_id="sub_67890",
+                phone_number="+1234567890"
+            )
+            result = service.update_user(mock_user.id, update_data)
+
+            # Verify update was called with all fields
+            mock_repo.update.assert_called_once()
+            call_args = mock_repo.update.call_args
+            update_dict = call_args[0][1]
+            assert update_dict["full_name"] == "Updated Name"
+            assert update_dict["payme_subscription_id"] == "sub_67890"
+            assert update_dict["phone_number"] == "+1234567890"
+
+    def test_update_user_only_payme_no_other_fields(self, mock_session, mock_user):
+        """Test that updating only payme_subscription_id works without other fields."""
+        from src.services.user_service import UserService
+        from src.api.schemas.user import UserUpdate
+
+        with patch('src.services.user_service.UserRepository') as MockUserRepo:
+            mock_repo = MagicMock()
+            mock_repo.get_by_id.return_value = mock_user
+            mock_repo.update.return_value = mock_user
+            MockUserRepo.return_value = mock_repo
+
+            service = UserService(mock_session)
+
+            # Test updating only payme_subscription_id
+            update_data = UserUpdate(payme_subscription_id="sub_only")
+            result = service.update_user(mock_user.id, update_data)
+
+            # Verify only payme_subscription_id is in update dict
+            mock_repo.update.assert_called_once()
+            call_args = mock_repo.update.call_args
+            update_dict = call_args[0][1]
+            assert update_dict == {"payme_subscription_id": "sub_only"}
