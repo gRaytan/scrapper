@@ -2,6 +2,19 @@
 
 This is a condensed guide to get your Job Scraper running on AWS EC2 quickly.
 
+## ⚠️ CRITICAL: Deployment Location
+
+**Production deployment MUST be from `/opt/scraper`**
+
+```
+EC2 Server: 51.16.168.45 (api.hiddenjobs.me)
+SSH Key: /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem
+Deployment Path: /opt/scraper
+Compose File: docker-compose.production.yml
+```
+
+**NEVER deploy from `/home/ubuntu/jobApplicant/Backend/scraper/` or any other directory!**
+
 ## Prerequisites
 - AWS account
 - SSH key pair
@@ -96,12 +109,23 @@ Your API is now running at: `http://YOUR_EC2_IP`
 
 ## Common Commands
 
+**Always run from `/opt/scraper` on the EC2 server:**
+
 ```bash
+# SSH to server
+ssh -i /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem ubuntu@51.16.168.45
+
+# Go to deployment directory (ALWAYS use this path!)
+cd /opt/scraper
+
 # View logs
-docker compose -f docker-compose.production.yml logs -f [service]
+sudo docker compose -f docker-compose.production.yml logs -f [service]
 
 # Restart service
-docker compose -f docker-compose.production.yml restart [service]
+sudo docker compose -f docker-compose.production.yml restart [service]
+
+# Rebuild and restart API only
+sudo docker compose -f docker-compose.production.yml up -d --build api
 
 # Monitor
 ./deployment/monitor.sh
@@ -109,8 +133,26 @@ docker compose -f docker-compose.production.yml restart [service]
 # Backup
 ./deployment/backup.sh
 
-# Update
-git pull && ./deployment/deploy.sh
+# Full redeploy
+sudo ./deployment/deploy.sh
+```
+
+## Quick Deploy (Copy Files from Local)
+
+```bash
+# From your local machine - copy updated files to EC2
+scp -i /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem \
+  /Users/gilr/IdeaProjects/scrapper/src/path/to/file.py \
+  ubuntu@51.16.168.45:/tmp/
+
+# SSH to server and move files
+ssh -i /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem ubuntu@51.16.168.45
+sudo cp /tmp/file.py /opt/scraper/src/path/to/file.py
+sudo chown scraper:scraper /opt/scraper/src/path/to/file.py
+
+# Rebuild and restart
+cd /opt/scraper
+sudo docker compose -f docker-compose.production.yml up -d --build api
 ```
 
 ---

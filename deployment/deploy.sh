@@ -1,6 +1,13 @@
 #!/bin/bash
 # Deployment script for Job Scraper on EC2
-# Run this script as the 'scraper' user
+#
+# IMPORTANT: This script must be run from /opt/scraper on the EC2 server
+# DO NOT run docker compose from any other directory!
+#
+# Production deployment location: /opt/scraper
+# Production compose file: docker-compose.production.yml
+#
+# Run this script as the 'scraper' user or with sudo
 
 set -e  # Exit on error
 
@@ -26,11 +33,28 @@ print_info() {
     echo -e "${YELLOW}ℹ $1${NC}"
 }
 
+# CRITICAL: Verify we're in the correct deployment directory
+EXPECTED_DIR="/opt/scraper"
+CURRENT_DIR="$(pwd)"
+
 # Get script directory
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
 
 cd "$PROJECT_ROOT"
+
+# Verify deployment directory
+if [ "$PROJECT_ROOT" != "$EXPECTED_DIR" ]; then
+    print_error "WRONG DEPLOYMENT DIRECTORY!"
+    print_error "Expected: $EXPECTED_DIR"
+    print_error "Current:  $PROJECT_ROOT"
+    print_info ""
+    print_info "Production deployment MUST be from /opt/scraper"
+    print_info "Please run: cd /opt/scraper && ./deployment/deploy.sh"
+    exit 1
+fi
+
+print_success "Correct deployment directory: $PROJECT_ROOT"
 
 # Check if .env file exists
 if [ ! -f .env ]; then
