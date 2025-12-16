@@ -83,8 +83,8 @@ def run_daily_scraping(self: Task) -> Dict[str, Any]:
         logger.success(f"  Duration: {duration:.2f}s")
         logger.success("=" * 80)
 
-        # Trigger job processing task
-        process_new_jobs.delay()
+        # Note: Job matching runs as a separate scheduled task at 8:30 AM UTC
+        # after all scrapers complete (see celery_app.py beat_schedule)
 
         return result
 
