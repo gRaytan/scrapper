@@ -13,7 +13,24 @@ Deployment Path: /opt/scraper
 Compose File: docker-compose.production.yml
 ```
 
-**NEVER deploy from `/home/ubuntu/jobApplicant/Backend/scraper/` or any other directory!**
+**NEVER deploy from any other directory!**
+
+## Production Configuration Summary
+
+| Component | Value | Notes |
+|-----------|-------|-------|
+| Deployment Directory | `/opt/scraper` | Always use this path |
+| Compose File | `docker-compose.production.yml` | Not `docker-compose.yml` |
+| Network | `scraper_scraper_network` | Single network for all containers |
+| Nginx upstream | `server api:8000` | Uses Docker service name, not container name |
+| Container names | `scraper_*_prod` | e.g., `scraper_api_prod`, `scraper_nginx_prod` |
+
+### Docker Networking Explained
+
+- **Service name** (`api`) - Defined in docker-compose.production.yml, used for Docker DNS resolution
+- **Container name** (`scraper_api_prod`) - Used for external commands like `docker logs scraper_api_prod`
+- Nginx config uses `api:8000` because Docker DNS resolves service names within the same network
+- All containers MUST be on the same network (`scraper_scraper_network`) for DNS to work
 
 ## Prerequisites
 - AWS account
@@ -168,6 +185,29 @@ docker compose -f docker-compose.production.yml logs
 - Check security group allows port 80
 - Check firewall: `sudo ufw status`
 - Check nginx: `docker compose -f docker-compose.production.yml logs nginx`
+
+**502 Bad Gateway?**
+
+This usually means nginx can't reach the API container. Check:
+
+```bash
+# 1. Verify all containers are on the same network
+sudo docker network inspect scraper_scraper_network --format '{{range .Containers}}{{.Name}} {{end}}'
+# Should show: scraper_api_prod scraper_nginx_prod scraper_postgres_prod scraper_redis_prod ...
+
+# 2. Test DNS resolution from nginx
+sudo docker exec scraper_nginx_prod ping -c 1 api
+# Should resolve to an IP like 172.18.0.x
+
+# 3. If containers are on different networks, restart everything:
+cd /opt/scraper
+sudo docker compose -f docker-compose.production.yml down
+sudo docker compose -f docker-compose.production.yml up -d
+
+# 4. Check nginx config uses service name 'api', not container name 'scraper_api_prod'
+grep 'server.*8000' /opt/scraper/deployment/nginx.conf
+# Should show: server api:8000
+```
 
 **Workers not running?**
 ```bash
