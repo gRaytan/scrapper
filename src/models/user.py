@@ -22,6 +22,10 @@ class User(Base, UUIDMixin, TimestampMixin):
     # Authentication (temporary - will be replaced by OAuth)
     password_hash: Mapped[Optional[str]] = mapped_column(String(255))
 
+    # OAuth SSO fields
+    oauth_provider: Mapped[Optional[str]] = mapped_column(String(50))  # "google" or "linkedin"
+    oauth_provider_id: Mapped[Optional[str]] = mapped_column(String(255))  # Provider user ID
+
     # Phone number for MFA (future)
     phone_number: Mapped[Optional[str]] = mapped_column(String(20))
     phone_verified: Mapped[bool] = mapped_column(Boolean, default=False, nullable=False)

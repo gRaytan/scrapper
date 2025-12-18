@@ -1,120 +1,124 @@
 """Authentication API routes."""
 from datetime import datetime
+import logging
 
 from fastapi import APIRouter, Depends, HTTPException, status
-from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
 
-from src.api.schemas.auth import UserRegister, UserLogin, Token, RefreshTokenRequest
+from src.api.schemas.auth import (
+    Token, 
+    RefreshTokenRequest,
+    SSOTokenRequest,
+    SSOTokenResponse,
+    SSOUserInfo,
+)
 from src.api.schemas.user import UserResponse
 from src.auth.security import create_access_token, create_refresh_token, decode_token
-from src.auth.dependencies import get_current_active_user, get_db_session
+from src.auth.dependencies import get_current_active_user, get_db_session, require_internal_api_key
 from src.models.user import User
+from config.settings import settings
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
 
 
-@router.post("/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-async def register(
-    user_data: UserRegister,
+@router.post(
+    "/sso/token",
+    response_model=SSOTokenResponse,
+    status_code=status.HTTP_200_OK,
+    dependencies=[Depends(require_internal_api_key)],
+)
+async def sso_token(
+    sso_data: SSOTokenRequest,
     db: Session = Depends(get_db_session)
 ):
     """
-    Register a new user.
+    Issue JWT tokens after SSO authentication.
     
-    - **email**: Valid email address (must be unique)
-    - **password**: Password (minimum 8 characters)
-    - **full_name**: Optional full name
+    This endpoint is called by the Node BFF after successful OAuth + MFA.
+    It creates or updates the user and returns JWT tokens.
     
-    Returns JWT access and refresh tokens.
-    """
-    # Check if user already exists
-    existing_user = db.query(User).filter(User.email == user_data.email).first()
-    if existing_user:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Email already registered"
-        )
+    **Security**: Requires X-Internal-API-Key header.
     
-    # Create new user
-    new_user = User(
-        email=user_data.email,
-        full_name=user_data.full_name,
-        is_active=True,
-        subscription_tier="free",
-        phone_verified=False,
-        preferences={}
-    )
-    
-    # Set password
-    new_user.set_password(user_data.password)
-    
-    # Save to database
-    db.add(new_user)
-    db.commit()
-    db.refresh(new_user)
-    
-    # Create tokens
-    token_data = {
-        "user_id": new_user.id,
-        "email": new_user.email
-    }
-    
-    access_token = create_access_token(token_data)
-    refresh_token = create_refresh_token(token_data)
-    
-    return Token(
-        access_token=access_token,
-        refresh_token=refresh_token,
-        token_type="bearer"
-    )
-
-
-@router.post("/login", response_model=Token)
-async def login(
-    form_data: OAuth2PasswordRequestForm = Depends(),
-    db: Session = Depends(get_db_session)
-):
-    """
-    Login with email and password.
-    
-    Uses OAuth2 password flow (username = email).
+    - **provider**: OAuth provider ('google' or 'linkedin')
+    - **provider_id**: User ID from OAuth provider
+    - **email**: User email from OAuth provider
+    - **full_name**: Optional user full name
+    - **phone_number**: Optional phone number (verified via MFA)
     
     Returns JWT access and refresh tokens.
     """
-    # Find user by email
-    user = db.query(User).filter(User.email == form_data.username).first()
+    is_new_user = False
     
-    if not user or not user.verify_password(form_data.password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="Incorrect email or password",
-            headers={"WWW-Authenticate": "Bearer"},
-        )
+    # Try to find existing user by provider ID first
+    user = db.query(User).filter(
+        User.oauth_provider == sso_data.provider,
+        User.oauth_provider_id == sso_data.provider_id
+    ).first()
     
-    if not user.is_active:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Inactive user account"
-        )
+    if not user:
+        # Try to find by email (user might have registered before SSO)
+        user = db.query(User).filter(User.email == sso_data.email).first()
+        
+        if user:
+            # Link OAuth to existing account
+            user.oauth_provider = sso_data.provider
+            user.oauth_provider_id = sso_data.provider_id
+            logger.info(f"Linked {sso_data.provider} OAuth to existing user: {user.email}")
+        else:
+            # Create new user
+            user = User(
+                email=sso_data.email,
+                full_name=sso_data.full_name,
+                oauth_provider=sso_data.provider,
+                oauth_provider_id=sso_data.provider_id,
+                is_active=True,
+                subscription_tier="free",
+                phone_verified=bool(sso_data.phone_number),  # MFA verified phone
+                phone_number=sso_data.phone_number,
+                preferences={}
+            )
+            db.add(user)
+            is_new_user = True
+            logger.info(f"Created new user via {sso_data.provider} SSO: {sso_data.email}")
+    
+    # Update user info if provided
+    if sso_data.full_name and not user.full_name:
+        user.full_name = sso_data.full_name
+    
+    if sso_data.phone_number and not user.phone_number:
+        user.phone_number = sso_data.phone_number
+        user.phone_verified = True  # Phone was verified via MFA
     
     # Update last login
     user.last_login_at = datetime.utcnow()
+    
     db.commit()
+    db.refresh(user)
     
     # Create tokens
     token_data = {
         "user_id": user.id,
-        "email": user.email
+        "email": user.email,
+        "oauth_provider": user.oauth_provider,
     }
     
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
     
-    return Token(
+    return SSOTokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
-        token_type="bearer"
+        token_type="bearer",
+        expires_in=settings.jwt_access_token_expire_minutes * 60,
+        user=SSOUserInfo(
+            id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            oauth_provider=user.oauth_provider,
+            is_new_user=is_new_user,
+        )
     )
 
 
@@ -179,4 +183,3 @@ async def get_current_user_info(
     Requires valid JWT token in Authorization header.
     """
     return current_user
-

@@ -69,6 +69,10 @@ class Settings(BaseSettings):
     jwt_access_token_expire_minutes: int = 30  # 30 minutes
     jwt_refresh_token_expire_days: int = 7     # 7 days
 
+
+    # Internal API Key (for Node BFF to call Python API)
+    internal_api_key: str = "change-this-in-production-use-openssl-rand-hex-32"
+
     # Monitoring
     sentry_dsn: Optional[str] = None
     prometheus_port: int = 9090

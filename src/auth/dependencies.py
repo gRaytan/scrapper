@@ -2,7 +2,7 @@
 from typing import Optional
 from uuid import UUID
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Header
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError
 from sqlalchemy.orm import Session
@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from src.auth.security import decode_token
 from src.models.user import User
 from src.storage.database import db
+from config.settings import settings
 
 # OAuth2 scheme for token extraction
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
@@ -92,3 +93,32 @@ async def get_current_active_user(
     
     return current_user
 
+
+async def require_internal_api_key(
+    x_internal_api_key: str = Header(..., alias="X-Internal-API-Key")
+) -> None:
+    """
+    Require valid internal API key for Node BFF endpoints.
+    
+    This dependency validates the X-Internal-API-Key header against
+    the configured internal_api_key setting.
+    
+    Usage:
+        @router.post("/sso/token", dependencies=[Depends(require_internal_api_key)])
+        async def sso_token(...):
+            ...
+    
+    Raises:
+        HTTPException: If API key is missing or invalid
+    """
+    if not x_internal_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Missing internal API key",
+        )
+    
+    if x_internal_api_key != settings.internal_api_key:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid internal API key",
+        )
