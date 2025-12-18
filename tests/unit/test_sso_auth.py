@@ -266,6 +266,8 @@ class TestMeEndpoint:
 
     def test_me_with_valid_token(self, mock_db_session):
         """Test /me with valid token returns user info."""
+        from datetime import datetime
+        
         user_id = uuid4()
         user = User(
             id=user_id,
@@ -278,6 +280,9 @@ class TestMeEndpoint:
             phone_verified=False,
             preferences={}
         )
+        # Add required timestamp fields for response validation
+        user.created_at = datetime.utcnow()
+        user.updated_at = datetime.utcnow()
         
         mock_db_session.query.return_value.filter.return_value.first.return_value = user
         
