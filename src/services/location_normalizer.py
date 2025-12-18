@@ -143,20 +143,17 @@ def normalize_location(location: str) -> str:
             return "Remote, United States"
         return "Remote"
 
-    # Handle multi-location strings (e.g., "Israel, Tel Aviv, Israel, Yokneam")
-    # Take the first recognizable city
+    # Check for known Israeli cities first
     cities_found = extract_cities(location)
     if cities_found:
-        primary_city = cities_found[0]
-        if is_israel:
-            return f"{primary_city}, Israel"
-        return primary_city
+        # Found a known Israeli city - always add ", Israel"
+        return f"{cities_found[0]}, Israel"
 
     # No known city found - check if it's an Israeli location
     if is_israel:
         location_lower = location.lower()
 
-        # First, check if there's a city name we don't recognize (before the district/country)
+        # Check if there's a city name we don't recognize (before the district/country)
         # Pattern: "CityName, District, Israel" or "CityName, Israel"
         city_match = re.match(r'^([A-Za-z\s\-\']+?)(?:,\s*(?:Center|North|South|Haifa|Jerusalem|Tel Aviv)?\s*District|,\s*Israel)', location, re.IGNORECASE)
         if city_match:
@@ -177,13 +174,6 @@ def normalize_location(location: str) -> str:
 
         # Just "Israel" with no specific location
         return "Israel"
-
-    # Not Israeli - check if it's a known Israeli city without country suffix
-    # (e.g., "Tel Aviv", "Herzliya", "TLV")
-    cities_found = extract_cities(location)
-    if cities_found:
-        # This is an Israeli city without "Israel" mentioned
-        return f"{cities_found[0]}, Israel"
 
     # Not Israeli - return cleaned version
     return clean_location_string(location)
