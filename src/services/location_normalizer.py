@@ -80,7 +80,6 @@ ISRAEL_LOCATIONS = [
     ("Eilat", ["eilat"]),
     ("Dimona", ["dimona"]),
     ("Arad", ["arad"]),
-    ("Noam", ["noam"]),
     ("Sderot", ["sderot"]),
 
     # Jerusalem area
