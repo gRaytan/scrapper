@@ -1,7 +1,8 @@
 """Alert data model."""
+import logging
 import re
 from datetime import datetime
-from typing import Optional, List, Set
+from typing import Optional, List, Set, Tuple
 from uuid import UUID
 
 from sqlalchemy import Boolean, String, Integer, DateTime, JSON, ForeignKey
@@ -11,8 +12,14 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from .base import Base, TimestampMixin, UUIDMixin
 
 
+logger = logging.getLogger(__name__)
+
 # Common words to ignore when matching (articles, prepositions, etc.)
 STOP_WORDS = {'a', 'an', 'the', 'of', 'and', 'or', 'in', 'at', 'to', 'for', 'with', 'on', 'by', 'is', 'are'}
+
+# Semantic matching settings
+SEMANTIC_MATCHING_ENABLED = True
+SEMANTIC_SIMILARITY_THRESHOLD = 0.65
 
 
 def tokenize(text: str) -> Set[str]:
@@ -54,6 +61,34 @@ def keyword_matches(keyword: str, title: str) -> bool:
 
     # All keyword words (except stop words) must be in the title
     return keyword_words.issubset(title_words)
+
+
+def semantic_keyword_matches(keywords: List[str], title: str) -> Tuple[bool, float, Optional[str]]:
+    """
+    Check if any keyword semantically matches a title using embeddings.
+
+    This is a fallback when exact keyword matching fails.
+
+    Args:
+        keywords: List of keyword phrases
+        title: Job title to match against
+
+    Returns:
+        Tuple of (is_match, similarity_score, matched_keyword)
+    """
+    if not SEMANTIC_MATCHING_ENABLED:
+        return False, 0.0, None
+
+    try:
+        from src.services.embedding_service import EmbeddingService
+        embedding_service = EmbeddingService(threshold=SEMANTIC_SIMILARITY_THRESHOLD)
+        return embedding_service.keywords_match_title(keywords, title)
+    except ImportError:
+        logger.debug("Semantic matching unavailable - sentence-transformers not installed")
+        return False, 0.0, None
+    except Exception as e:
+        logger.warning(f"Semantic matching failed: {e}")
+        return False, 0.0, None
 
 
 class Alert(Base, UUIDMixin, TimestampMixin):
@@ -107,31 +142,53 @@ class Alert(Base, UUIDMixin, TimestampMixin):
     def __repr__(self) -> str:
         return f"<Alert(id={self.id}, name='{self.name}', user_id={self.user_id})>"
     
-    def matches_position(self, position) -> bool:
+    def matches_position(self, position, use_semantic: bool = True) -> bool:
         """
         Check if a job position matches this alert's criteria.
         All specified criteria must match (AND logic).
 
-        Keyword matching uses flexible word-based matching:
+        Keyword matching uses flexible word-based matching first, then
+        falls back to semantic matching using sentence embeddings.
+
+        Word-based matching:
         - All significant words in the keyword must appear in the title
         - Stop words (of, and, the, etc.) are ignored
         - Punctuation is ignored
 
+        Semantic matching (fallback):
+        - Uses sentence-transformers to compute similarity
+        - Matches if cosine similarity >= threshold (default 0.65)
+
         Examples:
-            - "engineering manager" matches "Senior Engineering Manager"
-            - "vp engineering" matches "VP, Engineering & GM"
-            - "vice president engineering" matches "Vice President of Engineering"
+            - "engineering manager" matches "Senior Engineering Manager" (word-based)
+            - "vp engineering" matches "VP, Engineering & GM" (word-based)
+            - "Software Engineer" matches "Backend Developer" (semantic)
         """
         # Company filter
         if self.company_ids and position.company_id not in self.company_ids:
             return False
 
-        # Keywords filter (at least one keyword must match using flexible matching)
+        # Keywords filter (at least one keyword must match)
         if self.keywords:
-            if not any(keyword_matches(kw, position.title) for kw in self.keywords):
+            # First try word-based matching
+            word_match = any(keyword_matches(kw, position.title) for kw in self.keywords)
+
+            if not word_match and use_semantic:
+                # Fall back to semantic matching
+                semantic_match, score, matched_kw = semantic_keyword_matches(
+                    self.keywords, position.title
+                )
+                if semantic_match:
+                    logger.debug(
+                        f"Semantic match: '{matched_kw}' ~ '{position.title}' (score: {score:.2f})"
+                    )
+                    word_match = True
+
+            if not word_match:
                 return False
 
         # Excluded keywords filter (none should match using flexible matching)
+        # Note: We only use word-based matching for exclusions (more precise)
         if self.excluded_keywords:
             if any(keyword_matches(excluded, position.title) for excluded in self.excluded_keywords):
                 return False

@@ -9,11 +9,88 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
 from src.services.job_matching_service import JobMatchingService
-from src.models.alert import Alert
+from src.models.alert import Alert, keyword_matches, semantic_keyword_matches
 from src.models.alert_notification import AlertNotification
 from src.models.job_position import JobPosition
 from src.models.company import Company
 from src.models.user import User
+
+
+class TestKeywordMatching:
+    """Test cases for keyword matching functions."""
+
+    def test_keyword_matches_exact(self):
+        """Test exact keyword matching."""
+        assert keyword_matches("engineering manager", "Engineering Manager") is True
+        assert keyword_matches("software engineer", "Senior Software Engineer") is True
+
+    def test_keyword_matches_with_punctuation(self):
+        """Test keyword matching ignores punctuation."""
+        assert keyword_matches("vp engineering", "VP, Engineering & GM") is True
+        assert keyword_matches("vice president engineering", "Vice President of Engineering") is True
+
+    def test_keyword_matches_no_match(self):
+        """Test keyword matching returns False for non-matches."""
+        assert keyword_matches("data scientist", "Software Engineer") is False
+        assert keyword_matches("product manager", "Engineering Manager") is False
+
+
+class TestSemanticMatching:
+    """Test cases for semantic matching using embeddings."""
+
+    @pytest.fixture
+    def embedding_service(self):
+        """Create an embedding service instance."""
+        try:
+            from src.services.embedding_service import EmbeddingService
+            return EmbeddingService(threshold=0.65)
+        except ImportError:
+            pytest.skip("sentence-transformers not installed")
+
+    def test_semantic_similar_titles(self, embedding_service):
+        """Test that semantically similar titles match."""
+        # These should match semantically even though words don't overlap
+        is_match, score = embedding_service.is_similar(
+            "Software Engineer",
+            "Backend Developer"
+        )
+        assert score > 0.5  # Should have reasonable similarity
+
+    def test_semantic_vp_variations(self, embedding_service):
+        """Test VP title variations."""
+        is_match, score = embedding_service.is_similar(
+            "VP Engineering",
+            "Vice President of Engineering"
+        )
+        assert score > 0.7  # Should be highly similar
+
+    def test_semantic_unrelated_titles(self, embedding_service):
+        """Test that unrelated titles don't match."""
+        is_match, score = embedding_service.is_similar(
+            "Software Engineer",
+            "Marketing Manager"
+        )
+        assert score < 0.5  # Should have low similarity
+
+    def test_keywords_match_title(self, embedding_service):
+        """Test matching keywords against a title."""
+        keywords = ["Engineering Manager", "VP Engineering", "Director Engineering"]
+
+        # Should match
+        is_match, score, matched_kw = embedding_service.keywords_match_title(
+            keywords, "Vice President of Engineering"
+        )
+        assert is_match is True
+        assert matched_kw == "VP Engineering"
+
+    def test_keywords_no_match(self, embedding_service):
+        """Test keywords that don't match a title."""
+        keywords = ["Data Scientist", "ML Engineer"]
+
+        is_match, score, matched_kw = embedding_service.keywords_match_title(
+            keywords, "Marketing Manager"
+        )
+        assert is_match is False
 
 
 class TestJobMatchingService:

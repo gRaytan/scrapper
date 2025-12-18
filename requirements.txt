@@ -14,6 +14,9 @@ langchain==0.1.0
 langchain-openai==0.0.2
 instructor==0.4.5
 
+# Semantic Matching (lightweight embeddings)
+sentence-transformers==2.2.2
+
 # Database & Storage
 psycopg2-binary==2.9.9
 asyncpg==0.29.0
