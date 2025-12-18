@@ -1,6 +1,24 @@
-"""Location normalization service for standardizing job location strings."""
+"""
+Location Service - Unified service for location filtering and normalization.
+
+This module provides:
+1. Location filtering - Check if a job is in Israel
+2. Location normalization - Convert location strings to canonical format
+3. Location extraction - Extract city names from location strings
+
+Usage:
+    from src.services.location_normalizer import (
+        normalize_location,
+        is_israel_location,
+        filter_jobs_by_location,
+        LocationService,
+    )
+"""
 import re
+import logging
 from typing import Optional, List, Tuple
+
+logger = logging.getLogger(__name__)
 
 # Canonical location names for Israel
 # Format: (canonical_name, [aliases and patterns])
@@ -282,3 +300,72 @@ def is_israel_location(location: str) -> bool:
 
     return False
 
+
+def filter_jobs_by_location(
+    jobs: List[dict],
+    location_field: str = "location"
+) -> Tuple[List[dict], List[dict]]:
+    """
+    Filter a list of jobs, returning Israel jobs and filtered-out jobs.
+
+    Args:
+        jobs: List of job dictionaries.
+        location_field: The key in job dict containing location.
+
+    Returns:
+        Tuple of (israel_jobs, filtered_out_jobs)
+    """
+    israel_jobs = []
+    filtered_out = []
+
+    for job in jobs:
+        location = job.get(location_field)
+        if is_israel_location(location):
+            israel_jobs.append(job)
+        else:
+            filtered_out.append(job)
+            logger.debug(f"Filtered out job due to location: {job.get('title', 'Unknown')} - {location}")
+
+    if filtered_out:
+        logger.info(f"Location filter: {len(israel_jobs)} Israel jobs, {len(filtered_out)} filtered out")
+
+    return israel_jobs, filtered_out
+
+
+class LocationService:
+    """
+    Unified location service for filtering and normalization.
+
+    This class provides a convenient interface for all location operations.
+    """
+
+    def __init__(self):
+        """Initialize the location service."""
+        pass
+
+    def is_israel(self, location: str) -> bool:
+        """Check if a location is in Israel."""
+        return is_israel_location(location)
+
+    def normalize(self, location: str) -> str:
+        """Normalize a location string to canonical format."""
+        return normalize_location(location)
+
+    def filter_jobs(
+        self,
+        jobs: List[dict],
+        location_field: str = "location"
+    ) -> Tuple[List[dict], List[dict]]:
+        """Filter jobs by Israel location."""
+        return filter_jobs_by_location(jobs, location_field)
+
+    def extract_cities(self, location: str) -> List[str]:
+        """Extract known Israeli cities from a location string."""
+        return extract_cities(location)
+
+
+# Singleton instance for convenience
+location_service = LocationService()
+
+# Backwards compatibility alias
+location_filter = location_service

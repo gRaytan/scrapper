@@ -18,7 +18,7 @@ from src.scrapers.static_scraper import StaticScraper
 from src.storage.database import db
 from src.storage.repositories.company_repo import CompanyRepository
 from src.storage.repositories.job_repo import JobPositionRepository
-from src.services.location_filter_service import location_filter
+from src.services.location_normalizer import location_filter
 from src.utils.logger import logger
 
 

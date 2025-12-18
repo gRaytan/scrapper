@@ -21,7 +21,7 @@ from src.storage.repositories.job_repo import JobPositionRepository
 from src.scrapers.playwright_scraper import PlaywrightScraper
 from src.services.company_matching_service import CompanyMatchingService
 from src.services.deduplication_service import JobDeduplicationService
-from src.services.location_filter_service import location_filter
+from src.services.location_normalizer import location_filter
 from src.utils.logger import logger
 from config.settings import settings
 
