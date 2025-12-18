@@ -5,49 +5,83 @@ from typing import Optional, List, Tuple
 # Canonical location names for Israel
 # Format: (canonical_name, [aliases and patterns])
 ISRAEL_LOCATIONS = [
+    # Major cities
     ("Tel Aviv", [
         "tel aviv", "tel-aviv", "tlv", "tel aviv-yafo", "tel aviv yafo",
-        "telaviv", "t.a.", "ta ", "tel-aviv-yafo"
+        "telaviv", "t.a.", "tel-aviv-yafo"
     ]),
-    ("Ramat Gan", ["ramat gan", "ramat-gan"]),
-    ("Herzliya", ["herzliya", "herzlia", "herzeliya"]),
-    ("Petah Tikva", ["petah tikva", "petach tikva", "petah-tikva", "petach-tikva"]),
-    ("Netanya", ["netanya", "netania"]),
-    ("Ra'anana", ["raanana", "ra'anana", "ra'anana", "rannana"]),
     ("Haifa", ["haifa", "hefa"]),
     ("Jerusalem", ["jerusalem", "yerushalayim", "west jerusalem"]),
     ("Be'er Sheva", ["beer sheva", "be'er sheva", "beersheva", "beer-sheva"]),
-    ("Rehovot", ["rehovot", "rechovot"]),
-    ("Rishon LeZion", ["rishon lezion", "rishon le-zion", "rishon le zion"]),
-    ("Kfar Saba", ["kfar saba", "kfar-saba"]),
+
+    # Tel Aviv area
+    ("Ramat Gan", ["ramat gan", "ramat-gan"]),
+    ("Herzliya", ["herzliya", "herzlia", "herzeliya"]),
+    ("Petah Tikva", ["petah tikva", "petach tikva", "petah-tikva", "petach-tikva"]),
+    ("Ra'anana", ["raanana", "ra'anana", "ra'anana", "rannana"]),
     ("Holon", ["holon"]),
     ("Bnei Brak", ["bnei brak", "bnei-brak", "bney brak"]),
     ("Givatayim", ["givatayim", "givataim", "giv'atayim"]),
-    ("Yokneam", ["yokneam", "yoqneam", "yokneam ilit", "yoqneam illit"]),
-    ("Rosh HaAyin", ["rosh haayin", "rosh ha'ayin", "rosh-haayin"]),
-    ("Hod HaSharon", ["hod hasharon", "hod ha-sharon", "hod-hasharon"]),
-    ("Modiin", ["modiin", "modi'in", "modiin-maccabim-reut"]),
-    ("Caesarea", ["caesarea", "cesarea", "qesarya"]),
-    ("Migdal HaEmek", ["migdal haemek", "migdal ha'emek"]),
     ("Or Yehuda", ["or yehuda", "or-yehuda"]),
     ("Azor", ["azor"]),
     ("Kiryat Ono", ["kiryat ono", "qiryat ono"]),
     ("Ramat HaSharon", ["ramat hasharon", "ramat ha-sharon"]),
-    ("Noam", ["noam"]),
+    ("Bat Yam", ["bat yam", "bat-yam"]),
+
+    # Center
+    ("Netanya", ["netanya", "netania"]),
+    ("Rehovot", ["rehovot", "rechovot"]),
+    ("Rishon LeZion", ["rishon lezion", "rishon le-zion", "rishon le zion"]),
+    ("Kfar Saba", ["kfar saba", "kfar-saba"]),
+    ("Rosh HaAyin", ["rosh haayin", "rosh ha'ayin", "rosh-haayin"]),
+    ("Hod HaSharon", ["hod hasharon", "hod ha-sharon", "hod-hasharon"]),
+    ("Modiin", ["modiin", "modi'in", "modiin-maccabim-reut"]),
+    ("Lod", ["lod"]),
+    ("Ramla", ["ramla", "ramle"]),
+    ("Yavne", ["yavne"]),
+    ("Beer Yaakov", ["beer yaakov", "be'er ya'akov"]),
+
+    # North
+    ("Yokneam", ["yokneam", "yoqneam", "yokneam ilit", "yoqneam illit"]),
+    ("Migdal HaEmek", ["migdal haemek", "migdal ha'emek"]),
+    ("Caesarea", ["caesarea", "cesarea", "qesarya"]),
     ("Tel Hai", ["tel hai", "tel-hai"]),
+    ("Hadera", ["hadera"]),
+    ("Afula", ["afula"]),
+    ("Nazareth", ["nazareth", "natzeret", "nazerat"]),
+    ("Karmiel", ["karmiel", "karmi'el"]),
+    ("Nahariya", ["nahariya", "nahariyya"]),
+    ("Akko", ["akko", "acre", "acco"]),
+    ("Tiberias", ["tiberias", "tverya"]),
+    ("Kiryat Shmona", ["kiryat shmona", "qiryat shemona"]),
+    ("Gan HaShomron", ["gan hashomron"]),
+
+    # South
+    ("Ashdod", ["ashdod"]),
+    ("Ashkelon", ["ashkelon"]),
+    ("Eilat", ["eilat"]),
+    ("Dimona", ["dimona"]),
+    ("Arad", ["arad"]),
+    ("Noam", ["noam"]),
+    ("Sderot", ["sderot"]),
+
+    # Jerusalem area
+    ("Beit Shemesh", ["beit shemesh", "bet shemesh"]),
+    ("Mevaseret Zion", ["mevaseret zion"]),
+    ("Maaleh Adumim", ["maaleh adumim", "ma'ale adumim"]),
 ]
 
-# Districts in Israel - maps to their main city
+# Districts in Israel - maps to their main city (only when no specific city is found)
 ISRAEL_DISTRICT_TO_CITY = {
     "tel aviv district": "Tel Aviv",
-    "center district": None,  # No single city
+    "center district": None,  # No single city - too many options
     "central district": None,
-    "haifa district": "Haifa",
+    "haifa district": None,  # Don't default - could be Hadera, Caesarea, etc.
     "north district": None,
     "northern district": None,
     "south district": None,
     "southern district": None,
-    "jerusalem district": "Jerusalem",
+    "jerusalem district": None,  # Don't default - could be Beit Shemesh, etc.
     "gush dan": "Tel Aviv",
 }
 
