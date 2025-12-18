@@ -99,57 +99,93 @@ COUNTRY_PATTERNS = [
 def normalize_location(location: str) -> str:
     """
     Normalize a location string to a canonical format.
-    
+
+    Rules:
+    1. If a known city is found -> "City, Israel"
+    2. If no city but has district -> "District, Israel" (keep district)
+    3. If just "Israel" with no city/district -> "Israel"
+    4. Always add ", Israel" suffix for Israeli locations
+
     Examples:
         "Tel Aviv-Yafo, Tel Aviv District, Israel" -> "Tel Aviv, Israel"
         "TLV" -> "Tel Aviv, Israel"
         "Herzliya, Tel Aviv District, Israel" -> "Herzliya, Israel"
-        "Israel, Tel Aviv, Israel, Yokneam" -> "Tel Aviv, Israel"  (takes first city)
-    
+        "Center District, Israel" -> "Center District, Israel" (no city, keep district)
+        "Beit Shean, North District, Israel" -> "Beit Shean, Israel" (unknown city, keep name)
+
     Args:
         location: Raw location string
-        
+
     Returns:
         Normalized location string
     """
     if not location:
         return ""
-    
+
     original = location
     location = location.strip()
-    
+
+    # Check if this is an Israeli location
+    # Note: \bIL\b alone is ambiguous (could be Illinois), so only match if:
+    # - "Israel" is explicitly mentioned, OR
+    # - "IL" appears with comma before it (e.g., "Tel Aviv, IL") but NOT "Chicago, IL, USA"
+    is_israel = bool(re.search(r'\bisrael\b', location, re.IGNORECASE))
+    if not is_israel:
+        # Check for ", IL" pattern but exclude if USA/US is also present
+        if re.search(r',\s*IL\b', location) and not re.search(r'\bUSA?\b', location, re.IGNORECASE):
+            is_israel = True
+
     # Handle "Remote" locations
     if re.search(r'\bremote\b', location, re.IGNORECASE):
-        # Check if it's remote with a country
-        if re.search(r'\bisrael\b', location, re.IGNORECASE):
+        if is_israel:
             return "Remote, Israel"
         if re.search(r'\bunited states\b', location, re.IGNORECASE):
             return "Remote, United States"
         return "Remote"
-    
+
     # Handle multi-location strings (e.g., "Israel, Tel Aviv, Israel, Yokneam")
     # Take the first recognizable city
     cities_found = extract_cities(location)
     if cities_found:
         primary_city = cities_found[0]
-        # Check if Israel is mentioned
-        if re.search(r'\bisrael\b|\bil\b', location, re.IGNORECASE):
+        if is_israel:
             return f"{primary_city}, Israel"
         return primary_city
 
-    # If no city found, check for district names that map to a city
-    location_lower = location.lower()
-    for district, city in ISRAEL_DISTRICT_TO_CITY.items():
-        if district in location_lower and city:
-            if re.search(r'\bisrael\b', location, re.IGNORECASE):
-                return f"{city}, Israel"
-            return city
+    # No known city found - check if it's an Israeli location
+    if is_israel:
+        location_lower = location.lower()
 
-    # If no city found, check for just country
-    if re.search(r'\bisrael\b', location, re.IGNORECASE):
+        # First, check if there's a city name we don't recognize (before the district/country)
+        # Pattern: "CityName, District, Israel" or "CityName, Israel"
+        city_match = re.match(r'^([A-Za-z\s\-\']+?)(?:,\s*(?:Center|North|South|Haifa|Jerusalem|Tel Aviv)?\s*District|,\s*Israel)', location, re.IGNORECASE)
+        if city_match:
+            city_name = city_match.group(1).strip()
+            # Clean up the city name
+            city_name = re.sub(r'\s+', ' ', city_name)
+            # Exclude district names and country names
+            excluded = ['israel', 'il', 'center', 'north', 'south', 'haifa', 'jerusalem', 'tel aviv']
+            if city_name.lower() not in excluded and len(city_name) > 1:
+                return f"{city_name}, Israel"
+
+        # No city found - check for district and keep it
+        for district in ISRAEL_DISTRICTS:
+            if district in location_lower:
+                # Format nicely: "Center District, Israel"
+                district_name = district.title()
+                return f"{district_name}, Israel"
+
+        # Just "Israel" with no specific location
         return "Israel"
-    
-    # Return cleaned version of original if no normalization possible
+
+    # Not Israeli - check if it's a known Israeli city without country suffix
+    # (e.g., "Tel Aviv", "Herzliya", "TLV")
+    cities_found = extract_cities(location)
+    if cities_found:
+        # This is an Israeli city without "Israel" mentioned
+        return f"{cities_found[0]}, Israel"
+
+    # Not Israeli - return cleaned version
     return clean_location_string(location)
 
 
