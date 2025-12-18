@@ -238,3 +238,47 @@ def normalize_location_for_matching(location: str) -> str:
     # Remove ", Israel" suffix for matching
     return re.sub(r',\s*Israel$', '', normalized, flags=re.IGNORECASE).strip()
 
+
+def is_israel_location(location: str) -> bool:
+    """
+    Check if a location is in Israel.
+
+    Returns True if:
+    - Location contains "Israel"
+    - Location is a known Israeli city
+    - Location contains an Israeli district
+
+    Returns False for:
+    - US locations (even with "IL" for Illinois)
+    - Other countries
+    - Remote without Israel
+    """
+    if not location:
+        return False
+
+    location_lower = location.lower()
+
+    # Explicit non-Israel indicators
+    if re.search(r'\b(usa|united states|u\.s\.|america|uk|united kingdom|europe|germany|france|canada)\b', location_lower):
+        return False
+
+    # Check for explicit Israel mention
+    if 'israel' in location_lower:
+        return True
+
+    # Check for known Israeli cities
+    cities = extract_cities(location)
+    if cities:
+        return True
+
+    # Check for Israeli districts
+    for district in ISRAEL_DISTRICTS:
+        if district in location_lower:
+            return True
+
+    # Check for ", IL" but not with USA context
+    if re.search(r',\s*il\b', location_lower) and 'usa' not in location_lower:
+        return True
+
+    return False
+
