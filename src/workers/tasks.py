@@ -21,7 +21,7 @@ from src.storage.repositories.job_repo import JobPositionRepository
 from src.scrapers.playwright_scraper import PlaywrightScraper
 from src.services.company_matching_service import CompanyMatchingService
 from src.services.deduplication_service import JobDeduplicationService
-from src.services.location_normalizer import location_filter
+from src.services.location_normalizer import location_filter, normalize_location
 from src.utils.logger import logger
 from config.settings import settings
 
@@ -742,7 +742,7 @@ def scrape_linkedin_jobs(
                         if existing_job:
                             # Update existing job
                             existing_job.title = job.get('title', '')
-                            existing_job.location = job.get('location', '')
+                            existing_job.location = normalize_location(job.get('location', ''))
                             existing_job.job_url = job.get('job_url', '')
                             existing_job.remote_type = 'remote' if job.get('is_remote', False) else 'onsite'
                             existing_job.last_seen_at = datetime.utcnow()
@@ -770,7 +770,7 @@ def scrape_linkedin_jobs(
                                 company_id=company.id,
                                 external_id=job.get('external_id', ''),
                                 title=job.get('title', ''),
-                                location=job.get('location', ''),
+                                location=normalize_location(job.get('location', '')),
                                 job_url=job.get('job_url', ''),
                                 remote_type='remote' if job.get('is_remote', False) else 'onsite',
                                 posted_date=job.get('posted_date'),
@@ -981,6 +981,7 @@ def scrape_linkedin_jobs_by_company(self) -> Dict[str, Any]:
                                 ).first()
 
                                 if existing:
+                                    existing.location = normalize_location(job.get('location', ''))
                                     existing.last_seen_at = datetime.utcnow()
                                     existing.scraped_at = datetime.utcnow()
                                     total_jobs_updated += 1
@@ -993,7 +994,8 @@ def scrape_linkedin_jobs_by_company(self) -> Dict[str, Any]:
                                     )
 
                                     if duplicate_job and dup_score >= dedup_service.HIGH_CONFIDENCE_THRESHOLD:
-                                        # Update last_seen_at on the existing job
+                                        # Update last_seen_at and location on the existing job
+                                        duplicate_job.location = normalize_location(job.get('location', ''))
                                         duplicate_job.last_seen_at = datetime.utcnow()
                                         total_jobs_skipped += 1
                                     else:
@@ -1002,7 +1004,7 @@ def scrape_linkedin_jobs_by_company(self) -> Dict[str, Any]:
                                             company_id=company_id,
                                             external_id=job.get('external_id', ''),
                                             title=job.get('title', ''),
-                                            location=job.get('location', ''),
+                                            location=normalize_location(job.get('location', '')),
                                             job_url=job.get('job_url', ''),
                                             remote_type='remote' if job.get('is_remote', False) else 'onsite',
                                             posted_date=job.get('posted_date'),
@@ -1223,13 +1225,14 @@ def scrape_vc_portfolio(self: Task, vc_name: str = None) -> Dict[str, Any]:
                         if existing_job:
                             # Update existing job from same source
                             existing_job.title = job.get('title', '')
-                            existing_job.location = job.get('location', '')
+                            existing_job.location = normalize_location(job.get('location', ''))
                             existing_job.job_url = job_url
                             existing_job.remote_type = 'remote' if job.get('is_remote', False) else 'onsite'
                             existing_job.last_seen_at = datetime.utcnow()
                             result['updated_jobs'] += 1
                         elif url_duplicate:
                             # Job URL already exists (from another source)
+                            url_duplicate.location = normalize_location(job.get('location', ''))
                             url_duplicate.last_seen_at = datetime.utcnow()
                             result['skipped_duplicates'] += 1
                             logger.debug(f"URL duplicate: {job.get('title')} - {job_url}")
@@ -1241,7 +1244,7 @@ def scrape_vc_portfolio(self: Task, vc_name: str = None) -> Dict[str, Any]:
                                 company_id=company.id,
                                 external_id=job.get('external_id', ''),
                                 title=job.get('title', ''),
-                                location=job.get('location', ''),
+                                location=normalize_location(job.get('location', '')),
                                 job_url=job_url,
                                 remote_type='remote' if job.get('is_remote', False) else 'onsite',
                                 posted_date=job.get('posted_date'),

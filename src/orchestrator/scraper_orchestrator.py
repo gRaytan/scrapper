@@ -18,7 +18,7 @@ from src.scrapers.static_scraper import StaticScraper
 from src.storage.database import db
 from src.storage.repositories.company_repo import CompanyRepository
 from src.storage.repositories.job_repo import JobPositionRepository
-from src.services.location_normalizer import location_filter
+from src.services.location_normalizer import location_filter, normalize_location
 from src.utils.logger import logger
 
 
@@ -228,18 +228,26 @@ class ScraperOrchestrator:
                 updated = False
                 for key, value in job_data.items():
                     if key not in ["external_id", "company_id"] and hasattr(existing_job, key):
-                        if getattr(existing_job, key) != value:
+                        if key == "location":
+                            # Normalize location
+                            normalized_loc = normalize_location(value)
+                            if existing_job.location != normalized_loc:
+                                existing_job.location = normalized_loc
+                                updated = True
+                        elif getattr(existing_job, key) != value:
                             setattr(existing_job, key, value)
                             updated = True
-                
+
                 if updated:
                     existing_job.is_active = True  # Reactivate if was inactive
                     stats["jobs_updated"] += 1
                     logger.debug(f"Updated job: {existing_job.title}")
             else:
-                # Create new job
+                # Create new job - normalize location
                 job_data["company_id"] = company.id
                 job_data["is_active"] = True
+                if "location" in job_data:
+                    job_data["location"] = normalize_location(job_data["location"])
                 job_repo.create(job_data)
                 stats["jobs_new"] += 1
                 logger.debug(f"Created new job: {job_data.get('title')}")
