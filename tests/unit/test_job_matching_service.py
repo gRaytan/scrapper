@@ -1,17 +1,23 @@
-"""Tests for JobMatchingService."""
+"""Tests for JobMatchingService and PersonalizedJobService."""
 import pytest
 from datetime import datetime, timedelta
 from uuid import uuid4
 from unittest.mock import MagicMock, patch
+import base64
 
 import sys
 from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 
+import numpy as np
+
 from src.services.job_matching_service import JobMatchingService
+from src.services.personalized_job_service import PersonalizedJobService
 from src.models.alert import Alert, keyword_matches, semantic_keyword_matches
 from src.models.alert_notification import AlertNotification
 from src.models.job_position import JobPosition
+from src.models.job_embedding import JobEmbedding
+from src.models.user_job_interaction import UserJobInteraction
 from src.models.company import Company
 from src.models.user import User
 
@@ -479,3 +485,268 @@ class TestUserService:
             call_args = mock_repo.update.call_args
             update_dict = call_args[0][1]
             assert update_dict == {"payme_subscription_id": "sub_only"}
+
+
+
+# ============ PersonalizedJobService Tests ============
+
+class TestPersonalizedJobService:
+    """Test cases for PersonalizedJobService."""
+
+    @pytest.fixture
+    def mock_session(self):
+        """Create a mock database session."""
+        session = MagicMock()
+        session.query.return_value.filter.return_value.first.return_value = None
+        session.query.return_value.filter.return_value.all.return_value = []
+        return session
+
+    @pytest.fixture
+    def service(self, mock_session):
+        """Create a PersonalizedJobService instance."""
+        return PersonalizedJobService(mock_session, threshold=0.65)
+
+    @pytest.fixture
+    def sample_user(self):
+        """Create a sample user with preferences."""
+        user = MagicMock(spec=User)
+        user.id = uuid4()
+        user.email = "test@example.com"
+        user.preferences = {
+            "job_title": "Software Engineer",
+            "job_keywords": ["Python", "Backend"]
+        }
+        return user
+
+    @pytest.fixture
+    def sample_job(self):
+        """Create a sample job position."""
+        job = MagicMock(spec=JobPosition)
+        job.id = uuid4()
+        job.title = "Senior Software Engineer"
+        job.location = "Tel Aviv, Israel"
+        job.is_active = True
+        job.created_at = datetime.utcnow()
+        job.posted_date = datetime.utcnow()
+        return job
+
+    @pytest.fixture
+    def sample_interaction(self, sample_user, sample_job):
+        """Create a sample user-job interaction."""
+        interaction = MagicMock(spec=UserJobInteraction)
+        interaction.user_id = sample_user.id
+        interaction.job_id = sample_job.id
+        interaction.is_starred = False
+        interaction.is_archived = False
+        interaction.starred_at = None
+        interaction.archived_at = None
+        return interaction
+
+
+class TestStarArchiveOperations(TestPersonalizedJobService):
+    """Test star and archive operations."""
+
+    def test_star_job_creates_interaction(self, service, mock_session, sample_user, sample_job):
+        """Test starring a job creates an interaction."""
+        mock_session.query.return_value.filter.return_value.first.return_value = None
+
+        result = service.star_job(sample_user.id, sample_job.id)
+
+        mock_session.add.assert_called_once()
+        mock_session.commit.assert_called_once()
+        assert result.is_starred is True
+
+    def test_star_job_updates_existing_interaction(self, service, mock_session, sample_interaction):
+        """Test starring a job updates existing interaction."""
+        sample_interaction.is_starred = False
+        mock_session.query.return_value.filter.return_value.first.return_value = sample_interaction
+
+        result = service.star_job(sample_interaction.user_id, sample_interaction.job_id)
+
+        mock_session.commit.assert_called_once()
+        assert sample_interaction.is_starred is True
+
+    def test_unstar_job(self, service, mock_session, sample_interaction):
+        """Test unstarring a job."""
+        sample_interaction.is_starred = True
+        sample_interaction.starred_at = datetime.utcnow()
+        mock_session.query.return_value.filter.return_value.first.return_value = sample_interaction
+
+        result = service.unstar_job(sample_interaction.user_id, sample_interaction.job_id)
+
+        mock_session.commit.assert_called_once()
+        assert sample_interaction.is_starred is False
+        assert sample_interaction.starred_at is None
+
+    def test_archive_job(self, service, mock_session, sample_user, sample_job):
+        """Test archiving a job."""
+        mock_session.query.return_value.filter.return_value.first.return_value = None
+
+        result = service.archive_job(sample_user.id, sample_job.id)
+
+        mock_session.add.assert_called_once()
+        mock_session.commit.assert_called_once()
+        assert result.is_archived is True
+
+    def test_unarchive_job(self, service, mock_session, sample_interaction):
+        """Test unarchiving a job."""
+        sample_interaction.is_archived = True
+        sample_interaction.archived_at = datetime.utcnow()
+        mock_session.query.return_value.filter.return_value.first.return_value = sample_interaction
+
+        result = service.unarchive_job(sample_interaction.user_id, sample_interaction.job_id)
+
+        mock_session.commit.assert_called_once()
+        assert sample_interaction.is_archived is False
+        assert sample_interaction.archived_at is None
+
+
+class TestUserInteractionsMap(TestPersonalizedJobService):
+    """Test getting user interactions map."""
+
+    def test_get_user_interactions_map_empty(self, service, mock_session, sample_user):
+        """Test getting interactions map with no job IDs."""
+        result = service.get_user_interactions_map(sample_user.id, [])
+        assert result == {}
+
+    def test_get_user_interactions_map_with_interactions(self, service, mock_session, sample_user):
+        """Test getting interactions map with existing interactions."""
+        job_id_1 = uuid4()
+        job_id_2 = uuid4()
+
+        interaction_1 = MagicMock()
+        interaction_1.job_id = job_id_1
+        interaction_1.is_starred = True
+        interaction_1.is_archived = False
+
+        interaction_2 = MagicMock()
+        interaction_2.job_id = job_id_2
+        interaction_2.is_starred = False
+        interaction_2.is_archived = True
+
+        mock_session.query.return_value.filter.return_value.all.return_value = [interaction_1, interaction_2]
+
+        result = service.get_user_interactions_map(sample_user.id, [job_id_1, job_id_2])
+
+        assert result[job_id_1]["is_starred"] is True
+        assert result[job_id_1]["is_archived"] is False
+        assert result[job_id_2]["is_starred"] is False
+        assert result[job_id_2]["is_archived"] is True
+
+
+class TestJobPreferences(TestPersonalizedJobService):
+    """Test job preferences operations."""
+
+    def test_compute_user_query_embedding_no_preferences(self, service, mock_session):
+        """Test computing embedding with no preferences."""
+        user = MagicMock(spec=User)
+        user.preferences = {}
+
+        result = service.compute_user_query_embedding(user)
+        assert result is None
+
+    def test_compute_user_query_embedding_with_title_only(self, service, mock_session):
+        """Test computing embedding with only job title."""
+        user = MagicMock(spec=User)
+        user.preferences = {"job_title": "Software Engineer"}
+
+        mock_embedding = MagicMock()
+        mock_embedding.encode.return_value = np.array([0.1, 0.2, 0.3])
+        service._embedding_service = mock_embedding
+
+        result = service.compute_user_query_embedding(user)
+
+        mock_embedding.encode.assert_called_once_with("Software Engineer")
+        assert result is not None
+
+    def test_compute_user_query_embedding_with_keywords(self, service, mock_session):
+        """Test computing embedding with title and keywords."""
+        user = MagicMock(spec=User)
+        user.preferences = {
+            "job_title": "Software Engineer",
+            "job_keywords": ["Python", "Backend"]
+        }
+
+        mock_embedding = MagicMock()
+        mock_embedding.encode.return_value = np.array([0.1, 0.2, 0.3])
+        service._embedding_service = mock_embedding
+
+        result = service.compute_user_query_embedding(user)
+
+        mock_embedding.encode.assert_called_once_with("Software Engineer Python Backend")
+        assert result is not None
+
+    def test_get_user_query_embedding_from_preferences(self, service, mock_session):
+        """Test getting pre-computed embedding from preferences."""
+        embedding = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+        encoded = base64.b64encode(embedding.tobytes()).decode("utf-8")
+
+        user = MagicMock(spec=User)
+        user.preferences = {"query_embedding": encoded}
+
+        result = service.get_user_query_embedding(user)
+
+        assert result is not None
+        np.testing.assert_array_almost_equal(result, embedding)
+
+    def test_get_user_query_embedding_no_embedding(self, service, mock_session):
+        """Test getting embedding when none stored."""
+        user = MagicMock(spec=User)
+        user.preferences = {}
+
+        result = service.get_user_query_embedding(user)
+        assert result is None
+
+
+class TestStarredArchivedLists(TestPersonalizedJobService):
+    """Test getting starred and archived job lists."""
+
+    def test_get_starred_jobs_empty(self, service, mock_session, sample_user):
+        """Test getting starred jobs when none exist."""
+        mock_query = MagicMock()
+        mock_query.count.return_value = 0
+        mock_query.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
+        mock_session.query.return_value.join.return_value.options.return_value = mock_query
+
+        jobs, total = service.get_starred_jobs(sample_user.id)
+
+        assert jobs == []
+        assert total == 0
+
+    def test_get_archived_jobs_empty(self, service, mock_session, sample_user):
+        """Test getting archived jobs when none exist."""
+        mock_query = MagicMock()
+        mock_query.count.return_value = 0
+        mock_query.order_by.return_value.offset.return_value.limit.return_value.all.return_value = []
+        mock_session.query.return_value.join.return_value.options.return_value = mock_query
+
+        jobs, total = service.get_archived_jobs(sample_user.id)
+
+        assert jobs == []
+        assert total == 0
+
+
+class TestPersonalizedFeed(TestPersonalizedJobService):
+    """Test personalized feed functionality."""
+
+    def test_get_personalized_feed_no_preferences(self, service, mock_session, sample_user):
+        """Test feed returns empty when no preferences set."""
+        sample_user.preferences = {}
+
+        result = service.get_personalized_feed(sample_user)
+
+        assert result["jobs"] == []
+        assert result["total"] == 0
+
+    def test_get_personalized_feed_no_jobs(self, service, mock_session, sample_user):
+        """Test feed returns empty when no jobs match."""
+        embedding = np.array([0.1, 0.2, 0.3], dtype=np.float32)
+        encoded = base64.b64encode(embedding.tobytes()).decode("utf-8")
+        sample_user.preferences["query_embedding"] = encoded
+
+        mock_session.query.return_value.filter.return_value.options.return_value.all.return_value = []
+
+        result = service.get_personalized_feed(sample_user)
+
+        assert result["jobs"] == []
+        assert result["total"] == 0
