@@ -295,7 +295,83 @@ class TestMeEndpoint:
             "/api/v1/auth/me",
             headers={"Authorization": f"Bearer {access_token}"}
         )
-        
+
         assert response.status_code == 200
         data = response.json()
         assert data["email"] == user.email
+
+
+class TestDevTokenEndpoint:
+    """Tests for POST /api/v1/auth/dev/token endpoint."""
+
+    def test_dev_token_creates_user(self, mock_db_session):
+        """Test dev token creates user."""
+        from datetime import datetime
+
+        # Mock no existing user
+        mock_db_session.query.return_value.filter.return_value.first.return_value = None
+
+        # Mock the add and refresh to set user attributes
+        user_id = uuid4()
+        def mock_add(user):
+            user.id = user_id
+            user.created_at = datetime.utcnow()
+            user.updated_at = datetime.utcnow()
+
+        def mock_refresh(user):
+            pass
+
+        mock_db_session.add.side_effect = mock_add
+        mock_db_session.refresh.side_effect = mock_refresh
+
+        response = client.post(
+            "/api/v1/auth/dev/token",
+            json={"email": "dev@example.com"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert "access_token" in data
+        assert "refresh_token" in data
+        assert data["user"]["email"] == "dev@example.com"
+        assert data["user"]["is_new_user"] == True
+
+    def test_dev_token_returns_existing_user(self, mock_db_session):
+        """Test dev token returns existing user."""
+        from datetime import datetime
+
+        user_id = uuid4()
+        existing_user = User(
+            id=user_id,
+            email="existing@example.com",
+            full_name="Existing User",
+            oauth_provider="google",
+            oauth_provider_id="google-123",
+            is_active=True,
+            subscription_tier="free",
+            phone_verified=False,
+            preferences={}
+        )
+        existing_user.created_at = datetime.utcnow()
+        existing_user.updated_at = datetime.utcnow()
+
+        mock_db_session.query.return_value.filter.return_value.first.return_value = existing_user
+
+        response = client.post(
+            "/api/v1/auth/dev/token",
+            json={"email": "existing@example.com"}
+        )
+
+        assert response.status_code == 200
+        data = response.json()
+        assert data["user"]["email"] == "existing@example.com"
+        assert data["user"]["is_new_user"] == False
+
+    def test_dev_token_invalid_email(self, mock_db_session):
+        """Test dev token rejects invalid email."""
+        response = client.post(
+            "/api/v1/auth/dev/token",
+            json={"email": "not-an-email"}
+        )
+
+        assert response.status_code == 422

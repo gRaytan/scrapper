@@ -80,5 +80,10 @@ class SSOUserInfo(BaseModel):
     is_new_user: bool = Field(..., description="True if user was just created")
 
 
+class DevTokenRequest(BaseModel):
+    """Schema for development token request (dev only)."""
+    email: EmailStr = Field(..., description="Email to generate token for")
+
+
 # Required for forward reference
 SSOTokenResponse.model_rebuild()

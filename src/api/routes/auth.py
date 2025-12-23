@@ -6,11 +6,12 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 from src.api.schemas.auth import (
-    Token, 
+    Token,
     RefreshTokenRequest,
     SSOTokenRequest,
     SSOTokenResponse,
     SSOUserInfo,
+    DevTokenRequest,
 )
 from src.api.schemas.user import UserResponse
 from src.auth.security import create_access_token, create_refresh_token, decode_token
@@ -183,3 +184,79 @@ async def get_current_user_info(
     Requires valid JWT token in Authorization header.
     """
     return current_user
+
+
+@router.post(
+    "/dev/token",
+    response_model=SSOTokenResponse,
+    status_code=status.HTTP_200_OK,
+    include_in_schema=True,  # Show in Swagger
+)
+async def dev_token(
+    dev_data: DevTokenRequest,
+    db: Session = Depends(get_db_session)
+):
+    """
+    🔧 **Quick Token** - Get JWT tokens for Swagger testing.
+
+    This endpoint allows you to get JWT tokens without going through OAuth/SSO.
+    Useful for testing API endpoints in Swagger UI.
+
+    **Usage in Swagger:**
+    1. Enter any email address
+    2. Click Execute
+    3. Copy the access_token
+    4. Click "Authorize" button at the top
+    5. Paste the token and click "Authorize"
+    """
+
+    is_new_user = False
+
+    # Find or create user
+    user = db.query(User).filter(User.email == dev_data.email).first()
+
+    if not user:
+        # Create dev user
+        user = User(
+            email=dev_data.email,
+            full_name=f"Dev User ({dev_data.email.split('@')[0]})",
+            oauth_provider="dev",
+            oauth_provider_id=f"dev-{dev_data.email}",
+            is_active=True,
+            subscription_tier="free",
+            phone_verified=False,
+            preferences={}
+        )
+        db.add(user)
+        is_new_user = True
+        logger.info(f"Created dev user: {dev_data.email}")
+
+    # Update last login
+    user.last_login_at = datetime.utcnow()
+
+    db.commit()
+    db.refresh(user)
+
+    # Create tokens
+    token_data = {
+        "user_id": user.id,
+        "email": user.email,
+        "oauth_provider": user.oauth_provider or "dev",
+    }
+
+    access_token = create_access_token(token_data)
+    refresh_token = create_refresh_token(token_data)
+
+    return SSOTokenResponse(
+        access_token=access_token,
+        refresh_token=refresh_token,
+        token_type="bearer",
+        expires_in=settings.jwt_access_token_expire_minutes * 60,
+        user=SSOUserInfo(
+            id=user.id,
+            email=user.email,
+            full_name=user.full_name,
+            oauth_provider=user.oauth_provider or "dev",
+            is_new_user=is_new_user,
+        )
+    )
