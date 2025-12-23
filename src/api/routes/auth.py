@@ -203,12 +203,19 @@ async def dev_token(
     Useful for testing API endpoints in Swagger UI.
 
     **Usage in Swagger:**
-    1. Enter any email address
+    1. Enter: admin@hiddenjobs.me
     2. Click Execute
     3. Copy the access_token
     4. Click "Authorize" button at the top
     5. Paste the token and click "Authorize"
     """
+    # Only allow admin email
+    ALLOWED_EMAIL = "admin@hiddenjobs.me"
+    if dev_data.email.lower() != ALLOWED_EMAIL:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail=f"Only {ALLOWED_EMAIL} is allowed"
+        )
 
     is_new_user = False
 
