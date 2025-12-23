@@ -1284,3 +1284,88 @@ def scrape_vc_portfolio(self: Task, vc_name: str = None) -> Dict[str, Any]:
         logger.error(f"VC portfolio scraping failed: {exc}")
         logger.exception(exc)
         raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))
+
+
+
+@celery_app.task(bind=True, name='src.workers.tasks.compute_job_embeddings', max_retries=3)
+def compute_job_embeddings(self: Task, batch_size: int = 100) -> Dict[str, Any]:
+    """
+    Compute embeddings for jobs that don't have them yet.
+
+    This task finds all jobs without embeddings and computes them in batches.
+    Should be run after scraping or periodically to ensure all jobs have embeddings.
+
+    Args:
+        batch_size: Number of jobs to process in each batch
+
+    Returns:
+        Dictionary with processing statistics
+    """
+    try:
+        from src.models.job_embedding import JobEmbedding
+        from src.services.personalized_job_service import PersonalizedJobService
+
+        logger.info("=" * 80)
+        logger.info("Starting job embedding computation...")
+        logger.info("=" * 80)
+
+        start_time = datetime.utcnow()
+        total_processed = 0
+        total_errors = 0
+
+        with db.get_session() as session:
+            # Find jobs without embeddings
+            jobs_with_embeddings = session.query(JobEmbedding.job_id).subquery()
+
+            jobs_without_embeddings = session.query(JobPosition).filter(
+                JobPosition.id.notin_(session.query(jobs_with_embeddings.c.job_id)),
+                JobPosition.is_active == True
+            ).all()
+
+            total_jobs = len(jobs_without_embeddings)
+            logger.info(f"Found {total_jobs} jobs without embeddings")
+
+            if total_jobs == 0:
+                return {
+                    'status': 'success',
+                    'total_jobs': 0,
+                    'processed': 0,
+                    'errors': 0,
+                    'duration_seconds': 0
+                }
+
+            # Process in batches
+            service = PersonalizedJobService(session)
+
+            for i in range(0, total_jobs, batch_size):
+                batch = jobs_without_embeddings[i:i + batch_size]
+                try:
+                    processed = service.compute_embeddings_for_jobs(batch)
+                    total_processed += processed
+                    logger.info(f"Processed batch {i // batch_size + 1}: {processed} embeddings computed")
+                except Exception as e:
+                    logger.error(f"Error processing batch {i // batch_size + 1}: {e}")
+                    total_errors += len(batch)
+
+        duration = (datetime.utcnow() - start_time).total_seconds()
+
+        logger.success("=" * 80)
+        logger.success("JOB EMBEDDING COMPUTATION COMPLETED")
+        logger.success(f"  Total jobs: {total_jobs}")
+        logger.success(f"  Processed: {total_processed}")
+        logger.success(f"  Errors: {total_errors}")
+        logger.success(f"  Duration: {duration:.2f}s")
+        logger.success("=" * 80)
+
+        return {
+            'status': 'success',
+            'total_jobs': total_jobs,
+            'processed': total_processed,
+            'errors': total_errors,
+            'duration_seconds': duration
+        }
+
+    except Exception as exc:
+        logger.error(f"Job embedding computation failed: {exc}")
+        logger.exception(exc)
+        raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))

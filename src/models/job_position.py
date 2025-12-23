@@ -86,6 +86,8 @@ class JobPosition(Base, UUIDMixin, TimestampMixin):
 
     # Relationships
     company = relationship("Company", back_populates="job_positions")
+    user_interactions = relationship("UserJobInteraction", back_populates="job", cascade="all, delete-orphan")
+    embedding = relationship("JobEmbedding", back_populates="job", uselist=False, cascade="all, delete-orphan")
     
     # Indexes for common queries
     __table_args__ = (
