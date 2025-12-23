@@ -3,7 +3,7 @@ from typing import Optional
 from uuid import UUID
 
 from fastapi import Depends, HTTPException, status, Header
-from fastapi.security import OAuth2PasswordBearer
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError
 from sqlalchemy.orm import Session
 
@@ -12,8 +12,12 @@ from src.models.user import User
 from src.storage.database import db
 from config.settings import settings
 
-# OAuth2 scheme for token extraction
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/auth/login")
+# HTTP Bearer scheme for token extraction
+# This shows a simple "Bearer Token" input in Swagger UI
+http_bearer = HTTPBearer(
+    scheme_name="Bearer Token",
+    description="Enter the JWT access token obtained from /api/v1/auth/dev/token"
+)
 
 
 def get_db_session():
@@ -23,7 +27,7 @@ def get_db_session():
 
 
 async def get_current_user(
-    token: str = Depends(oauth2_scheme),
+    credentials: HTTPAuthorizationCredentials = Depends(http_bearer),
     session: Session = Depends(get_db_session)
 ) -> User:
     """
@@ -44,7 +48,10 @@ async def get_current_user(
         detail="Could not validate credentials",
         headers={"WWW-Authenticate": "Bearer"},
     )
-    
+
+    # Extract token from credentials
+    token = credentials.credentials
+
     try:
         payload = decode_token(token)
         user_id_str: Optional[str] = payload.get("user_id")
