@@ -304,8 +304,11 @@ class TestMeEndpoint:
 class TestDevTokenEndpoint:
     """Tests for POST /api/v1/auth/dev/token endpoint."""
 
+    # Only admin@hiddenjobs.me is allowed
+    ADMIN_EMAIL = "admin@hiddenjobs.me"
+
     def test_dev_token_creates_user(self, mock_db_session):
-        """Test dev token creates user."""
+        """Test dev token creates user for admin email."""
         from datetime import datetime
 
         # Mock no existing user
@@ -326,25 +329,25 @@ class TestDevTokenEndpoint:
 
         response = client.post(
             "/api/v1/auth/dev/token",
-            json={"email": "dev@example.com"}
+            json={"email": self.ADMIN_EMAIL}
         )
 
         assert response.status_code == 200
         data = response.json()
         assert "access_token" in data
         assert "refresh_token" in data
-        assert data["user"]["email"] == "dev@example.com"
+        assert data["user"]["email"] == self.ADMIN_EMAIL
         assert data["user"]["is_new_user"] == True
 
     def test_dev_token_returns_existing_user(self, mock_db_session):
-        """Test dev token returns existing user."""
+        """Test dev token returns existing admin user."""
         from datetime import datetime
 
         user_id = uuid4()
         existing_user = User(
             id=user_id,
-            email="existing@example.com",
-            full_name="Existing User",
+            email=self.ADMIN_EMAIL,
+            full_name="Admin User",
             oauth_provider="google",
             oauth_provider_id="google-123",
             is_active=True,
@@ -359,16 +362,26 @@ class TestDevTokenEndpoint:
 
         response = client.post(
             "/api/v1/auth/dev/token",
-            json={"email": "existing@example.com"}
+            json={"email": self.ADMIN_EMAIL}
         )
 
         assert response.status_code == 200
         data = response.json()
-        assert data["user"]["email"] == "existing@example.com"
+        assert data["user"]["email"] == self.ADMIN_EMAIL
         assert data["user"]["is_new_user"] == False
 
+    def test_dev_token_rejects_non_admin_email(self, mock_db_session):
+        """Test dev token rejects non-admin emails."""
+        response = client.post(
+            "/api/v1/auth/dev/token",
+            json={"email": "other@example.com"}
+        )
+
+        assert response.status_code == 403
+        assert "Only admin@hiddenjobs.me is allowed" in response.json()["detail"]
+
     def test_dev_token_invalid_email(self, mock_db_session):
-        """Test dev token rejects invalid email."""
+        """Test dev token rejects invalid email format."""
         response = client.post(
             "/api/v1/auth/dev/token",
             json={"email": "not-an-email"}
