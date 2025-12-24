@@ -138,6 +138,18 @@ celery_app.conf.update(
                 'expires': 900,
             }
         },
+
+        # Compute job embeddings daily at 7:00 AM (after all scraping is done)
+        'daily-compute-job-embeddings': {
+            'task': 'src.workers.tasks.compute_job_embeddings',
+            'schedule': crontab(hour=7, minute=0),  # 7:00 AM UTC daily
+            'kwargs': {
+                'batch_size': 100
+            },
+            'options': {
+                'expires': 3600,  # 1 hour
+            }
+        },
     },
 )
 
