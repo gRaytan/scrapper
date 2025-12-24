@@ -58,21 +58,27 @@ ISRAEL_LOCATIONS = [
     ("Ramla", ["ramla", "ramle"]),
     ("Yavne", ["yavne"]),
     ("Beer Yaakov", ["beer yaakov", "be'er ya'akov"]),
+    ("Ness Ziona", ["ness ziona", "nes ziona"]),
+    ("Kadima", ["kadima", "kadima - zoran", "kadima-zoran"]),
+    ("Shoham", ["shoham"]),
+    ("Yehud", ["yehud", "yehud monosson", "yehud-monosson"]),
 
     # North
     ("Yokneam", ["yokneam", "yoqneam", "yokneam ilit", "yoqneam illit"]),
-    ("Migdal HaEmek", ["migdal haemek", "migdal ha'emek"]),
+    ("Migdal HaEmek", ["migdal haemek", "migdal ha'emek", "migdal haemeq"]),
     ("Caesarea", ["caesarea", "cesarea", "qesarya"]),
     ("Tel Hai", ["tel hai", "tel-hai"]),
     ("Hadera", ["hadera"]),
     ("Afula", ["afula"]),
     ("Nazareth", ["nazareth", "natzeret", "nazerat"]),
+    ("Nof HaGalil", ["nof hagalil", "nof galil"]),
     ("Karmiel", ["karmiel", "karmi'el"]),
     ("Nahariya", ["nahariya", "nahariyya"]),
     ("Akko", ["akko", "acre", "acco"]),
     ("Tiberias", ["tiberias", "tverya"]),
     ("Kiryat Shmona", ["kiryat shmona", "qiryat shemona"]),
     ("Gan HaShomron", ["gan hashomron"]),
+    ("Tirat Carmel", ["tirat carmel", "tirat karmel", "tirat hacarmel"]),
 
     # South
     ("Ashdod", ["ashdod"]),
