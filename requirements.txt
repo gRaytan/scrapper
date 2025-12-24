@@ -16,7 +16,7 @@ instructor==0.4.5
 
 # Semantic Matching (lightweight embeddings - CPU only)
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.1.0+cpu
+torch==2.2.0+cpu
 sentence-transformers==2.7.0
 
 # Database & Storage
