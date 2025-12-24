@@ -93,12 +93,12 @@ ISRAEL_DISTRICT_TO_CITY = {
     "tel aviv district": "Tel Aviv",
     "center district": None,  # No single city - too many options
     "central district": None,
-    "haifa district": None,  # Don't default - could be Hadera, Caesarea, etc.
+    "haifa district": "Haifa",
     "north district": None,
     "northern district": None,
     "south district": None,
     "southern district": None,
-    "jerusalem district": None,  # Don't default - could be Beit Shemesh, etc.
+    "jerusalem district": "Jerusalem",
     "gush dan": "Tel Aviv",
 }
 
@@ -182,12 +182,17 @@ def normalize_location(location: str) -> str:
             if city_name.lower() not in excluded and len(city_name) > 1:
                 return f"{city_name}, Israel"
 
-        # No city found - check for district and keep it
+        # No city found - check for district and map to city if configured
         for district in ISRAEL_DISTRICTS:
             if district in location_lower:
-                # Format nicely: "Center District, Israel"
-                district_name = district.title()
-                return f"{district_name}, Israel"
+                mapped_city = ISRAEL_DISTRICT_TO_CITY.get(district)
+                if mapped_city:
+                    # District maps to a city (e.g., "Tel Aviv District" -> "Tel Aviv")
+                    return f"{mapped_city}, Israel"
+                else:
+                    # No mapping - keep district name (e.g., "Center District, Israel")
+                    district_name = district.title()
+                    return f"{district_name}, Israel"
 
         # Just "Israel" with no specific location
         return "Israel"

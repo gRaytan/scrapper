@@ -164,42 +164,8 @@ def list_jobs(
         )
 
 
-@router.get("/{job_id}", response_model=JobDetailResponse)
-def get_job(
-    job_id: UUID,
-    current_user: User = Depends(get_current_active_user),
-    session: Session = Depends(get_db_session)
-):
-    """
-    Get job details by ID.
-
-    - **job_id**: Job UUID
-
-    Returns detailed job information including company details.
-    Requires JWT authentication.
-    """
-    try:
-        service = JobService(session)
-        job = service.get_job(job_id)
-
-        if not job:
-            raise HTTPException(
-                status_code=status.HTTP_404_NOT_FOUND,
-                detail=f"Job {job_id} not found"
-            )
-
-        return job
-    except HTTPException:
-        raise
-    except Exception as e:
-        logger.error(f"Error getting job {job_id}: {e}")
-        raise HTTPException(
-            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to get job"
-        )
-
-
 # ============ Personalized Feed Endpoints ============
+# NOTE: These routes MUST come before /{job_id} to avoid path parameter conflicts
 
 def _job_to_feed_item(job, similarity_score: float, is_starred: bool, is_archived: bool) -> FeedJobItem:
     """Convert a JobPosition to FeedJobItem."""
@@ -603,4 +569,41 @@ def update_job_preferences(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to update job preferences"
+        )
+
+
+# ============ Job by ID (must be last to avoid path conflicts) ============
+
+@router.get("/{job_id}", response_model=JobDetailResponse)
+def get_job(
+    job_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_db_session)
+):
+    """
+    Get job details by ID.
+
+    - **job_id**: Job UUID
+
+    Returns detailed job information including company details.
+    Requires JWT authentication.
+    """
+    try:
+        service = JobService(session)
+        job = service.get_job(job_id)
+
+        if not job:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"Job {job_id} not found"
+            )
+
+        return job
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error getting job {job_id}: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get job"
         )
