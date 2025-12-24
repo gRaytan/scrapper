@@ -179,7 +179,9 @@ def normalize_location(location: str) -> str:
             city_name = re.sub(r'\s+', ' ', city_name)
             # Exclude district names and country names
             excluded = ['israel', 'il', 'center', 'north', 'south', 'haifa', 'jerusalem', 'tel aviv']
-            if city_name.lower() not in excluded and len(city_name) > 1:
+            # Also exclude if it's a district name (e.g., "Tel Aviv District")
+            is_district = any(city_name.lower() == d or city_name.lower().replace(' district', '') + ' district' == d for d in ISRAEL_DISTRICTS)
+            if city_name.lower() not in excluded and len(city_name) > 1 and not is_district:
                 return f"{city_name}, Israel"
 
         # No city found - check for district and map to city if configured
