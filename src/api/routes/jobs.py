@@ -565,10 +565,10 @@ def update_job_preferences(
             updated_at=updated_user.updated_at
         )
     except Exception as e:
-        logger.error(f"Error updating job preferences: {e}")
+        logger.error(f"Error updating job preferences: {e}", exc_info=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="Failed to update job preferences"
+            detail=f"Failed to update job preferences: {str(e)}"
         )
 
 
