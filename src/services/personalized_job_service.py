@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class PersonalizedJobService:
     """Service for personalized job feed and user-job interactions."""
 
-    DEFAULT_SIMILARITY_THRESHOLD = 0.65
+    DEFAULT_SIMILARITY_THRESHOLD = 0.70
     DEFAULT_DAYS_BACK = 30
 
     def __init__(self, session: Session, threshold: float = DEFAULT_SIMILARITY_THRESHOLD):
@@ -219,22 +219,18 @@ class PersonalizedJobService:
         return len(jobs_to_process)
 
     def compute_user_query_embedding(self, user: User) -> Optional[np.ndarray]:
-        """Compute embedding for user's job preferences (title + keywords)."""
-        job_title = user.preferences.get("job_title", "")
-        job_keywords = user.preferences.get("job_keywords", [])
+        """Compute embedding for user's job preferences (title only).
 
-        if not job_title and not job_keywords:
+        Keywords are used for filtering, not for embedding computation.
+        This ensures the semantic search focuses on the job title match.
+        """
+        job_title = user.preferences.get("job_title", "")
+
+        if not job_title:
             return None
 
-        # Combine title and keywords into a single query
-        query_parts = []
-        if job_title:
-            query_parts.append(job_title)
-        if job_keywords:
-            query_parts.extend(job_keywords)
-
-        query_text = " ".join(query_parts)
-        return self.embedding_service.encode(query_text)
+        # Use only job_title for embedding - keywords are used for filtering
+        return self.embedding_service.encode(job_title)
 
     def update_user_job_preferences(
         self,
@@ -381,11 +377,25 @@ class PersonalizedJobService:
         ).all()
         embedding_map = {e.job_id: e.get_embedding() for e in embeddings}
 
+        # Get user's keywords for filtering (optional)
+        job_keywords = user.preferences.get("job_keywords", [])
+        keywords_lower = [kw.lower() for kw in job_keywords] if job_keywords else []
+
+        def job_matches_keywords(job_title: str) -> bool:
+            """Check if job title contains at least one keyword."""
+            if not keywords_lower:
+                return True  # No keywords = no filtering
+            title_lower = job_title.lower()
+            return any(kw in title_lower for kw in keywords_lower)
+
         # Compute similarity scores
         scored_jobs = []
         for job in jobs:
             job_embedding = embedding_map.get(job.id)
             if job_embedding is not None:
+                # Apply keyword filter if keywords are set
+                if not job_matches_keywords(job.title or ""):
+                    continue
                 score = self.embedding_service.cosine_similarity(query_embedding, job_embedding)
                 if score >= self.threshold:
                     scored_jobs.append((job, score))
