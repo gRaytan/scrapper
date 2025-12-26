@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 class PersonalizedJobService:
     """Service for personalized job feed and user-job interactions."""
 
-    DEFAULT_SIMILARITY_THRESHOLD = 0.70
+    DEFAULT_SIMILARITY_THRESHOLD = 0.65
     DEFAULT_DAYS_BACK = 30
 
     def __init__(self, session: Session, threshold: float = DEFAULT_SIMILARITY_THRESHOLD):
@@ -248,15 +248,23 @@ class PersonalizedJobService:
 
         # Compute and store query embedding
         user.preferences = preferences
+        logger.info(f"Computing query embedding for user {user.id} with title: {job_title}")
         query_embedding = self.compute_user_query_embedding(user)
 
         if query_embedding is not None:
+            logger.info(f"Query embedding computed successfully for user {user.id}")
             # Store as base64 for JSON compatibility
             preferences["query_embedding"] = base64.b64encode(
                 query_embedding.astype(np.float32).tobytes()
             ).decode("utf-8")
+            # Update timestamp
+            preferences["updated_at"] = datetime.utcnow().isoformat() + "Z"
             user.preferences = preferences
+        else:
+            logger.warning(f"Failed to compute query embedding for user {user.id}")
 
+        # Update user's updated_at timestamp
+        user.updated_at = datetime.utcnow()
         self.session.commit()
         logger.info(f"Updated job preferences for user {user.id}")
         return user

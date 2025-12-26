@@ -7,7 +7,7 @@ This is a condensed guide to get your Job Scraper running on AWS EC2 quickly.
 **Production deployment MUST be from `/opt/scraper`**
 
 ```
-EC2 Server: 51.16.168.45 (api.hiddenjobs.me)
+EC2 Server: 51.17.250.130 (api.hiddenjobs.me)
 SSH Key: /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem
 Deployment Path: /opt/scraper
 Compose File: docker-compose.production.yml
@@ -130,7 +130,7 @@ Your API is now running at: `http://YOUR_EC2_IP`
 
 ```bash
 # SSH to server
-ssh -i /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem ubuntu@51.16.168.45
+ssh -i /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem ubuntu@51.17.250.130
 
 # Go to deployment directory (ALWAYS use this path!)
 cd /opt/scraper
@@ -160,10 +160,10 @@ sudo ./deployment/deploy.sh
 # From your local machine - copy updated files to EC2
 scp -i /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem \
   /Users/gilr/IdeaProjects/scrapper/src/path/to/file.py \
-  ubuntu@51.16.168.45:/tmp/
+  ubuntu@51.17.250.130:/tmp/
 
 # SSH to server and move files
-ssh -i /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem ubuntu@51.16.168.45
+ssh -i /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem ubuntu@51.17.250.130
 sudo cp /tmp/file.py /opt/scraper/src/path/to/file.py
 sudo chown scraper:scraper /opt/scraper/src/path/to/file.py
 
