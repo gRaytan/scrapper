@@ -32,6 +32,7 @@ class JobBase(BaseModel):
     employment_type: Optional[str] = None
     department: Optional[str] = None
     seniority_level: Optional[str] = None
+    job_type: str = Field(default="fulltime", description="Job type: fulltime or gig")
 
 
 class JobListItem(JobBase):

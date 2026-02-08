@@ -36,6 +36,9 @@ class JobPosition(Base, UUIDMixin, TimestampMixin):
     employment_type: Mapped[Optional[str]] = mapped_column(String(50))  # full-time, part-time, contract
     department: Mapped[Optional[str]] = mapped_column(String(100), index=True)
     seniority_level: Mapped[Optional[str]] = mapped_column(String(50))  # entry, mid, senior, lead, executive
+
+    # Job type: fulltime (traditional jobs) or gig (freelance/contract opportunities)
+    job_type: Mapped[str] = mapped_column(String(50), default='fulltime', nullable=False, index=True)
     
     # Salary information (stored as JSON for flexibility)
     salary_range: Mapped[Optional[dict]] = mapped_column(JSON)

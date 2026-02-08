@@ -36,6 +36,7 @@ class JobService:
         remote_type: Optional[List[str]] = None,
         employment_type: Optional[List[str]] = None,
         seniority_level: Optional[List[str]] = None,
+        job_type: Optional[str] = None,
         posted_after: Optional[datetime] = None,
         is_active: Optional[bool] = True,
         sort_by: str = "posted_date",
@@ -104,7 +105,11 @@ class JobService:
         if seniority_level:
             filters.append(JobPosition.seniority_level.in_(seniority_level))
             filters_applied["seniority_level"] = seniority_level
-        
+
+        if job_type:
+            filters.append(JobPosition.job_type == job_type)
+            filters_applied["job_type"] = job_type
+
         if posted_after:
             filters.append(JobPosition.posted_date >= posted_after)
             filters_applied["posted_after"] = posted_after.isoformat()

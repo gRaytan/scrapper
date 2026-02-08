@@ -108,6 +108,7 @@ def list_jobs(
     remote_type: Optional[List[str]] = Query(None, description="Filter by remote type (remote, hybrid, onsite)"),
     employment_type: Optional[List[str]] = Query(None, description="Filter by employment type"),
     seniority_level: Optional[List[str]] = Query(None, description="Filter by seniority level"),
+    job_type: Optional[str] = Query(None, description="Filter by job type (fulltime, gig)"),
     posted_after: Optional[datetime] = Query(None, description="Filter by posted date (ISO format)"),
     is_active: Optional[bool] = Query(True, description="Filter by active status"),
     sort_by: str = Query("posted_date", description="Field to sort by"),
@@ -126,6 +127,7 @@ def list_jobs(
     - **remote_type**: Filter by remote/hybrid/onsite
     - **employment_type**: Filter by full-time/part-time/contract/internship
     - **seniority_level**: Filter by entry/mid/senior/lead/executive
+    - **job_type**: Filter by job type (fulltime, gig)
     - **posted_after**: Only jobs posted after this date
     - **is_active**: Show only active jobs (default: true)
 
@@ -149,6 +151,7 @@ def list_jobs(
             remote_type=remote_type,
             employment_type=employment_type,
             seniority_level=seniority_level,
+            job_type=job_type,
             posted_after=posted_after,
             is_active=is_active,
             sort_by=sort_by,
