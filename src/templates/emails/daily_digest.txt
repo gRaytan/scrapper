@@ -1,0 +1,21 @@
+Hi {{ user_name or 'there' }},
+
+We found {{ job_count }} new job{{ 's' if job_count > 1 else '' }} matching your alert "{{ alert_name }}":
+
+{% for job in jobs[:20] %}
+• {{ job.title }} at {{ job.company_name }}
+  📍 {{ job.location }}{% if job.posted_date %} • 📅 {{ job.posted_date }}{% endif %}
+  🔗 {{ job.job_url }}
+
+{% endfor %}
+{% if job_count > 20 %}
+... and {{ job_count - 20 }} more job{{ 's' if job_count - 20 > 1 else '' }}.
+
+{% endif %}
+View all jobs: {{ base_url }}/jobs
+
+---
+Manage alerts: {{ base_url }}/settings/alerts
+Unsubscribe: {{ base_url }}/settings/notifications
+
+© {{ current_year }} HiddenJobs

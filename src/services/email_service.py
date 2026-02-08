@@ -1,18 +1,31 @@
-"""Email service for sending notifications via OneSignal."""
+"""Email service for sending notifications via OneSignal with Jinja2 templates."""
 import logging
 from datetime import datetime
+from pathlib import Path
 from typing import List, Dict, Any, Optional
+
 import httpx
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from config.settings import settings
 
 logger = logging.getLogger(__name__)
 
+# Set up Jinja2 environment
+TEMPLATES_DIR = Path(__file__).parent.parent / "templates" / "emails"
+jinja_env = Environment(
+    loader=FileSystemLoader(TEMPLATES_DIR),
+    autoescape=select_autoescape(['html', 'xml']),
+    trim_blocks=True,
+    lstrip_blocks=True
+)
+
 
 class OneSignalEmailService:
-    """Service for sending emails via OneSignal API."""
+    """Service for sending emails via OneSignal API with Jinja2 templates."""
     
     BASE_URL = "https://onesignal.com/api/v1"
+    DEFAULT_BASE_URL = "https://hiddenjobs.me"
     
     def __init__(self):
         """Initialize the OneSignal email service."""
@@ -36,6 +49,32 @@ class OneSignalEmailService:
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
+    
+    def _get_base_context(self) -> Dict[str, Any]:
+        """Get base context variables for all templates."""
+        return {
+            "base_url": self.DEFAULT_BASE_URL,
+            "current_year": datetime.utcnow().year,
+        }
+    
+    def render_template(
+        self,
+        template_name: str,
+        context: Dict[str, Any]
+    ) -> str:
+        """
+        Render a Jinja2 template with the given context.
+        
+        Args:
+            template_name: Name of the template file (e.g., 'daily_digest.html')
+            context: Dictionary of variables to pass to the template
+            
+        Returns:
+            Rendered template string
+        """
+        template = jinja_env.get_template(template_name)
+        full_context = {**self._get_base_context(), **context}
+        return template.render(**full_context)
     
     async def send_email(
         self,
@@ -99,177 +138,83 @@ class OneSignalEmailService:
         to_email: str,
         user_name: str,
         jobs: List[Dict[str, Any]],
-        alert_name: str
+        alert_name: str,
+        show_tips: bool = False,
+        tip_text: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Send a job digest email with matched jobs.
+        Send a job digest email with matched jobs using Jinja2 templates.
         
         Args:
             to_email: Recipient email address
             user_name: User's display name
-            jobs: List of job dictionaries with title, company, location, url
+            jobs: List of job dictionaries with title, company_name, location, job_url, posted_date
             alert_name: Name of the alert that matched
+            show_tips: Whether to show the tips section
+            tip_text: Custom tip text (optional)
             
         Returns:
             Response from OneSignal API
         """
-        subject = f"🎯 {len(jobs)} new job{'s' if len(jobs) > 1 else ''} matching '{alert_name}'"
+        job_count = len(jobs)
+        subject = f"🎯 {job_count} new job{'s' if job_count > 1 else ''} matching '{alert_name}'"
         
-        html_content = self._render_digest_html(user_name, jobs, alert_name)
-        text_content = self._render_digest_text(user_name, jobs, alert_name)
+        # Prepare template context
+        context = {
+            "user_name": user_name,
+            "jobs": jobs,
+            "job_count": job_count,
+            "alert_name": alert_name,
+            "show_tips": show_tips,
+            "tip_text": tip_text,
+        }
+        
+        # Render templates
+        html_content = self.render_template("daily_digest.html", context)
+        text_content = self.render_template("daily_digest.txt", context)
         
         return await self.send_email(to_email, subject, html_content, text_content)
     
-    def _render_digest_html(
+    async def send_welcome_email(
         self,
-        user_name: str,
-        jobs: List[Dict[str, Any]],
-        alert_name: str
-    ) -> str:
-        """Render HTML email template for job digest."""
-        jobs_html = ""
-        for job in jobs[:20]:  # Limit to 20 jobs per email
-            company = job.get('company_name', 'Unknown Company')
-            title = job.get('title', 'Unknown Position')
-            location = job.get('location', 'Location not specified')
-            url = job.get('job_url', '#')
-            posted = job.get('posted_date', '')
-            
-            jobs_html += f"""
-            <tr>
-                <td style="padding: 16px; border-bottom: 1px solid #e5e7eb;">
-                    <a href="{url}" style="color: #2563eb; text-decoration: none; font-weight: 600; font-size: 16px;">
-                        {title}
-                    </a>
-                    <div style="color: #374151; margin-top: 4px;">{company}</div>
-                    <div style="color: #6b7280; font-size: 14px; margin-top: 2px;">
-                        📍 {location}
-                        {f' • 📅 {posted}' if posted else ''}
-                    </div>
-                </td>
-            </tr>
-            """
-        
-        more_jobs_note = ""
-        if len(jobs) > 20:
-            more_jobs_note = f"""
-            <tr>
-                <td style="padding: 16px; text-align: center; color: #6b7280;">
-                    ... and {len(jobs) - 20} more jobs. 
-                    <a href="https://hiddenjobs.me/jobs" style="color: #2563eb;">View all on HiddenJobs</a>
-                </td>
-            </tr>
-            """
-        
-        return f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
-    <table width="100%" cellpadding="0" cellspacing="0" style="background-color: #f3f4f6; padding: 20px;">
-        <tr>
-            <td align="center">
-                <table width="600" cellpadding="0" cellspacing="0" style="background-color: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
-                    <!-- Header -->
-                    <tr>
-                        <td style="background: linear-gradient(135deg, #2563eb 0%, #7c3aed 100%); padding: 24px; text-align: center;">
-                            <h1 style="color: #ffffff; margin: 0; font-size: 24px;">🎯 HiddenJobs Alert</h1>
-                        </td>
-                    </tr>
-                    
-                    <!-- Greeting -->
-                    <tr>
-                        <td style="padding: 24px 24px 16px;">
-                            <p style="margin: 0; color: #374151; font-size: 16px;">
-                                Hi {user_name or 'there'},
-                            </p>
-                            <p style="margin: 12px 0 0; color: #374151; font-size: 16px;">
-                                We found <strong>{len(jobs)} new job{'s' if len(jobs) > 1 else ''}</strong> matching your alert "<strong>{alert_name}</strong>":
-                            </p>
-                        </td>
-                    </tr>
-                    
-                    <!-- Jobs List -->
-                    <tr>
-                        <td style="padding: 0 24px;">
-                            <table width="100%" cellpadding="0" cellspacing="0" style="border: 1px solid #e5e7eb; border-radius: 8px; overflow: hidden;">
-                                {jobs_html}
-                                {more_jobs_note}
-                            </table>
-                        </td>
-                    </tr>
-                    
-                    <!-- CTA Button -->
-                    <tr>
-                        <td style="padding: 24px; text-align: center;">
-                            <a href="https://hiddenjobs.me/jobs" style="display: inline-block; background-color: #2563eb; color: #ffffff; padding: 12px 32px; border-radius: 6px; text-decoration: none; font-weight: 600;">
-                                View All Jobs
-                            </a>
-                        </td>
-                    </tr>
-                    
-                    <!-- Footer -->
-                    <tr>
-                        <td style="background-color: #f9fafb; padding: 16px 24px; text-align: center; border-top: 1px solid #e5e7eb;">
-                            <p style="margin: 0; color: #6b7280; font-size: 12px;">
-                                You're receiving this because you have job alerts enabled on HiddenJobs.
-                            </p>
-                            <p style="margin: 8px 0 0; color: #6b7280; font-size: 12px;">
-                                <a href="https://hiddenjobs.me/settings/alerts" style="color: #2563eb;">Manage alerts</a> • 
-                                <a href="https://hiddenjobs.me/settings/notifications" style="color: #2563eb;">Unsubscribe</a>
-                            </p>
-                        </td>
-                    </tr>
-                </table>
-            </td>
-        </tr>
-    </table>
-</body>
-</html>
+        to_email: str,
+        user_name: str
+    ) -> Dict[str, Any]:
         """
-    
-    def _render_digest_text(
-        self,
-        user_name: str,
-        jobs: List[Dict[str, Any]],
-        alert_name: str
-    ) -> str:
-        """Render plain text email for job digest."""
-        lines = [
-            f"Hi {user_name or 'there'},",
-            "",
-            f"We found {len(jobs)} new job{'s' if len(jobs) > 1 else ''} matching your alert \"{alert_name}\":",
-            "",
-        ]
+        Send a welcome email to new users.
         
-        for job in jobs[:20]:
-            company = job.get('company_name', 'Unknown Company')
-            title = job.get('title', 'Unknown Position')
-            location = job.get('location', 'Location not specified')
-            url = job.get('job_url', '')
+        Args:
+            to_email: Recipient email address
+            user_name: User's display name
             
-            lines.append(f"• {title} at {company}")
-            lines.append(f"  📍 {location}")
-            if url:
-                lines.append(f"  🔗 {url}")
-            lines.append("")
+        Returns:
+            Response from OneSignal API
+        """
+        subject = "🎉 Welcome to HiddenJobs!"
         
-        if len(jobs) > 20:
-            lines.append(f"... and {len(jobs) - 20} more jobs.")
-            lines.append("")
+        context = {
+            "user_name": user_name,
+        }
         
-        lines.extend([
-            "View all jobs: https://hiddenjobs.me/jobs",
-            "",
-            "---",
-            "Manage alerts: https://hiddenjobs.me/settings/alerts",
-            "Unsubscribe: https://hiddenjobs.me/settings/notifications",
-        ])
+        # Check if welcome template exists, otherwise use a simple message
+        try:
+            html_content = self.render_template("welcome.html", context)
+            text_content = self.render_template("welcome.txt", context)
+        except Exception:
+            # Fallback if welcome template doesn't exist yet
+            html_content = f"""
+            <html>
+            <body style="font-family: sans-serif; padding: 20px;">
+                <h1>Welcome to HiddenJobs, {user_name or 'there'}!</h1>
+                <p>We're excited to have you on board.</p>
+                <p>Start by setting up your job alerts to get notified about new opportunities.</p>
+                <a href="{self.DEFAULT_BASE_URL}/alerts">Set up alerts</a>
+            </body>
+            </html>
+            """
+            text_content = f"Welcome to HiddenJobs, {user_name or 'there'}! Start by setting up your job alerts."
         
-        return "\n".join(lines)
+        return await self.send_email(to_email, subject, html_content, text_content)
 
 
 # Singleton instance
