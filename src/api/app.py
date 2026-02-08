@@ -13,9 +13,11 @@ app = FastAPI(
 )
 
 # Add CORS middleware
+# In production, set CORS_ORIGINS env var to your frontend URLs
+# e.g., CORS_ORIGINS=https://hiddenjobs.me,https://www.hiddenjobs.me
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -47,4 +49,3 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(jobs.router, prefix="/api/v1/jobs", tags=["jobs"])
 app.include_router(companies.router, prefix="/api/v1/companies", tags=["companies"])
 app.include_router(alerts.router, prefix="/api/v1", tags=["alerts"])
-

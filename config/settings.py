@@ -89,6 +89,9 @@ class Settings(BaseSettings):
     # Location filtering - comma-separated list of allowed countries
     allowed_countries: str = "Israel"
 
+    # CORS - comma-separated list of allowed origins (use * for all in dev)
+    cors_origins: str = "https://hiddenjobs.me,https://www.hiddenjobs.me"
+
     @property
     def is_production(self) -> bool:
         """Check if running in production."""
@@ -133,6 +136,13 @@ class Settings(BaseSettings):
         if not self.allowed_countries:
             return ["Israel"]  # Default to Israel
         return [country.strip() for country in self.allowed_countries.split(',') if country.strip()]
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        """Get CORS origins as a list. Returns ['*'] if set to * or empty."""
+        if not self.cors_origins or self.cors_origins.strip() == "*":
+            return ["*"]
+        return [origin.strip() for origin in self.cors_origins.split(',') if origin.strip()]
 
 
 # Global settings instance
