@@ -1,21 +1,33 @@
-Hi {{ user_name or 'there' }},
+🎯 HiddenJobs Alert: {{ alert_name }}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+Hi {{ user_name or 'there' }} 👋
 
 We found {{ job_count }} new job{{ 's' if job_count > 1 else '' }} matching your alert "{{ alert_name }}":
 
 {% for job in jobs[:20] %}
-• {{ job.title }} at {{ job.company_name }}
-  📍 {{ job.location }}{% if job.posted_date %} • 📅 {{ job.posted_date }}{% endif %}
-  🔗 {{ job.job_url }}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+{{ job.title }}
+{{ job.company_name }}
+📍 {{ job.location }}{% if job.remote_type %} • {{ job.remote_type }}{% endif %}{% if job.posted_date %} • {{ job.posted_date }}{% endif %}
+
+🔗 {{ job.job_url }}
 
 {% endfor %}
 {% if job_count > 20 %}
 ... and {{ job_count - 20 }} more job{{ 's' if job_count - 20 > 1 else '' }}.
 
 {% endif %}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 View all jobs: {{ base_url }}/jobs
 
----
-Manage alerts: {{ base_url }}/settings/alerts
+{% if show_tips %}
+💡 Pro Tip: {{ tip_text | default("Apply within 24 hours of a job posting to increase your chances by 3x!") }}
+
+{% endif %}
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+Manage Alerts: {{ base_url }}/settings/alerts
 Unsubscribe: {{ base_url }}/settings/notifications
 
-© {{ current_year }} HiddenJobs
+© {{ current_year }} HiddenJobs. Made with 💜 in Israel.
