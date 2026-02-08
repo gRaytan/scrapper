@@ -106,6 +106,16 @@ celery_app.conf.update(
             }
         },
 
+        # Send daily digest emails - runs 30 min after job matching
+        # 7:30 AM UTC = ~9:30 AM Israel time (good time for job alerts)
+        'daily-digest-emails': {
+            'task': 'src.workers.tasks.send_daily_digest_emails',
+            'schedule': crontab(hour=7, minute=30),  # 7:30 AM UTC daily
+            'options': {
+                'expires': 3600,  # 1 hour
+            }
+        },
+
         # Cleanup old scraping sessions every week
         'weekly-cleanup': {
             'task': 'src.workers.tasks.cleanup_old_sessions',

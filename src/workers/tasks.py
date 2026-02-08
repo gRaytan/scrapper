@@ -1369,3 +1369,180 @@ def compute_job_embeddings(self: Task, batch_size: int = 100) -> Dict[str, Any]:
         logger.error(f"Job embedding computation failed: {exc}")
         logger.exception(exc)
         raise self.retry(exc=exc, countdown=60 * (2 ** self.request.retries))
+
+@celery_app.task(bind=True, name='src.workers.tasks.send_daily_digest_emails', max_retries=3)
+def send_daily_digest_emails(self: Task) -> Dict[str, Any]:
+    """
+    Send daily digest emails to users with pending notifications.
+
+    This task runs daily after job matching completes. It:
+    1. Gets all pending notifications grouped by user
+    2. Fetches job details for each notification
+    3. Sends digest emails via OneSignal
+    4. Marks notifications as sent
+
+    Returns:
+        Dictionary with email sending statistics
+    """
+    from sqlalchemy.orm import joinedload
+    from src.models.alert_notification import AlertNotification
+    from src.models.job_position import JobPosition
+    from src.models.user import User
+    from src.models.alert import Alert
+    from src.services.email_service import email_service
+
+    try:
+        logger.info("=" * 80)
+        logger.info("Starting daily digest email sending...")
+        logger.info("=" * 80)
+
+        start_time = datetime.utcnow()
+        
+        if not email_service.is_configured:
+            logger.warning("OneSignal not configured. Skipping email sending.")
+            return {
+                'status': 'skipped',
+                'reason': 'OneSignal not configured',
+                'emails_sent': 0
+            }
+
+        emails_sent = 0
+        emails_failed = 0
+        users_processed = 0
+        notifications_processed = 0
+
+        with db.get_session() as session:
+            # Get all pending notifications with related data
+            pending_notifications = session.query(AlertNotification).filter(
+                AlertNotification.delivery_status == 'pending',
+                AlertNotification.delivery_method == 'email'
+            ).options(
+                joinedload(AlertNotification.user),
+                joinedload(AlertNotification.alert)
+            ).all()
+
+            if not pending_notifications:
+                logger.info("No pending email notifications to send")
+                return {
+                    'status': 'success',
+                    'emails_sent': 0,
+                    'message': 'No pending notifications'
+                }
+
+            logger.info(f"Found {len(pending_notifications)} pending notifications")
+
+            # Group notifications by user
+            user_notifications: Dict[UUID, List[AlertNotification]] = {}
+            for notification in pending_notifications:
+                if notification.user_id not in user_notifications:
+                    user_notifications[notification.user_id] = []
+                user_notifications[notification.user_id].append(notification)
+
+            logger.info(f"Grouped into {len(user_notifications)} users")
+
+            # Process each user
+            for user_id, notifications in user_notifications.items():
+                try:
+                    user = notifications[0].user
+                    
+                    # Check if user has notifications enabled
+                    if not user.notification_enabled:
+                        logger.info(f"User {user_id} has notifications disabled, skipping")
+                        for n in notifications:
+                            n.delivery_status = 'skipped'
+                        continue
+
+                    # Get user's notification email
+                    to_email = user.notification_email
+                    user_name = user.preferences.get('display_name', user.email.split('@')[0])
+
+                    # Process each notification (one per alert)
+                    for notification in notifications:
+                        alert = notification.alert
+                        
+                        # Get job details for this notification
+                        job_ids = notification.job_position_ids
+                        jobs = session.query(JobPosition).filter(
+                            JobPosition.id.in_([UUID(jid) for jid in job_ids])
+                        ).options(joinedload(JobPosition.company)).all()
+
+                        if not jobs:
+                            logger.warning(f"No jobs found for notification {notification.id}")
+                            notification.delivery_status = 'failed'
+                            notification.error_message = 'No jobs found'
+                            continue
+
+                        # Prepare job data for email
+                        job_data = []
+                        for job in jobs:
+                            job_data.append({
+                                'title': job.title,
+                                'company_name': job.company.name if job.company else 'Unknown',
+                                'location': job.location or 'Not specified',
+                                'job_url': job.job_url,
+                                'posted_date': job.posted_date.strftime('%b %d') if job.posted_date else ''
+                            })
+
+                        # Send email via OneSignal
+                        result = asyncio.run(email_service.send_job_digest_email(
+                            to_email=to_email,
+                            user_name=user_name,
+                            jobs=job_data,
+                            alert_name=alert.name
+                        ))
+
+                        if result.get('success'):
+                            notification.delivery_status = 'sent'
+                            notification.sent_at = datetime.utcnow()
+                            emails_sent += 1
+                            logger.info(f"Email sent to {to_email} for alert '{alert.name}' ({len(jobs)} jobs)")
+                        else:
+                            notification.delivery_status = 'failed'
+                            notification.error_message = result.get('error', 'Unknown error')
+                            notification.retry_count += 1
+                            notification.last_retry_at = datetime.utcnow()
+                            emails_failed += 1
+                            logger.error(f"Failed to send email to {to_email}: {result.get('error')}")
+
+                        notifications_processed += 1
+
+                    users_processed += 1
+
+                except Exception as e:
+                    logger.error(f"Error processing user {user_id}: {e}")
+                    for n in notifications:
+                        n.delivery_status = 'failed'
+                        n.error_message = str(e)
+                        n.retry_count += 1
+                    emails_failed += len(notifications)
+
+            session.commit()
+
+        duration = (datetime.utcnow() - start_time).total_seconds()
+
+        result = {
+            'status': 'success',
+            'started_at': start_time.isoformat(),
+            'completed_at': datetime.utcnow().isoformat(),
+            'duration_seconds': duration,
+            'users_processed': users_processed,
+            'notifications_processed': notifications_processed,
+            'emails_sent': emails_sent,
+            'emails_failed': emails_failed
+        }
+
+        logger.success("=" * 80)
+        logger.success("DAILY DIGEST EMAIL SENDING COMPLETED")
+        logger.success(f"  Users processed: {users_processed}")
+        logger.success(f"  Notifications: {notifications_processed}")
+        logger.success(f"  Emails sent: {emails_sent}")
+        logger.success(f"  Emails failed: {emails_failed}")
+        logger.success(f"  Duration: {duration:.2f}s")
+        logger.success("=" * 80)
+
+        return result
+
+    except Exception as exc:
+        logger.error(f"Daily digest email sending failed: {exc}")
+        logger.exception(exc)
+        raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))

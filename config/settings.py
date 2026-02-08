@@ -77,6 +77,16 @@ class Settings(BaseSettings):
     sentry_dsn: Optional[str] = None
     prometheus_port: int = 9090
 
+    # OneSignal Email Configuration
+    onesignal_app_id: Optional[str] = None
+    onesignal_api_key: Optional[str] = None
+    onesignal_from_email: str = "noreply@hiddenjobs.me"
+    onesignal_from_name: str = "HiddenJobs"
+
+    # Email Digest Configuration
+    email_digest_hour_utc: int = 6  # 6 AM UTC = 8 AM Israel time
+    email_digest_enabled: bool = True
+
     # Application
     environment: str = "development"
     debug: bool = True
