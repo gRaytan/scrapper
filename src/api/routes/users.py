@@ -51,7 +51,24 @@ def get_current_user_profile(
             )
 
         if include_stats and isinstance(result, dict):
-            return UserDetailResponse(**result)
+            # Extract user and stats from the result
+            user = result.get("user")
+            stats = result.get("stats")
+            # Build response with user fields + stats
+            return UserDetailResponse(
+                id=user.id,
+                email=user.email,
+                full_name=user.full_name,
+                phone_number=user.phone_number,
+                phone_verified=user.phone_verified,
+                subscription_tier=user.subscription_tier,
+                is_active=user.is_active,
+                last_login_at=user.last_login_at,
+                preferences=user.preferences,
+                created_at=user.created_at,
+                updated_at=user.updated_at,
+                stats=stats
+            )
 
         return result
     except HTTPException:

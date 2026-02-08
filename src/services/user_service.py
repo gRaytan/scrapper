@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 
 from src.storage.repositories.user_repo import UserRepository
 from src.storage.repositories.alert_repo import AlertRepository
+from src.models.alert import Alert
 from src.models.alert_notification import AlertNotification
 from src.models.user_job_application import UserJobApplication
 from src.api.schemas.user import UserCreate, UserUpdate, UserStats
@@ -126,7 +127,7 @@ class UserService:
             User statistics
         """
         # Count active alerts
-        active_alerts = self.session.query(AlertRepository).filter_by(
+        active_alerts = self.session.query(Alert).filter_by(
             user_id=user_id, is_active=True
         ).count()
         
