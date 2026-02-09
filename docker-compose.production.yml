@@ -70,7 +70,10 @@ services:
       
       # JWT
       JWT_SECRET_KEY: ${JWT_SECRET_KEY}
-      
+
+      # Internal API Key (for frontend to call backend)
+      INTERNAL_API_KEY: ${INTERNAL_API_KEY}
+
       # Application
       ENVIRONMENT: production
       DEBUG: "false"
