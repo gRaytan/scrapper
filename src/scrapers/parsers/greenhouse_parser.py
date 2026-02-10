@@ -1,4 +1,5 @@
 """Greenhouse API job parser."""
+import re
 from datetime import datetime
 from typing import Dict, Any
 from loguru import logger
@@ -40,19 +41,33 @@ class GreenhouseParser(BaseJobParser):
                 except:
                     pass
             
-            # Extract departments from metadata if available
+            # Extract departments from metadata or departments array
             department = None
-            metadata = job_data.get("metadata")
-            if metadata and isinstance(metadata, list):
-                for item in metadata:
-                    if item.get("name") == "Department":
-                        department = item.get("value")
-                        break
+            # First try departments array (available when content=true)
+            departments = job_data.get("departments", [])
+            if departments and isinstance(departments, list) and len(departments) > 0:
+                department = departments[0].get("name")
+            # Fallback to metadata
+            if not department:
+                metadata = job_data.get("metadata")
+                if metadata and isinstance(metadata, list):
+                    for item in metadata:
+                        if item.get("name") == "Department":
+                            department = item.get("value")
+                            break
+            
+            # Extract description from 'content' field (available when content=true)
+            # The content field contains HTML, so we strip tags for plain text
+            description = ""
+            content = job_data.get("content", "")
+            if content:
+                # Strip HTML tags to get plain text description
+                description = self._strip_html(content)
             
             return {
                 "external_id": str(job_data.get("id")),
                 "title": job_data.get("title"),
-                "description": "",  # Greenhouse API doesn't include full description in list endpoint
+                "description": description,
                 "location": location,
                 "job_url": job_url,
                 "department": department,
@@ -63,4 +78,27 @@ class GreenhouseParser(BaseJobParser):
         except Exception as e:
             logger.error(f"Error parsing Greenhouse job: {e}")
             return {}
-
+    
+    def _strip_html(self, html_content: str) -> str:
+        """Strip HTML tags from content.
+        
+        Args:
+            html_content: HTML string
+            
+        Returns:
+            Plain text with HTML tags removed
+        """
+        if not html_content:
+            return ""
+        # Remove HTML tags
+        clean_text = re.sub(r'<[^>]+>', ' ', html_content)
+        # Decode HTML entities
+        clean_text = clean_text.replace('&amp;', '&')
+        clean_text = clean_text.replace('&lt;', '<')
+        clean_text = clean_text.replace('&gt;', '>')
+        clean_text = clean_text.replace('&nbsp;', ' ')
+        clean_text = clean_text.replace('&quot;', '"')
+        clean_text = clean_text.replace('&#39;', "'")
+        # Normalize whitespace
+        clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+        return clean_text

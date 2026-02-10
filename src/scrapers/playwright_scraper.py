@@ -220,6 +220,11 @@ class PlaywrightScraper(BaseScraper):
         api_params = self.scraping_config.get("api_params", {})
         timeout = self.scraping_config.get("timeout", 30.0)
 
+        # Automatically add content=true for Greenhouse API to get job descriptions
+        if "greenhouse.io" in api_endpoint.lower() and "content" not in api_params:
+            api_params = {**api_params, "content": "true"}
+            logger.info("Added content=true parameter for Greenhouse API")
+
         logger.info(f"Fetching jobs from API: {api_endpoint}")
         logger.debug(f"API params: {api_params}")
 
