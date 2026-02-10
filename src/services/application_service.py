@@ -162,3 +162,88 @@ class ApplicationService:
     def is_job_tracked(self, user_id: UUID, job_position_id: UUID) -> Optional[UserJobApplication]:
         """Check if a job is tracked by user."""
         return self.app_repo.get_by_user_and_job(user_id, job_position_id)
+
+    def create_manual_job_and_track(
+        self,
+        user_id: UUID,
+        title: str,
+        company_name: str,
+        location: Optional[str] = None,
+        job_url: Optional[str] = None,
+        application_url: Optional[str] = None,
+        salary_min: Optional[int] = None,
+        salary_max: Optional[int] = None,
+        salary_currency: str = "USD",
+        remote_type: Optional[str] = None,
+        employment_type: Optional[str] = None,
+        status: str = 'interested',
+        notes: Optional[str] = None
+    ) -> UserJobApplication:
+        """
+        Create a manual job position and track it.
+        
+        This is for jobs that users find outside the platform and want to track.
+        """
+        from src.storage.repositories.company_repo import CompanyRepository
+        import uuid
+        
+        company_repo = CompanyRepository(self.session)
+        
+        # Find or create company
+        company = company_repo.get_by_name(company_name)
+        if not company:
+            company = company_repo.create({
+                'name': company_name,
+                'website': '',  # Manual companies don't have website
+                'careers_url': '',  # Manual companies don't have careers URL
+                'scraping_config': {},
+            })
+        
+        # Build salary range if provided
+        salary_range = None
+        if salary_min is not None or salary_max is not None:
+            salary_range = {
+                'min': salary_min,
+                'max': salary_max,
+                'currency': salary_currency,
+            }
+        
+        # Generate unique external_id for manual jobs
+        external_id = f"manual_{uuid.uuid4().hex[:12]}"
+        now = datetime.utcnow()
+        
+        # Create job position
+        job_data = {
+            'title': title,
+            'company_id': company.id,
+            'external_id': external_id,
+            'location': location,
+            'job_url': job_url or '',
+            'application_url': application_url,
+            'salary_range': salary_range,
+            'remote_type': remote_type,
+            'employment_type': employment_type,
+            'job_type': 'manual',
+            'source_type': 'manual',
+            'is_active': True,
+            'status': 'active',
+            'posted_date': now,
+            'scraped_at': now,
+            'first_seen_at': now,
+            'last_seen_at': now,
+        }
+        
+        job = self.job_repo.create(job_data)
+        
+        # Track the job
+        app_data = {
+            'user_id': user_id,
+            'job_position_id': job.id,
+            'status': status,
+            'notes': notes,
+        }
+        
+        if status != 'interested':
+            app_data['applied_at'] = now
+        
+        return self.app_repo.create(app_data)
