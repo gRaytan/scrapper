@@ -1,6 +1,7 @@
 """Scraper API routes."""
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Query
 from typing import Optional, List
+from uuid import UUID
 import requests
 from datetime import datetime
 
@@ -529,3 +530,68 @@ async def list_available_companies():
         ]
     }
 
+
+
+@router.post("/enrich/descriptions")
+def enrich_job_descriptions(
+    limit: int = Query(50, ge=1, le=200, description="Maximum number of jobs to enrich"),
+    company_id: Optional[UUID] = Query(None, description="Filter by company ID"),
+    days_back: int = Query(30, ge=1, le=365, description="Only enrich jobs from the last N days")
+):
+    """
+    Enrich jobs with missing descriptions by fetching from job URLs.
+    
+    This endpoint fetches job detail pages and extracts descriptions for jobs
+    that don't have descriptions in the database.
+    
+    **Parameters:**
+    - **limit**: Maximum number of jobs to process (default: 50)
+    - **company_id**: Optional filter to only enrich jobs from a specific company
+    - **days_back**: Only process jobs from the last N days (default: 30)
+    
+    **Returns:**
+    - Summary of enrichment results including count of enriched and failed jobs
+    """
+    from src.services.job_enrichment_service import JobEnrichmentService
+    from src.storage.database import db
+    
+    with db.get_session() as session:
+        service = JobEnrichmentService(session)
+        result = service.enrich_jobs_batch(
+            limit=limit,
+            company_id=company_id,
+            days_back=days_back
+        )
+        
+    return {
+        "status": "success",
+        "message": f"Enriched {result['enriched']} jobs",
+        **result
+    }
+
+
+@router.get("/enrich/status")
+def get_enrichment_status(
+    company_id: Optional[UUID] = Query(None, description="Filter by company ID"),
+    days_back: int = Query(30, ge=1, le=365, description="Check jobs from the last N days")
+):
+    """
+    Get the status of jobs needing description enrichment.
+    
+    Returns count of jobs without descriptions that could be enriched.
+    """
+    from src.services.job_enrichment_service import JobEnrichmentService
+    from src.storage.database import db
+    
+    with db.get_session() as session:
+        service = JobEnrichmentService(session)
+        count = service._count_jobs_without_description(
+            company_id=company_id,
+            days_back=days_back
+        )
+        
+    return {
+        "jobs_without_description": count,
+        "days_back": days_back,
+        "company_id": str(company_id) if company_id else None
+    }
