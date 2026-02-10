@@ -85,3 +85,19 @@ class TrackJobResponse(BaseModel):
     """Response for tracking a job."""
     message: str
     application: ApplicationResponse
+
+
+class ManualJobCreate(BaseModel):
+    """Schema for creating a manual job to track."""
+    title: str = Field(..., description="Job title", min_length=1, max_length=255)
+    company_name: str = Field(..., description="Company name", min_length=1, max_length=255)
+    location: Optional[str] = Field(None, description="Job location")
+    job_url: Optional[str] = Field(None, description="URL to job posting")
+    application_url: Optional[str] = Field(None, description="URL to apply")
+    salary_min: Optional[int] = Field(None, description="Minimum salary")
+    salary_max: Optional[int] = Field(None, description="Maximum salary")
+    salary_currency: Optional[str] = Field(default="USD", description="Salary currency")
+    remote_type: Optional[str] = Field(None, description="Remote type: remote, hybrid, onsite")
+    employment_type: Optional[str] = Field(None, description="Employment type: fulltime, parttime, contract")
+    status: str = Field(default='interested', description="Initial tracking status")
+    notes: Optional[str] = Field(None, description="Optional notes")

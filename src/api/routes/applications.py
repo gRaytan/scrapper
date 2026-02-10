@@ -19,6 +19,7 @@ from src.api.schemas.application import (
     TrackJobResponse,
     JobBrief,
     CompanyBrief,
+    ManualJobCreate,
 )
 
 logger = logging.getLogger(__name__)
@@ -282,4 +283,51 @@ def untrack_job(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to untrack job"
+        )
+
+
+@router.post("/manual", response_model=TrackJobResponse, status_code=status.HTTP_201_CREATED)
+def create_manual_job(
+    data: ManualJobCreate,
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_db_session)
+):
+    """
+    Create a manual job and track it.
+    
+    This endpoint allows users to add jobs they found outside the platform
+    and track them alongside scraped jobs.
+    """
+    try:
+        service = ApplicationService(session)
+        application = service.create_manual_job_and_track(
+            user_id=current_user.id,
+            title=data.title,
+            company_name=data.company_name,
+            location=data.location,
+            job_url=data.job_url,
+            application_url=data.application_url,
+            salary_min=data.salary_min,
+            salary_max=data.salary_max,
+            salary_currency=data.salary_currency or "USD",
+            remote_type=data.remote_type,
+            employment_type=data.employment_type,
+            status=data.status,
+            notes=data.notes
+        )
+        
+        return TrackJobResponse(
+            message="Manual job created and tracked successfully",
+            application=_build_application_response(application)
+        )
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+    except Exception as e:
+        logger.error(f"Error creating manual job: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create manual job"
         )
