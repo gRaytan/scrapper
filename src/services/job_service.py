@@ -241,3 +241,107 @@ class JobService:
             "alert_count": len(user_alerts),
         }
 
+    def get_filter_options(self) -> Dict[str, Any]:
+        """
+        Get available filter options (facets) for job listings.
+
+        Returns distinct values and counts for each filter category.
+        Only includes active jobs.
+        """
+        # Base query for active jobs
+        base_query = self.session.query(JobPosition).filter(JobPosition.is_active == True)
+
+        # Get location counts
+        location_counts = (
+            self.session.query(
+                JobPosition.location,
+                func.count(JobPosition.id).label('count')
+            )
+            .filter(JobPosition.is_active == True)
+            .filter(JobPosition.location.isnot(None))
+            .filter(JobPosition.location != '')
+            .group_by(JobPosition.location)
+            .order_by(func.count(JobPosition.id).desc())
+            .limit(50)
+            .all()
+        )
+
+        # Get company counts
+        company_counts = (
+            self.session.query(
+                Company.name,
+                func.count(JobPosition.id).label('count')
+            )
+            .join(JobPosition, JobPosition.company_id == Company.id)
+            .filter(JobPosition.is_active == True)
+            .group_by(Company.name)
+            .order_by(func.count(JobPosition.id).desc())
+            .limit(50)
+            .all()
+        )
+
+        # Get department counts
+        department_counts = (
+            self.session.query(
+                JobPosition.department,
+                func.count(JobPosition.id).label('count')
+            )
+            .filter(JobPosition.is_active == True)
+            .filter(JobPosition.department.isnot(None))
+            .filter(JobPosition.department != '')
+            .group_by(JobPosition.department)
+            .order_by(func.count(JobPosition.id).desc())
+            .limit(50)
+            .all()
+        )
+
+        # Get remote type counts
+        remote_type_counts = (
+            self.session.query(
+                JobPosition.remote_type,
+                func.count(JobPosition.id).label('count')
+            )
+            .filter(JobPosition.is_active == True)
+            .filter(JobPosition.remote_type.isnot(None))
+            .filter(JobPosition.remote_type != '')
+            .group_by(JobPosition.remote_type)
+            .order_by(func.count(JobPosition.id).desc())
+            .all()
+        )
+
+        # Get seniority level counts
+        seniority_counts = (
+            self.session.query(
+                JobPosition.seniority_level,
+                func.count(JobPosition.id).label('count')
+            )
+            .filter(JobPosition.is_active == True)
+            .filter(JobPosition.seniority_level.isnot(None))
+            .filter(JobPosition.seniority_level != '')
+            .group_by(JobPosition.seniority_level)
+            .order_by(func.count(JobPosition.id).desc())
+            .all()
+        )
+
+        return {
+            "locations": [
+                {"value": loc, "label": loc, "count": count}
+                for loc, count in location_counts if loc
+            ],
+            "companies": [
+                {"value": name, "label": name, "count": count}
+                for name, count in company_counts if name
+            ],
+            "departments": [
+                {"value": dept, "label": dept, "count": count}
+                for dept, count in department_counts if dept
+            ],
+            "remote_types": [
+                {"value": rt, "label": rt, "count": count}
+                for rt, count in remote_type_counts if rt
+            ],
+            "seniority_levels": [
+                {"value": sl, "label": sl, "count": count}
+                for sl, count in seniority_counts if sl
+            ],
+        }
