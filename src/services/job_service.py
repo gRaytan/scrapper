@@ -31,6 +31,7 @@ class JobService:
         page_size: int = 20,
         search: Optional[str] = None,
         company_ids: Optional[List[UUID]] = None,
+        company_names: Optional[List[str]] = None,
         locations: Optional[List[str]] = None,
         departments: Optional[List[str]] = None,
         remote_type: Optional[List[str]] = None,
@@ -44,12 +45,13 @@ class JobService:
     ) -> Dict[str, Any]:
         """
         List jobs with filtering, pagination, and sorting.
-        
+
         Args:
             page: Page number (1-indexed)
             page_size: Number of items per page
             search: Search query for title and description
             company_ids: Filter by company IDs
+            company_names: Filter by company names
             locations: Filter by locations
             departments: Filter by departments
             remote_type: Filter by remote types
@@ -59,21 +61,21 @@ class JobService:
             is_active: Filter by active status
             sort_by: Field to sort by
             sort_order: Sort order (asc/desc)
-            
+
         Returns:
             Dictionary with jobs, pagination info, and applied filters
         """
         # Build query
         query = self.session.query(JobPosition).options(joinedload(JobPosition.company))
-        
+
         # Apply filters
         filters = []
         filters_applied = {}
-        
+
         if is_active is not None:
             filters.append(JobPosition.is_active == is_active)
             filters_applied["is_active"] = is_active
-        
+
         if search:
             search_filter = or_(
                 JobPosition.title.ilike(f"%{search}%"),
@@ -81,11 +83,24 @@ class JobService:
             )
             filters.append(search_filter)
             filters_applied["search"] = search
-        
+
         if company_ids:
             filters.append(JobPosition.company_id.in_(company_ids))
             filters_applied["company_ids"] = [str(cid) for cid in company_ids]
-        
+
+        if company_names:
+            # Look up company IDs by name
+            company_id_results = self.session.query(Company.id).filter(
+                Company.name.in_(company_names)
+            ).all()
+            resolved_company_ids = [r[0] for r in company_id_results]
+            if resolved_company_ids:
+                filters.append(JobPosition.company_id.in_(resolved_company_ids))
+            else:
+                # No matching companies found, return empty results
+                filters.append(JobPosition.company_id == None)
+            filters_applied["companies"] = company_names
+
         if locations:
             # Use ILIKE for partial matching (e.g., "Tel Aviv" matches "Tel Aviv, Israel")
             location_filters = [JobPosition.location.ilike(f"%{loc}%") for loc in locations]

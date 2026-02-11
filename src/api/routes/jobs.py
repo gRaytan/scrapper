@@ -105,6 +105,7 @@ def list_jobs(
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     search: Optional[str] = Query(None, description="Search in title and description"),
     company_ids: Optional[List[UUID]] = Query(None, description="Filter by company IDs"),
+    companies: Optional[List[str]] = Query(None, description="Filter by company names"),
     locations: Optional[List[str]] = Query(None, description="Filter by locations"),
     departments: Optional[List[str]] = Query(None, description="Filter by departments"),
     remote_type: Optional[List[str]] = Query(None, description="Filter by remote type (remote, hybrid, onsite)"),
@@ -123,7 +124,8 @@ def list_jobs(
 
     **Filters:**
     - **search**: Search in job title and description
-    - **company_ids**: Filter by specific companies
+    - **company_ids**: Filter by specific company IDs (UUIDs)
+    - **companies**: Filter by company names
     - **locations**: Filter by job locations
     - **departments**: Filter by departments
     - **remote_type**: Filter by remote/hybrid/onsite
@@ -148,6 +150,7 @@ def list_jobs(
             page_size=page_size,
             search=search,
             company_ids=company_ids,
+            company_names=companies,
             locations=locations,
             departments=departments,
             remote_type=remote_type,
