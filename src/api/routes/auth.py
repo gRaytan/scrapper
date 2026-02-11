@@ -109,7 +109,16 @@ async def sso_token(
     refresh_token = create_refresh_token(token_data)
     
     # Check if user has completed onboarding
-    onboarding_completed = user.preferences.get("onboarding_completed", False) if user.preferences else False
+    # Consider onboarding complete if explicitly set OR if user has preferences with job_titles/locations
+    if user.preferences:
+        onboarding_completed = user.preferences.get("onboarding_completed", False)
+        # Fallback: if user has job_titles or locations set, they've completed onboarding
+        if not onboarding_completed:
+            has_job_titles = bool(user.preferences.get("job_titles"))
+            has_locations = bool(user.preferences.get("locations"))
+            onboarding_completed = has_job_titles or has_locations
+    else:
+        onboarding_completed = False
 
     return SSOTokenResponse(
         access_token=access_token,
