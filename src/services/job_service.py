@@ -87,7 +87,9 @@ class JobService:
             filters_applied["company_ids"] = [str(cid) for cid in company_ids]
         
         if locations:
-            filters.append(JobPosition.location.in_(locations))
+            # Use ILIKE for partial matching (e.g., "Tel Aviv" matches "Tel Aviv, Israel")
+            location_filters = [JobPosition.location.ilike(f"%{loc}%") for loc in locations]
+            filters.append(or_(*location_filters))
             filters_applied["locations"] = locations
         
         if departments:
