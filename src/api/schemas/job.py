@@ -178,3 +178,18 @@ class JobPreferencesResponse(BaseModel):
     job_keywords: List[str] = Field(default_factory=list)
     updated_at: datetime
 
+
+class FilterOption(BaseModel):
+    """Schema for a single filter option with count."""
+    value: str = Field(description="The filter value to use in API calls")
+    label: str = Field(description="Display label for the filter")
+    count: int = Field(description="Number of jobs matching this filter")
+
+
+class JobFiltersResponse(BaseModel):
+    """Schema for available job filter options (facets)."""
+    locations: List[FilterOption] = Field(default_factory=list, description="Available location filters")
+    companies: List[FilterOption] = Field(default_factory=list, description="Available company filters")
+    departments: List[FilterOption] = Field(default_factory=list, description="Available department filters")
+    remote_types: List[FilterOption] = Field(default_factory=list, description="Available remote type filters")
+    seniority_levels: List[FilterOption] = Field(default_factory=list, description="Available seniority level filters")

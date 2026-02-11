@@ -25,6 +25,8 @@ from src.api.schemas.job import (
     JobInteractionResponse,
     JobPreferencesUpdate,
     JobPreferencesResponse,
+    JobFiltersResponse,
+    FilterOption,
 )
 
 logger = logging.getLogger(__name__)
@@ -164,6 +166,32 @@ def list_jobs(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to list jobs"
+        )
+
+
+# ============ Filter Options Endpoint ============
+# NOTE: This route MUST come before /{job_id} to avoid path parameter conflicts
+
+@router.get("/filters", response_model=JobFiltersResponse)
+def get_job_filters(
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_db_session)
+):
+    """
+    Get available filter options (facets) for job listings.
+
+    Returns distinct values and counts for each filter category.
+    Only includes active jobs.
+    """
+    try:
+        service = JobService(session)
+        filters = service.get_filter_options()
+        return JobFiltersResponse(**filters)
+    except Exception as e:
+        logger.error(f"Error getting job filters: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get job filters"
         )
 
 
