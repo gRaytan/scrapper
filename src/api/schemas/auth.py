@@ -78,6 +78,7 @@ class SSOUserInfo(BaseModel):
     full_name: Optional[str]
     oauth_provider: str
     is_new_user: bool = Field(..., description="True if user was just created")
+    onboarding_completed: bool = Field(False, description="True if user has completed onboarding")
 
 
 class DevTokenRequest(BaseModel):

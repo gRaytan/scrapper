@@ -108,6 +108,9 @@ async def sso_token(
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
     
+    # Check if user has completed onboarding
+    onboarding_completed = user.preferences.get("onboarding_completed", False) if user.preferences else False
+
     return SSOTokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -119,6 +122,7 @@ async def sso_token(
             full_name=user.full_name,
             oauth_provider=user.oauth_provider,
             is_new_user=is_new_user,
+            onboarding_completed=onboarding_completed,
         )
     )
 
@@ -254,6 +258,9 @@ async def dev_token(
     access_token = create_access_token(token_data)
     refresh_token = create_refresh_token(token_data)
 
+    # Check if user has completed onboarding
+    onboarding_completed = user.preferences.get("onboarding_completed", False) if user.preferences else False
+
     return SSOTokenResponse(
         access_token=access_token,
         refresh_token=refresh_token,
@@ -265,5 +272,6 @@ async def dev_token(
             full_name=user.full_name,
             oauth_provider=user.oauth_provider or "dev",
             is_new_user=is_new_user,
+            onboarding_completed=onboarding_completed,
         )
     )
