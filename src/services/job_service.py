@@ -89,9 +89,10 @@ class JobService:
             filters_applied["company_ids"] = [str(cid) for cid in company_ids]
 
         if company_names:
-            # Look up company IDs by name
+            # Look up company IDs by name (case-insensitive)
+            from sqlalchemy import func
             company_id_results = self.session.query(Company.id).filter(
-                Company.name.in_(company_names)
+                func.lower(Company.name).in_([name.lower() for name in company_names])
             ).all()
             resolved_company_ids = [r[0] for r in company_id_results]
             if resolved_company_ids:
