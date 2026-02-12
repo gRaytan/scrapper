@@ -25,9 +25,6 @@ __all__ = [
     'SalesforceParser',
     'JibeParser',
 ]
-from .apple_parser import AppleParser
-
-__all__.append('AppleParser')
 from .microsoft_parser import MicrosoftParser
 
 __all__.append('MicrosoftParser')

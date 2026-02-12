@@ -47,24 +47,23 @@ companies:
     - Herzliya
     - Haifa
     - Jerusalem
-    - IL,
+    - IL
   scraping_config:
-    scraper_type: playwright
-    requires_js: true
-    anti_bot_measures: true
-    wait_time: 5
-    search_url: https://jobs.careers.microsoft.com/global/en/search
-    wait_for_selector: div[class*='job'], article, .ms-List
-    max_pages: 50
-    selectors:
-      job_list: div.jobs-list, div[data-test='job-results'], main, .ms-List
-      job_item: div[class*='job-card'], div[class*='job-item'], article, .ms-List-cell
-      job_title: h3, h2, a[class*='title'], .ms-Link
-      job_location: span[class*='location'], div[class*='location']
-      job_url: a[href*='/job/'], a[href*='careers']
-      job_department: span[class*='department'], div[class*='category']
-      job_type: span[class*='type'], span[class*='employment']
-      load_more_button: button[class*='load-more'], button[class*='show-more']
+    scraper_type: api
+    api_type: microsoft
+    api_endpoint: https://apply.careers.microsoft.com/api/pcsx/search
+    query_params:
+      domain: microsoft.com
+      query: ""
+      location: israel
+    pagination_params:
+      offset_param: start
+      limit_param: null
+      page_size: 10
+      max_pages: 20
+    response_structure:
+      jobs_key: data.positions
+      total_key: data.count
 - name: Wiz
   website: https://www.wiz.io
   careers_url: https://boards.greenhouse.io/wizinc
@@ -143,7 +142,8 @@ companies:
     - Herzliya
     - Haifa
     - Jerusalem
-    - IL,
+    - Glilot
+    - IL
   scraping_config:
     scraper_type: requests
     pagination_type: none
@@ -151,10 +151,7 @@ companies:
     anti_bot_measures: false
     wait_time: 2
     selectors:
-      job_link: a[href*='comeet.com/jobs']
-      job_title: '[data-position]'
-      job_location: '[data-location]'
-      job_department: '[data-team]'
+      job_link: a.open-positions_link-tile[data-position]
 - name: EON
   website: https://www.eon.io
   careers_url: https://boards.eu.greenhouse.io/eonio
@@ -925,7 +922,7 @@ companies:
     pagination_type: none
 - name: Apple
   website: https://www.apple.com
-  careers_url: https://jobs.apple.com/en-us/search?location=israel-ISR
+  careers_url: https://jobs.apple.com/en-il/search?location=israel-ISR
   industry: Technology / Consumer Electronics
   size: 100000+
   location: Cupertino, USA / Herzliya, Israel
@@ -941,12 +938,8 @@ companies:
     - Tel Aviv
     - IL
   scraping_config:
-    scraper_type: playwright
-    requires_js: true
-    wait_for_selector: '[data-test=''search-result'']'
-    selectors:
-      job_list: '[data-test=''search-result'']'
-      job_item: a[data-test='job-link']
+    scraper_type: embedded_js
+    embedded_js_site: apple
 - name: Fiverr
   website: https://www.fiverr.com
   careers_url: https://www.fiverr.com/jobs/teams
@@ -1255,13 +1248,11 @@ companies:
     - USA
     - Remote
   scraping_config:
-    scraper_type: playwright
-    url: https://noma.security/careers/
+    scraper_type: requests
+    pagination_type: none
+    requires_js: false
     selectors:
-      job_list: .job-item
-      title: h3, .job-title
-      location: .job-location
-      url: a
+      job_link: a.comeet-position
 - name: Trigo Vision
   website: https://www.trigoretail.com
   careers_url: https://www.trigoretail.com/career/

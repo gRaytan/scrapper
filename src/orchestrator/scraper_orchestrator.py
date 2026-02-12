@@ -136,7 +136,7 @@ class ScraperOrchestrator:
         # PlaywrightScraper handles most types with different parsers
         playwright_types = [
             "playwright",      # Dynamic content with browser automation
-            "api",            # API-based (Comeet, Greenhouse, etc.)
+            "api",            # API-based (Comeet, Greenhouse, Microsoft, etc.)
             "rss",            # RSS feeds
             "workday",        # Workday ATS
             "meta_graphql",   # Meta GraphQL API
@@ -147,6 +147,7 @@ class ScraperOrchestrator:
             "requests",       # Simple HTTP requests (similar to API)
             "comeet",         # Comeet ATS
             "getro",          # Getro VC portfolio job boards
+            "embedded_js",    # Jobs embedded as JavaScript variables in HTML (Apple, Taboola, etc.)
         ]
 
         if scraper_type in playwright_types:

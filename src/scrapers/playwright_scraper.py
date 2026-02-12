@@ -15,6 +15,7 @@ from playwright.async_api import async_playwright, Browser, Page
 
 from .base_scraper import BaseScraper
 from .parsers import ComeetParser, GreenhouseParser, AmazonParser, EightfoldParser, SmartRecruitersParser, RSSParser, MetaParser, SalesforceParser, JibeParser, PhenomParser, AshbyParser, LinkedInParser, APIParser, GetroParser, EmbeddedJSParser
+from .parsers.microsoft_parser import MicrosoftParser
 from src.utils.logger import logger
 from urllib.parse import urljoin, urlparse
 
@@ -54,6 +55,7 @@ class PlaywrightScraper(BaseScraper):
             'ashby': lambda: AshbyParser(self.scraping_config.get('company_identifier', '')),
             'linkedin': LinkedInParser,
             'getro': GetroParser,
+            'microsoft': MicrosoftParser,
             'embedded_js': lambda: EmbeddedJSParser(
                 config=self.scraping_config.get('embedded_js_config'),
                 site_name=self.scraping_config.get('embedded_js_site')
@@ -342,6 +344,11 @@ class PlaywrightScraper(BaseScraper):
             from .parsers.api_parser import APIParser
             url_template = self.scraping_config.get("url_template")
             return APIParser(field_mapping=field_mapping, url_template=url_template)
+
+        # Check for Microsoft API
+        if api_type == "microsoft" or company_name == "Microsoft":
+            logger.debug("Using Microsoft parser")
+            return self._get_parser('microsoft')
 
         # Company-specific parsers
         if company_name == "Nvidia":
@@ -850,17 +857,52 @@ class PlaywrightScraper(BaseScraper):
             for link in job_links:
                 href = link.get('href', '')
                 position = link.get('data-position', '')
+                location = link.get('data-location', '')
+                department = link.get('data-team', '')
+
+                # Try to extract title from child elements (e.g., Comeet's .comeet-position-name)
+                if not position:
+                    title_elem = link.select_one('.comeet-position-name, .job-title, h3, h4')
+                    if title_elem:
+                        position = title_elem.get_text(strip=True)
+
+                # Try to extract location from child elements (e.g., Comeet's .comeet-position-meta)
+                if not location:
+                    loc_elem = link.select_one('.comeet-position-meta, .job-location, .location')
+                    if loc_elem:
+                        location = loc_elem.get_text(strip=True)
+
+                # If still no position/location, try to extract from URL path (Comeet-style URLs)
+                # e.g., //noma.security/careers/co/tel-aviv/FE.15A/senior-backend-engineer/all
+                if not position or not location:
+                    import re
+                    # Match Comeet-style URL: /co/{location}/{id}/{job-title}/all
+                    comeet_match = re.search(r'/co/([^/]+)/[^/]+/([^/]+)/', href)
+                    if comeet_match:
+                        if not location:
+                            location = comeet_match.group(1).replace('-', ' ').title()
+                        if not position:
+                            position = comeet_match.group(2).replace('-', ' ').title()
 
                 # Skip if no position or duplicate
                 if not position or position in seen_positions:
                     continue
                 seen_positions.add(position)
 
-                # Extract location and department
-                location = link.get('data-location', '')
-                department = link.get('data-team', '')
+                # If not in link attributes, try to find location in <p> tags inside the link
+                # (for sites like Island that use Webflow CMS)
+                if not location:
+                    p_tags = link.find_all('p')
+                    if len(p_tags) >= 2:
+                        # Second <p> tag typically contains location
+                        location = p_tags[1].get_text(strip=True)
+                    elif len(p_tags) == 1:
+                        # If only one <p>, check if it's not the title
+                        p_text = p_tags[0].get_text(strip=True)
+                        if p_text != position:
+                            location = p_text
 
-                # If not in link, try parent container
+                # If still not found, try parent container
                 if not location or not department:
                     parent = link.find_parent(attrs={'data-location': True})
                     if parent:
@@ -869,10 +911,15 @@ class PlaywrightScraper(BaseScraper):
 
                 # Make URL absolute
                 if href and not href.startswith('http'):
-                    if href.startswith('/'):
-                        href = 'https://www.comeet.com' + href
+                    if href.startswith('//'):
+                        href = 'https:' + href
+                    elif href.startswith('/'):
+                        # Use the careers_url domain
+                        from urllib.parse import urlparse
+                        parsed = urlparse(careers_url)
+                        href = f"{parsed.scheme}://{parsed.netloc}{href}"
                     else:
-                        href = 'https://www.comeet.com/' + href
+                        href = 'https://' + href
 
                 # Create job dict
                 job = {
