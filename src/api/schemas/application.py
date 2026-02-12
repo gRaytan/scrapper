@@ -17,6 +17,17 @@ class ApplicationUpdate(BaseModel):
     """Schema for updating an application."""
     status: Optional[str] = Field(None, description="New status")
     notes: Optional[str] = Field(None, description="Updated notes")
+    applied_at: Optional[datetime] = Field(None, description="Date when application was submitted")
+    # Custom overrides (user can edit these to override job_position values)
+    custom_title: Optional[str] = Field(None, description="Custom job title override", max_length=500)
+    custom_company: Optional[str] = Field(None, description="Custom company name override", max_length=255)
+    custom_location: Optional[str] = Field(None, description="Custom location override", max_length=200)
+    # Salary expectations/offer
+    salary_min: Optional[int] = Field(None, description="Minimum salary")
+    salary_max: Optional[int] = Field(None, description="Maximum salary")
+    salary_currency: Optional[str] = Field(None, description="Salary currency (e.g., USD, EUR)", max_length=10)
+    # Interview tracking
+    next_interview_at: Optional[datetime] = Field(None, description="Date/time of next interview")
 
 
 class CompanyBrief(BaseModel):
@@ -48,13 +59,24 @@ class JobBrief(BaseModel):
 class ApplicationResponse(BaseModel):
     """Schema for application response."""
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: UUID
     user_id: UUID
     job_position_id: UUID
     status: str
     applied_at: Optional[datetime] = None
     notes: Optional[str] = None
+    # Custom overrides
+    custom_title: Optional[str] = None
+    custom_company: Optional[str] = None
+    custom_location: Optional[str] = None
+    # Salary
+    salary_min: Optional[int] = None
+    salary_max: Optional[int] = None
+    salary_currency: Optional[str] = None
+    # Interview tracking
+    next_interview_at: Optional[datetime] = None
+    # Timestamps
     created_at: datetime
     updated_at: datetime
     job: Optional[JobBrief] = Field(None, alias='job_position')

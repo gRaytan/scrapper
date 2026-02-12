@@ -57,7 +57,7 @@ def _build_application_response(app) -> ApplicationResponse:
             posted_date=app.job_position.posted_date,
             company=company_brief,
         )
-    
+
     return ApplicationResponse(
         id=app.id,
         user_id=app.user_id,
@@ -65,6 +65,17 @@ def _build_application_response(app) -> ApplicationResponse:
         status=app.status,
         applied_at=app.applied_at,
         notes=app.notes,
+        # Custom overrides
+        custom_title=app.custom_title,
+        custom_company=app.custom_company,
+        custom_location=app.custom_location,
+        # Salary
+        salary_min=app.salary_min,
+        salary_max=app.salary_max,
+        salary_currency=app.salary_currency,
+        # Interview tracking
+        next_interview_at=app.next_interview_at,
+        # Timestamps
         created_at=app.created_at,
         updated_at=app.updated_at,
         job_position=job_brief,
@@ -231,14 +242,22 @@ def update_application(
     current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
-    """Update an application's status or notes."""
+    """Update an application's fields."""
     try:
         service = ApplicationService(session)
         application = service.update_application(
             application_id=application_id,
             user_id=current_user.id,
             status=data.status,
-            notes=data.notes
+            notes=data.notes,
+            applied_at=data.applied_at,
+            custom_title=data.custom_title,
+            custom_company=data.custom_company,
+            custom_location=data.custom_location,
+            salary_min=data.salary_min,
+            salary_max=data.salary_max,
+            salary_currency=data.salary_currency,
+            next_interview_at=data.next_interview_at
         )
         
         if not application:

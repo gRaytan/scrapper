@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import String, Text, DateTime, ForeignKey, UniqueConstraint, Index
+from sqlalchemy import String, Text, DateTime, ForeignKey, UniqueConstraint, Index, Integer
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -12,9 +12,9 @@ from .base import Base, TimestampMixin, UUIDMixin
 
 class UserJobApplication(Base, UUIDMixin, TimestampMixin):
     """User job application model for tracking user applications to job positions."""
-    
+
     __tablename__ = "user_job_applications"
-    
+
     # Foreign keys
     user_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
@@ -22,14 +22,14 @@ class UserJobApplication(Base, UUIDMixin, TimestampMixin):
         nullable=False,
         index=True
     )
-    
+
     job_position_id: Mapped[UUID] = mapped_column(
         PGUUID(as_uuid=True),
         ForeignKey("job_positions.id", ondelete="CASCADE"),
         nullable=False,
         index=True
     )
-    
+
     # Application status
     status: Mapped[str] = mapped_column(
         String(50),
@@ -37,12 +37,25 @@ class UserJobApplication(Base, UUIDMixin, TimestampMixin):
         nullable=False,
         index=True
     )  # interested, applied, interviewing, offered, accepted, rejected, withdrawn
-    
+
     # Application date
     applied_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
-    
+
     # Notes
     notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Custom overrides (user can edit these to override job_position values)
+    custom_title: Mapped[Optional[str]] = mapped_column(String(500))
+    custom_company: Mapped[Optional[str]] = mapped_column(String(255))
+    custom_location: Mapped[Optional[str]] = mapped_column(String(200))
+
+    # Salary expectations/offer (user-entered)
+    salary_min: Mapped[Optional[int]] = mapped_column(Integer)
+    salary_max: Mapped[Optional[int]] = mapped_column(Integer)
+    salary_currency: Mapped[Optional[str]] = mapped_column(String(10), default='USD')
+
+    # Interview tracking
+    next_interview_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), index=True)
     
     # Relationships
     user = relationship("User", back_populates="applications")

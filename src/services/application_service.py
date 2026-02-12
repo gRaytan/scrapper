@@ -105,37 +105,77 @@ class ApplicationService:
         application_id: UUID,
         user_id: UUID,
         status: Optional[str] = None,
-        notes: Optional[str] = None
+        notes: Optional[str] = None,
+        applied_at: Optional[datetime] = None,
+        custom_title: Optional[str] = None,
+        custom_company: Optional[str] = None,
+        custom_location: Optional[str] = None,
+        salary_min: Optional[int] = None,
+        salary_max: Optional[int] = None,
+        salary_currency: Optional[str] = None,
+        next_interview_at: Optional[datetime] = None
     ) -> Optional[UserJobApplication]:
         """
-        Update application status or notes.
-        
+        Update application fields.
+
         Args:
             application_id: Application UUID
             user_id: User UUID (for ownership verification)
             status: New status
             notes: New notes
-            
+            applied_at: Date when application was submitted
+            custom_title: Custom job title override
+            custom_company: Custom company name override
+            custom_location: Custom location override
+            salary_min: Minimum salary
+            salary_max: Maximum salary
+            salary_currency: Salary currency
+            next_interview_at: Date/time of next interview
+
         Returns:
             Updated application or None if not found/not owned
         """
         application = self.get_application(application_id, user_id)
         if not application:
             return None
-        
+
         update_data = {}
         if status is not None:
             update_data['status'] = status
-            # Set applied_at when moving from interested to applied
-            if status != 'interested' and application.status == 'interested':
+            # Auto-set applied_at when moving from interested to applied (if not explicitly provided)
+            if status != 'interested' and application.status == 'interested' and applied_at is None and application.applied_at is None:
                 update_data['applied_at'] = datetime.utcnow()
-        
+
         if notes is not None:
             update_data['notes'] = notes
-        
+
+        # Allow explicit setting of applied_at
+        if applied_at is not None:
+            update_data['applied_at'] = applied_at
+
+        # Custom overrides
+        if custom_title is not None:
+            update_data['custom_title'] = custom_title
+        if custom_company is not None:
+            update_data['custom_company'] = custom_company
+        if custom_location is not None:
+            update_data['custom_location'] = custom_location
+
+        # Salary fields
+        if salary_min is not None:
+            update_data['salary_min'] = salary_min
+        if salary_max is not None:
+            update_data['salary_max'] = salary_max
+        if salary_currency is not None:
+            update_data['salary_currency'] = salary_currency
+
+        # Interview tracking
+        if next_interview_at is not None:
+            update_data['next_interview_at'] = next_interview_at
+
         if not update_data:
             return application
-        
+
         return self.app_repo.update(application_id, update_data)
     
     def untrack_job(self, application_id: UUID, user_id: UUID) -> bool:
