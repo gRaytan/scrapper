@@ -18,7 +18,9 @@ logger = logging.getLogger(__name__)
 class PersonalizedJobService:
     """Service for personalized job feed and user-job interactions."""
 
-    DEFAULT_SIMILARITY_THRESHOLD = 0.65
+    # Increased threshold from 0.65 to 0.75 for stricter matching
+    # This prevents "VP Engineering" from matching "VP Sales" or "VP Product"
+    DEFAULT_SIMILARITY_THRESHOLD = 0.75
     DEFAULT_DAYS_BACK = 30
 
     def __init__(self, session: Session, threshold: float = DEFAULT_SIMILARITY_THRESHOLD):
