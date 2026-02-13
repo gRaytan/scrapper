@@ -1,8 +1,11 @@
 """User service for business logic."""
+import base64
 import logging
+from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
+import numpy as np
 from sqlalchemy.orm import Session
 
 from src.storage.repositories.user_repo import UserRepository
@@ -77,11 +80,11 @@ class UserService:
     def update_user(self, user_id: UUID, update_data: UserUpdate) -> Optional[dict]:
         """
         Update user.
-        
+
         Args:
             user_id: User UUID
             update_data: Update data
-            
+
         Returns:
             Updated user or None if not found
         """
@@ -92,7 +95,27 @@ class UserService:
         if update_data.phone_number is not None:
             update_dict["phone_number"] = update_data.phone_number
         if update_data.preferences is not None:
-            update_dict["preferences"] = update_data.preferences
+            # Check if job_title is being updated - compute embedding for semantic matching
+            preferences = update_data.preferences
+            job_title = preferences.get("job_title", "") if isinstance(preferences, dict) else ""
+
+            if job_title:
+                # Compute query embedding for personalized feed
+                try:
+                    from src.services.embedding_service import EmbeddingService
+                    embedding_service = EmbeddingService()
+                    query_embedding = embedding_service.encode(job_title)
+
+                    # Store as base64 for JSON compatibility
+                    preferences["query_embedding"] = base64.b64encode(
+                        query_embedding.astype(np.float32).tobytes()
+                    ).decode("utf-8")
+                    preferences["updated_at"] = datetime.utcnow().isoformat() + "Z"
+                    logger.info(f"Computed query embedding for user {user_id} with job_title: {job_title}")
+                except Exception as e:
+                    logger.warning(f"Failed to compute query embedding for user {user_id}: {e}")
+
+            update_dict["preferences"] = preferences
         if update_data.is_active is not None:
             update_dict["is_active"] = update_data.is_active
         if update_data.payme_subscription_id is not None:
@@ -101,7 +124,7 @@ class UserService:
         if not update_dict:
             # No updates provided
             return self.user_repo.get_by_id(user_id)
-        
+
         return self.user_repo.update(user_id, update_dict)
     
     def delete_user(self, user_id: UUID) -> bool:
