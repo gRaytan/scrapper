@@ -233,6 +233,7 @@ def _job_to_feed_item(job, similarity_score: float, is_starred: bool, is_archive
 def get_job_feed(
     location: Optional[str] = Query(None, description="Filter by location"),
     days_back: int = Query(30, ge=1, le=365, description="How many days back to look"),
+    threshold: float = Query(0.75, ge=0.0, le=1.0, description="Similarity threshold (0.0=flexible, 1.0=exact)"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_active_user),
@@ -247,6 +248,7 @@ def get_job_feed(
     **Filters:**
     - **location**: Filter by job location (partial match)
     - **days_back**: How many days back to look for jobs (default: 30)
+    - **threshold**: Similarity threshold for matching (0.0=flexible, 1.0=exact, default: 0.75)
 
     **Pagination:**
     - **page**: Page number (default: 1)
@@ -258,7 +260,7 @@ def get_job_feed(
     Requires JWT authentication.
     """
     try:
-        service = PersonalizedJobService(session)
+        service = PersonalizedJobService(session, threshold=threshold)
         result = service.get_personalized_feed(
             user=current_user,
             location=location,
