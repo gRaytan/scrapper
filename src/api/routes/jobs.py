@@ -198,6 +198,35 @@ def get_job_filters(
         )
 
 
+@router.get("/analytics/over-time")
+def get_jobs_over_time(
+    months: int = Query(12, ge=1, le=24, description="Number of months to look back"),
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_db_session)
+):
+    """
+    Get job posting counts grouped by month.
+
+    Returns monthly job counts for the specified number of months.
+    Useful for visualizing job market trends over time.
+
+    **Parameters:**
+    - **months**: Number of months to look back (default: 12, max: 24)
+
+    Requires JWT authentication.
+    """
+    try:
+        service = JobService(session)
+        data = service.get_jobs_over_time(months=months)
+        return {"data": data, "total_months": len(data)}
+    except Exception as e:
+        logger.error(f"Error getting jobs over time: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get jobs over time analytics"
+        )
+
+
 # ============ Personalized Feed Endpoints ============
 # NOTE: These routes MUST come before /{job_id} to avoid path parameter conflicts
 

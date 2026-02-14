@@ -361,3 +361,55 @@ class JobService:
                 for sl, count in seniority_counts if sl
             ],
         }
+
+    def get_jobs_over_time(self, months: int = 12) -> List[Dict[str, Any]]:
+        """
+        Get job posting counts grouped by month.
+
+        Args:
+            months: Number of months to look back (default: 12)
+
+        Returns:
+            List of dicts with month and count
+        """
+        from datetime import timedelta
+        from sqlalchemy import extract
+
+        # Calculate the start date (beginning of month, N months ago)
+        today = datetime.utcnow()
+        start_date = datetime(today.year, today.month, 1) - timedelta(days=months * 31)
+        start_date = datetime(start_date.year, start_date.month, 1)
+
+        # Query jobs grouped by year and month
+        results = (
+            self.session.query(
+                extract('year', JobPosition.posted_date).label('year'),
+                extract('month', JobPosition.posted_date).label('month'),
+                func.count(JobPosition.id).label('count')
+            )
+            .filter(JobPosition.posted_date >= start_date)
+            .filter(JobPosition.posted_date.isnot(None))
+            .group_by(
+                extract('year', JobPosition.posted_date),
+                extract('month', JobPosition.posted_date)
+            )
+            .order_by(
+                extract('year', JobPosition.posted_date),
+                extract('month', JobPosition.posted_date)
+            )
+            .all()
+        )
+
+        # Convert to list of dicts with formatted month
+        data = []
+        for year, month, count in results:
+            if year and month:
+                month_str = datetime(int(year), int(month), 1).strftime('%Y-%m')
+                data.append({
+                    "month": month_str,
+                    "year": int(year),
+                    "month_num": int(month),
+                    "count": count
+                })
+
+        return data
