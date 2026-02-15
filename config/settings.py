@@ -77,7 +77,15 @@ class Settings(BaseSettings):
     sentry_dsn: Optional[str] = None
     prometheus_port: int = 9090
 
-    # OneSignal Email Configuration
+    # Mixpanel Analytics
+    mixpanel_token: Optional[str] = None
+
+    # AWS SES Email Configuration
+    ses_from_email: str = "noreply@hiddenjobs.me"
+    ses_from_name: str = "HiddenJobs"
+    aws_region: str = "eu-north-1"
+
+    # OneSignal Email Configuration (legacy)
     onesignal_app_id: Optional[str] = None
     onesignal_api_key: Optional[str] = None
     onesignal_from_email: str = "noreply@hiddenjobs.me"

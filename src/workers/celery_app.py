@@ -6,6 +6,19 @@ from celery.schedules import crontab
 
 from config.settings import settings
 
+# Initialize Sentry for error tracking in Celery workers
+if settings.sentry_dsn:
+    import sentry_sdk
+    from sentry_sdk.integrations.celery import CeleryIntegration
+
+    sentry_sdk.init(
+        dsn=settings.sentry_dsn,
+        integrations=[CeleryIntegration()],
+        traces_sample_rate=0.1,  # 10% of transactions
+        environment=settings.environment,
+        send_default_pii=False,
+    )
+
 # Create Celery app
 celery_app = Celery(
     'job_scraper',

@@ -1378,8 +1378,9 @@ def send_daily_digest_emails(self: Task) -> Dict[str, Any]:
     This task runs daily after job matching completes. It:
     1. Gets all pending notifications grouped by user
     2. Fetches job details for each notification
-    3. Sends digest emails via OneSignal
+    3. Sends digest emails via AWS SES
     4. Marks notifications as sent
+    5. Tracks email events in Mixpanel
 
     Returns:
         Dictionary with email sending statistics
@@ -1399,10 +1400,10 @@ def send_daily_digest_emails(self: Task) -> Dict[str, Any]:
         start_time = datetime.utcnow()
         
         if not email_service.is_configured:
-            logger.warning("OneSignal not configured. Skipping email sending.")
+            logger.warning("AWS SES not configured. Skipping email sending.")
             return {
                 'status': 'skipped',
-                'reason': 'OneSignal not configured',
+                'reason': 'AWS SES not configured',
                 'emails_sent': 0
             }
 
@@ -1483,13 +1484,13 @@ def send_daily_digest_emails(self: Task) -> Dict[str, Any]:
                                 'posted_date': job.posted_date.strftime('%b %d') if job.posted_date else ''
                             })
 
-                        # Send email via OneSignal
-                        result = asyncio.run(email_service.send_job_digest_email(
+                        # Send email via AWS SES
+                        result = email_service.send_job_digest_email(
                             to_email=to_email,
                             user_name=user_name,
                             jobs=job_data,
                             alert_name=alert.name
-                        ))
+                        )
 
                         if result.get('success'):
                             notification.delivery_status = 'sent'

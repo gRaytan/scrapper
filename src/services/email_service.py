@@ -1,10 +1,11 @@
-"""Email service for sending notifications via OneSignal with Jinja2 templates."""
+"""Email service for sending notifications via AWS SES with Jinja2 templates."""
 import logging
 from datetime import datetime
 from pathlib import Path
 from typing import List, Dict, Any, Optional
 
-import httpx
+import boto3
+from botocore.exceptions import ClientError
 from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from config.settings import settings
@@ -20,36 +21,72 @@ jinja_env = Environment(
     lstrip_blocks=True
 )
 
+# Initialize Mixpanel for analytics tracking
+_mixpanel_client = None
 
-class OneSignalEmailService:
-    """Service for sending emails via OneSignal API with Jinja2 templates."""
-    
-    BASE_URL = "https://onesignal.com/api/v1"
+def get_mixpanel():
+    """Get or create Mixpanel client."""
+    global _mixpanel_client
+    if _mixpanel_client is None and settings.mixpanel_token:
+        try:
+            from mixpanel import Mixpanel
+            _mixpanel_client = Mixpanel(settings.mixpanel_token)
+            logger.info("Mixpanel client initialized for email tracking")
+        except Exception as e:
+            logger.warning(f"Failed to initialize Mixpanel: {e}")
+    return _mixpanel_client
+
+
+def track_email_event(
+    event_name: str,
+    user_email: str,
+    user_name: Optional[str] = None,
+    properties: Optional[Dict[str, Any]] = None
+):
+    """Track an email event in Mixpanel."""
+    mp = get_mixpanel()
+    if not mp:
+        return
+
+    try:
+        event_properties = {
+            "user_email": user_email,
+            "user_name": user_name or "Unknown",
+            "timestamp": datetime.utcnow().isoformat(),
+            "source": "email_service",
+            **(properties or {})
+        }
+        # Use email as distinct_id since we may not have user_id in email context
+        mp.track(user_email, event_name, event_properties)
+        logger.debug(f"Tracked Mixpanel event: {event_name} for {user_email}")
+    except Exception as e:
+        logger.warning(f"Failed to track Mixpanel event: {e}")
+
+
+class SESEmailService:
+    """Service for sending emails via AWS SES with Jinja2 templates."""
+
     DEFAULT_BASE_URL = "https://hiddenjobs.me"
-    
+
     def __init__(self):
-        """Initialize the OneSignal email service."""
-        self.app_id = settings.onesignal_app_id
-        self.api_key = settings.onesignal_api_key
-        self.from_email = settings.onesignal_from_email
-        self.from_name = settings.onesignal_from_name
-        
-        if not self.app_id or not self.api_key:
-            logger.warning("OneSignal credentials not configured. Email sending will be disabled.")
-    
+        """Initialize the SES email service."""
+        self.from_email = settings.ses_from_email
+        self.from_name = settings.ses_from_name
+        self.region = settings.aws_region
+
+        # Initialize SES client
+        try:
+            self.client = boto3.client('sesv2', region_name=self.region)
+            logger.info(f"SES email service initialized for region {self.region}")
+        except Exception as e:
+            logger.error(f"Failed to initialize SES client: {e}")
+            self.client = None
+
     @property
     def is_configured(self) -> bool:
-        """Check if OneSignal is properly configured."""
-        return bool(self.app_id and self.api_key)
-    
-    def _get_headers(self) -> Dict[str, str]:
-        """Get headers for OneSignal API requests."""
-        return {
-            "Authorization": f"Basic {self.api_key}",
-            "Content-Type": "application/json",
-            "Accept": "application/json"
-        }
-    
+        """Check if SES is properly configured."""
+        return self.client is not None
+
     def _get_base_context(self) -> Dict[str, Any]:
         """Get base context variables for all templates."""
         return {
@@ -76,7 +113,7 @@ class OneSignalEmailService:
         full_context = {**self._get_base_context(), **context}
         return template.render(**full_context)
     
-    async def send_email(
+    def send_email(
         self,
         to_email: str,
         subject: str,
@@ -84,56 +121,51 @@ class OneSignalEmailService:
         text_content: Optional[str] = None
     ) -> Dict[str, Any]:
         """
-        Send an email via OneSignal.
-        
+        Send an email via AWS SES.
+
         Args:
             to_email: Recipient email address
             subject: Email subject
             html_content: HTML body of the email
             text_content: Plain text body (optional)
-            
+
         Returns:
-            Response from OneSignal API
+            Response dict with success status
         """
         if not self.is_configured:
-            logger.error("OneSignal not configured. Cannot send email.")
-            return {"success": False, "error": "OneSignal not configured"}
-        
-        payload = {
-            "app_id": self.app_id,
-            "include_email_tokens": [to_email],
-            "email_subject": subject,
-            "email_body": html_content,
-            "email_from_address": self.from_email,
-            "email_from_name": self.from_name,
-        }
-        
-        if text_content:
-            payload["email_preheader_text"] = text_content[:100]  # Preview text
-        
+            logger.error("SES not configured. Cannot send email.")
+            return {"success": False, "error": "SES not configured"}
+
         try:
-            async with httpx.AsyncClient() as client:
-                response = await client.post(
-                    f"{self.BASE_URL}/notifications",
-                    headers=self._get_headers(),
-                    json=payload,
-                    timeout=30.0
-                )
-                
-                if response.status_code == 200:
-                    result = response.json()
-                    logger.info(f"Email sent successfully to {to_email}: {result.get('id')}")
-                    return {"success": True, "id": result.get("id"), "recipients": result.get("recipients")}
-                else:
-                    error_msg = response.text
-                    logger.error(f"Failed to send email to {to_email}: {response.status_code} - {error_msg}")
-                    return {"success": False, "error": error_msg, "status_code": response.status_code}
-                    
+            # Build email content
+            body = {"Html": {"Data": html_content, "Charset": "UTF-8"}}
+            if text_content:
+                body["Text"] = {"Data": text_content, "Charset": "UTF-8"}
+
+            response = self.client.send_email(
+                FromEmailAddress=f"{self.from_name} <{self.from_email}>",
+                Destination={"ToAddresses": [to_email]},
+                Content={
+                    "Simple": {
+                        "Subject": {"Data": subject, "Charset": "UTF-8"},
+                        "Body": body
+                    }
+                }
+            )
+
+            message_id = response.get("MessageId")
+            logger.info(f"Email sent successfully to {to_email}: {message_id}")
+            return {"success": True, "id": message_id}
+
+        except ClientError as e:
+            error_msg = e.response['Error']['Message']
+            logger.error(f"Failed to send email to {to_email}: {error_msg}")
+            return {"success": False, "error": error_msg}
         except Exception as e:
             logger.exception(f"Error sending email to {to_email}: {e}")
             return {"success": False, "error": str(e)}
     
-    async def send_job_digest_email(
+    def send_job_digest_email(
         self,
         to_email: str,
         user_name: str,
@@ -144,7 +176,7 @@ class OneSignalEmailService:
     ) -> Dict[str, Any]:
         """
         Send a job digest email with matched jobs using Jinja2 templates.
-        
+
         Args:
             to_email: Recipient email address
             user_name: User's display name
@@ -152,13 +184,13 @@ class OneSignalEmailService:
             alert_name: Name of the alert that matched
             show_tips: Whether to show the tips section
             tip_text: Custom tip text (optional)
-            
+
         Returns:
-            Response from OneSignal API
+            Response dict with success status
         """
         job_count = len(jobs)
         subject = f"🎯 {job_count} new job{'s' if job_count > 1 else ''} matching '{alert_name}'"
-        
+
         # Prepare template context
         context = {
             "user_name": user_name,
@@ -168,34 +200,52 @@ class OneSignalEmailService:
             "show_tips": show_tips,
             "tip_text": tip_text,
         }
-        
+
         # Render templates
         html_content = self.render_template("daily_digest.html", context)
         text_content = self.render_template("daily_digest.txt", context)
-        
-        return await self.send_email(to_email, subject, html_content, text_content)
-    
-    async def send_welcome_email(
+
+        result = self.send_email(to_email, subject, html_content, text_content)
+
+        # Track email sent event in Mixpanel
+        if result.get("success"):
+            companies = list(set(job.get("company_name", "Unknown") for job in jobs))
+            track_email_event(
+                event_name="Email Sent",
+                user_email=to_email,
+                user_name=user_name,
+                properties={
+                    "email_type": "job_digest",
+                    "alert_name": alert_name,
+                    "job_count": job_count,
+                    "companies": companies,
+                    "company_count": len(companies),
+                }
+            )
+
+        return result
+
+    def send_welcome_email(
         self,
         to_email: str,
         user_name: str
     ) -> Dict[str, Any]:
         """
         Send a welcome email to new users.
-        
+
         Args:
             to_email: Recipient email address
             user_name: User's display name
-            
+
         Returns:
-            Response from OneSignal API
+            Response dict with success status
         """
         subject = "🎉 Welcome to HiddenJobs!"
-        
+
         context = {
             "user_name": user_name,
         }
-        
+
         # Check if welcome template exists, otherwise use a simple message
         try:
             html_content = self.render_template("welcome.html", context)
@@ -213,9 +263,22 @@ class OneSignalEmailService:
             </html>
             """
             text_content = f"Welcome to HiddenJobs, {user_name or 'there'}! Start by setting up your job alerts."
-        
-        return await self.send_email(to_email, subject, html_content, text_content)
+
+        result = self.send_email(to_email, subject, html_content, text_content)
+
+        # Track welcome email sent event in Mixpanel
+        if result.get("success"):
+            track_email_event(
+                event_name="Email Sent",
+                user_email=to_email,
+                user_name=user_name,
+                properties={
+                    "email_type": "welcome",
+                }
+            )
+
+        return result
 
 
 # Singleton instance
-email_service = OneSignalEmailService()
+email_service = SESEmailService()
