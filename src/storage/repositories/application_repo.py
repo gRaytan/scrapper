@@ -85,20 +85,34 @@ class ApplicationRepository:
     def get_stats_by_user(self, user_id: UUID) -> dict:
         """Get application statistics for a user."""
         applications = self.session.query(UserJobApplication).filter_by(user_id=user_id).all()
-        
+
+        # Interview stages for calculating legacy 'interviewing' count
+        interview_stages = ['phone_screen', 'technical_1', 'technical_2', 'hr_interview', 'reference_check']
+
         stats = {
             'total': len(applications),
             'interested': 0,
             'applied': 0,
-            'interviewing': 0,
+            # Interview stages
+            'phone_screen': 0,
+            'technical_1': 0,
+            'technical_2': 0,
+            'hr_interview': 0,
+            'reference_check': 0,
+            # Final stages
             'offered': 0,
             'accepted': 0,
             'rejected': 0,
             'withdrawn': 0,
+            # Legacy field (sum of all interview stages)
+            'interviewing': 0,
         }
-        
+
         for app in applications:
             if app.status in stats:
                 stats[app.status] += 1
-        
+            # Also count interview stages in legacy 'interviewing' field
+            if app.status in interview_stages:
+                stats['interviewing'] += 1
+
         return stats

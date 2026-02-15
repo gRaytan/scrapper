@@ -117,11 +117,15 @@ def list_applications(
 ):
     """
     List user's tracked jobs/applications.
-    
+
     **Status values:**
     - interested: Saved/bookmarked
     - applied: Application submitted
-    - interviewing: In interview process
+    - phone_screen: Phone screening stage
+    - technical_1: 1st technical interview
+    - technical_2: 2nd technical interview
+    - hr_interview: HR interview
+    - reference_check: Reference check stage
     - offered: Received offer
     - accepted: Accepted offer
     - rejected: Application rejected

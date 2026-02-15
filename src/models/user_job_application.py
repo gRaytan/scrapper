@@ -31,12 +31,14 @@ class UserJobApplication(Base, UUIDMixin, TimestampMixin):
     )
 
     # Application status
+    # Statuses: interested, applied, phone_screen, technical_1, technical_2,
+    #           hr_interview, reference_check, offered, accepted, rejected, withdrawn
     status: Mapped[str] = mapped_column(
         String(50),
         default='interested',
         nullable=False,
         index=True
-    )  # interested, applied, interviewing, offered, accepted, rejected, withdrawn
+    )
 
     # Application date
     applied_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
@@ -82,14 +84,26 @@ class UserJobApplication(Base, UUIDMixin, TimestampMixin):
     @property
     def is_active(self) -> bool:
         """Check if application is in an active state."""
-        active_statuses = ['interested', 'applied', 'interviewing', 'offered']
+        active_statuses = [
+            'interested', 'applied', 'phone_screen', 'technical_1',
+            'technical_2', 'hr_interview', 'reference_check', 'offered'
+        ]
         return self.status in active_statuses
-    
+
     @property
     def is_closed(self) -> bool:
         """Check if application is in a closed state."""
         closed_statuses = ['accepted', 'rejected', 'withdrawn']
         return self.status in closed_statuses
+
+    @property
+    def is_interviewing(self) -> bool:
+        """Check if application is in any interview stage."""
+        interview_statuses = [
+            'phone_screen', 'technical_1', 'technical_2',
+            'hr_interview', 'reference_check'
+        ]
+        return self.status in interview_statuses
 
 
 class ApplicationInterview(Base, UUIDMixin, TimestampMixin):

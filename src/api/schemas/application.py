@@ -137,11 +137,19 @@ class ApplicationStats(BaseModel):
     total: int = 0
     interested: int = 0
     applied: int = 0
-    interviewing: int = 0
+    # Interview stages (replaces single 'interviewing')
+    phone_screen: int = 0
+    technical_1: int = 0
+    technical_2: int = 0
+    hr_interview: int = 0
+    reference_check: int = 0
+    # Final stages
     offered: int = 0
     accepted: int = 0
     rejected: int = 0
     withdrawn: int = 0
+    # Legacy field for backwards compatibility (sum of all interview stages)
+    interviewing: int = 0
 
 
 class TrackJobResponse(BaseModel):
