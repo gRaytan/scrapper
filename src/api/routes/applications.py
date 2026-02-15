@@ -20,6 +20,9 @@ from src.api.schemas.application import (
     JobBrief,
     CompanyBrief,
     ManualJobCreate,
+    InterviewCreate,
+    InterviewUpdate,
+    InterviewResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -58,6 +61,26 @@ def _build_application_response(app) -> ApplicationResponse:
             company=company_brief,
         )
 
+    # Build interviews list
+    interviews = []
+    if hasattr(app, 'interviews') and app.interviews:
+        interviews = [
+            InterviewResponse(
+                id=interview.id,
+                application_id=interview.application_id,
+                scheduled_at=interview.scheduled_at,
+                interview_type=interview.interview_type,
+                interviewer=interview.interviewer,
+                location=interview.location,
+                notes=interview.notes,
+                status=interview.status,
+                feedback=interview.feedback,
+                created_at=interview.created_at,
+                updated_at=interview.updated_at,
+            )
+            for interview in app.interviews
+        ]
+
     return ApplicationResponse(
         id=app.id,
         user_id=app.user_id,
@@ -65,6 +88,7 @@ def _build_application_response(app) -> ApplicationResponse:
         status=app.status,
         applied_at=app.applied_at,
         notes=app.notes,
+        comments=app.comments,
         # Custom overrides
         custom_title=app.custom_title,
         custom_company=app.custom_company,
@@ -75,6 +99,7 @@ def _build_application_response(app) -> ApplicationResponse:
         salary_currency=app.salary_currency,
         # Interview tracking
         next_interview_at=app.next_interview_at,
+        interviews=interviews,
         # Timestamps
         created_at=app.created_at,
         updated_at=app.updated_at,
@@ -250,6 +275,7 @@ def update_application(
             user_id=current_user.id,
             status=data.status,
             notes=data.notes,
+            comments=data.comments,
             applied_at=data.applied_at,
             custom_title=data.custom_title,
             custom_company=data.custom_company,
@@ -259,13 +285,13 @@ def update_application(
             salary_currency=data.salary_currency,
             next_interview_at=data.next_interview_at
         )
-        
+
         if not application:
             raise HTTPException(
                 status_code=status.HTTP_404_NOT_FOUND,
                 detail="Application not found"
             )
-        
+
         return _build_application_response(application)
     except HTTPException:
         raise
@@ -349,4 +375,131 @@ def create_manual_job(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create manual job"
+        )
+
+
+# Interview endpoints
+@router.post("/{application_id}/interviews", response_model=InterviewResponse, status_code=status.HTTP_201_CREATED)
+def add_interview(
+    application_id: UUID,
+    data: InterviewCreate,
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_db_session)
+):
+    """Add an interview to an application."""
+    try:
+        service = ApplicationService(session)
+        interview = service.add_interview(
+            application_id=application_id,
+            user_id=current_user.id,
+            scheduled_at=data.scheduled_at,
+            interview_type=data.interview_type,
+            interviewer=data.interviewer,
+            location=data.location,
+            notes=data.notes
+        )
+
+        if not interview:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Application not found"
+            )
+
+        return InterviewResponse(
+            id=interview.id,
+            application_id=interview.application_id,
+            scheduled_at=interview.scheduled_at,
+            interview_type=interview.interview_type,
+            interviewer=interview.interviewer,
+            location=interview.location,
+            notes=interview.notes,
+            status=interview.status,
+            feedback=interview.feedback,
+            created_at=interview.created_at,
+            updated_at=interview.updated_at,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error adding interview: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to add interview"
+        )
+
+
+@router.patch("/interviews/{interview_id}", response_model=InterviewResponse)
+def update_interview(
+    interview_id: UUID,
+    data: InterviewUpdate,
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_db_session)
+):
+    """Update an interview."""
+    try:
+        service = ApplicationService(session)
+        interview = service.update_interview(
+            interview_id=interview_id,
+            user_id=current_user.id,
+            scheduled_at=data.scheduled_at,
+            interview_type=data.interview_type,
+            interviewer=data.interviewer,
+            location=data.location,
+            notes=data.notes,
+            status=data.status,
+            feedback=data.feedback
+        )
+
+        if not interview:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Interview not found"
+            )
+
+        return InterviewResponse(
+            id=interview.id,
+            application_id=interview.application_id,
+            scheduled_at=interview.scheduled_at,
+            interview_type=interview.interview_type,
+            interviewer=interview.interviewer,
+            location=interview.location,
+            notes=interview.notes,
+            status=interview.status,
+            feedback=interview.feedback,
+            created_at=interview.created_at,
+            updated_at=interview.updated_at,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error updating interview: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to update interview"
+        )
+
+
+@router.delete("/interviews/{interview_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_interview(
+    interview_id: UUID,
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_db_session)
+):
+    """Delete an interview."""
+    try:
+        service = ApplicationService(session)
+        deleted = service.delete_interview(interview_id, current_user.id)
+
+        if not deleted:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Interview not found"
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error deleting interview: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to delete interview"
         )

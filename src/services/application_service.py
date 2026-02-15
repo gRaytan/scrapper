@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from src.storage.repositories.application_repo import ApplicationRepository
 from src.storage.repositories.job_repo import JobPositionRepository
-from src.models.user_job_application import UserJobApplication
+from src.models.user_job_application import UserJobApplication, ApplicationInterview
 
 
 class ApplicationService:
@@ -106,6 +106,7 @@ class ApplicationService:
         user_id: UUID,
         status: Optional[str] = None,
         notes: Optional[str] = None,
+        comments: Optional[str] = None,
         applied_at: Optional[datetime] = None,
         custom_title: Optional[str] = None,
         custom_company: Optional[str] = None,
@@ -123,6 +124,7 @@ class ApplicationService:
             user_id: User UUID (for ownership verification)
             status: New status
             notes: New notes
+            comments: Short comment visible in table
             applied_at: Date when application was submitted
             custom_title: Custom job title override
             custom_company: Custom company name override
@@ -148,6 +150,9 @@ class ApplicationService:
 
         if notes is not None:
             update_data['notes'] = notes
+
+        if comments is not None:
+            update_data['comments'] = comments
 
         # Allow explicit setting of applied_at
         if applied_at is not None:
@@ -282,8 +287,124 @@ class ApplicationService:
             'status': status,
             'notes': notes,
         }
-        
+
         if status != 'interested':
             app_data['applied_at'] = now
-        
+
         return self.app_repo.create(app_data)
+
+    # Interview CRUD methods
+    def add_interview(
+        self,
+        application_id: UUID,
+        user_id: UUID,
+        scheduled_at: datetime,
+        interview_type: Optional[str] = None,
+        interviewer: Optional[str] = None,
+        location: Optional[str] = None,
+        notes: Optional[str] = None
+    ) -> Optional[ApplicationInterview]:
+        """Add an interview to an application."""
+        application = self.get_application(application_id, user_id)
+        if not application:
+            return None
+
+        interview = ApplicationInterview(
+            application_id=application_id,
+            scheduled_at=scheduled_at,
+            interview_type=interview_type,
+            interviewer=interviewer,
+            location=location,
+            notes=notes,
+            status='scheduled'
+        )
+        self.session.add(interview)
+        self.session.commit()
+        self.session.refresh(interview)
+
+        # Update next_interview_at if this is the earliest upcoming interview
+        self._update_next_interview(application)
+
+        return interview
+
+    def update_interview(
+        self,
+        interview_id: UUID,
+        user_id: UUID,
+        scheduled_at: Optional[datetime] = None,
+        interview_type: Optional[str] = None,
+        interviewer: Optional[str] = None,
+        location: Optional[str] = None,
+        notes: Optional[str] = None,
+        status: Optional[str] = None,
+        feedback: Optional[str] = None
+    ) -> Optional[ApplicationInterview]:
+        """Update an interview."""
+        interview = self.session.query(ApplicationInterview).filter(
+            ApplicationInterview.id == interview_id
+        ).first()
+
+        if not interview:
+            return None
+
+        # Verify ownership through application
+        application = self.get_application(interview.application_id, user_id)
+        if not application:
+            return None
+
+        if scheduled_at is not None:
+            interview.scheduled_at = scheduled_at
+        if interview_type is not None:
+            interview.interview_type = interview_type
+        if interviewer is not None:
+            interview.interviewer = interviewer
+        if location is not None:
+            interview.location = location
+        if notes is not None:
+            interview.notes = notes
+        if status is not None:
+            interview.status = status
+        if feedback is not None:
+            interview.feedback = feedback
+
+        self.session.commit()
+        self.session.refresh(interview)
+
+        # Update next_interview_at
+        self._update_next_interview(application)
+
+        return interview
+
+    def delete_interview(self, interview_id: UUID, user_id: UUID) -> bool:
+        """Delete an interview."""
+        interview = self.session.query(ApplicationInterview).filter(
+            ApplicationInterview.id == interview_id
+        ).first()
+
+        if not interview:
+            return False
+
+        # Verify ownership through application
+        application = self.get_application(interview.application_id, user_id)
+        if not application:
+            return False
+
+        self.session.delete(interview)
+        self.session.commit()
+
+        # Update next_interview_at
+        self._update_next_interview(application)
+
+        return True
+
+    def _update_next_interview(self, application: UserJobApplication) -> None:
+        """Update the next_interview_at field based on scheduled interviews."""
+        now = datetime.utcnow()
+        upcoming = self.session.query(ApplicationInterview).filter(
+            ApplicationInterview.application_id == application.id,
+            ApplicationInterview.scheduled_at > now,
+            ApplicationInterview.status == 'scheduled'
+        ).order_by(ApplicationInterview.scheduled_at).first()
+
+        application.next_interview_at = upcoming.scheduled_at if upcoming else None
+        self.session.commit()

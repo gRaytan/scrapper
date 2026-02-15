@@ -5,7 +5,7 @@ from .job_position import JobPosition
 from .scraping_session import ScrapingSession
 from .user import User
 from .alert import Alert
-from .user_job_application import UserJobApplication
+from .user_job_application import UserJobApplication, ApplicationInterview
 from .alert_notification import AlertNotification
 from .user_job_interaction import UserJobInteraction
 from .job_embedding import JobEmbedding
@@ -20,6 +20,7 @@ __all__ = [
     "User",
     "Alert",
     "UserJobApplication",
+    "ApplicationInterview",
     "AlertNotification",
     "UserJobInteraction",
     "JobEmbedding",

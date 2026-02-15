@@ -1,6 +1,6 @@
 """User job application data model."""
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List
 from uuid import UUID
 
 from sqlalchemy import String, Text, DateTime, ForeignKey, UniqueConstraint, Index, Integer
@@ -44,6 +44,9 @@ class UserJobApplication(Base, UUIDMixin, TimestampMixin):
     # Notes
     notes: Mapped[Optional[str]] = mapped_column(Text)
 
+    # Comments (short comment visible in table)
+    comments: Mapped[Optional[str]] = mapped_column(String(500))
+
     # Custom overrides (user can edit these to override job_position values)
     custom_title: Mapped[Optional[str]] = mapped_column(String(500))
     custom_company: Mapped[Optional[str]] = mapped_column(String(255))
@@ -56,11 +59,17 @@ class UserJobApplication(Base, UUIDMixin, TimestampMixin):
 
     # Interview tracking
     next_interview_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), index=True)
-    
+
     # Relationships
     user = relationship("User", back_populates="applications")
     job_position = relationship("JobPosition")
-    
+    interviews: Mapped[List["ApplicationInterview"]] = relationship(
+        "ApplicationInterview",
+        back_populates="application",
+        cascade="all, delete-orphan",
+        order_by="ApplicationInterview.scheduled_at"
+    )
+
     # Constraints
     __table_args__ = (
         UniqueConstraint('user_id', 'job_position_id', name='uq_user_job'),
@@ -82,3 +91,59 @@ class UserJobApplication(Base, UUIDMixin, TimestampMixin):
         closed_statuses = ['accepted', 'rejected', 'withdrawn']
         return self.status in closed_statuses
 
+
+class ApplicationInterview(Base, UUIDMixin, TimestampMixin):
+    """Interview record for a job application."""
+
+    __tablename__ = "application_interviews"
+
+    # Foreign key to application
+    application_id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True),
+        ForeignKey("user_job_applications.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True
+    )
+
+    # Interview details
+    scheduled_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        nullable=False,
+        index=True
+    )
+
+    interview_type: Mapped[Optional[str]] = mapped_column(
+        String(50)
+    )  # phone, video, onsite, technical, behavioral, final, etc.
+
+    interviewer: Mapped[Optional[str]] = mapped_column(String(255))
+
+    location: Mapped[Optional[str]] = mapped_column(String(500))  # Can be URL for video calls
+
+    notes: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Status: scheduled, completed, cancelled, rescheduled
+    status: Mapped[str] = mapped_column(
+        String(20),
+        default='scheduled',
+        nullable=False
+    )
+
+    # Feedback after interview
+    feedback: Mapped[Optional[str]] = mapped_column(Text)
+
+    # Relationship back to application
+    application = relationship("UserJobApplication", back_populates="interviews")
+
+    def __repr__(self) -> str:
+        return f"<ApplicationInterview(id={self.id}, application_id={self.application_id}, scheduled_at={self.scheduled_at}, type='{self.interview_type}')>"
+
+    @property
+    def is_past(self) -> bool:
+        """Check if interview is in the past."""
+        return self.scheduled_at < datetime.now(self.scheduled_at.tzinfo)
+
+    @property
+    def is_upcoming(self) -> bool:
+        """Check if interview is upcoming."""
+        return self.scheduled_at >= datetime.now(self.scheduled_at.tzinfo) and self.status == 'scheduled'

@@ -17,6 +17,7 @@ class ApplicationUpdate(BaseModel):
     """Schema for updating an application."""
     status: Optional[str] = Field(None, description="New status")
     notes: Optional[str] = Field(None, description="Updated notes")
+    comments: Optional[str] = Field(None, description="Short comment visible in table", max_length=500)
     applied_at: Optional[datetime] = Field(None, description="Date when application was submitted")
     # Custom overrides (user can edit these to override job_position values)
     custom_title: Optional[str] = Field(None, description="Custom job title override", max_length=500)
@@ -56,6 +57,43 @@ class JobBrief(BaseModel):
     company: Optional[CompanyBrief] = None
 
 
+class InterviewResponse(BaseModel):
+    """Schema for interview response."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID
+    application_id: UUID
+    scheduled_at: datetime
+    interview_type: Optional[str] = None
+    interviewer: Optional[str] = None
+    location: Optional[str] = None
+    notes: Optional[str] = None
+    status: str = 'scheduled'
+    feedback: Optional[str] = None
+    created_at: datetime
+    updated_at: datetime
+
+
+class InterviewCreate(BaseModel):
+    """Schema for creating an interview."""
+    scheduled_at: datetime = Field(..., description="Interview date/time")
+    interview_type: Optional[str] = Field(None, description="Type: phone, video, onsite, technical, etc.")
+    interviewer: Optional[str] = Field(None, description="Interviewer name(s)")
+    location: Optional[str] = Field(None, description="Location or video call URL")
+    notes: Optional[str] = Field(None, description="Notes about the interview")
+
+
+class InterviewUpdate(BaseModel):
+    """Schema for updating an interview."""
+    scheduled_at: Optional[datetime] = Field(None, description="Interview date/time")
+    interview_type: Optional[str] = Field(None, description="Type: phone, video, onsite, technical, etc.")
+    interviewer: Optional[str] = Field(None, description="Interviewer name(s)")
+    location: Optional[str] = Field(None, description="Location or video call URL")
+    notes: Optional[str] = Field(None, description="Notes about the interview")
+    status: Optional[str] = Field(None, description="Status: scheduled, completed, cancelled, rescheduled")
+    feedback: Optional[str] = Field(None, description="Feedback after interview")
+
+
 class ApplicationResponse(BaseModel):
     """Schema for application response."""
     model_config = ConfigDict(from_attributes=True)
@@ -66,6 +104,7 @@ class ApplicationResponse(BaseModel):
     status: str
     applied_at: Optional[datetime] = None
     notes: Optional[str] = None
+    comments: Optional[str] = None
     # Custom overrides
     custom_title: Optional[str] = None
     custom_company: Optional[str] = None
@@ -76,6 +115,8 @@ class ApplicationResponse(BaseModel):
     salary_currency: Optional[str] = None
     # Interview tracking
     next_interview_at: Optional[datetime] = None
+    # Interviews list
+    interviews: List[InterviewResponse] = []
     # Timestamps
     created_at: datetime
     updated_at: datetime
