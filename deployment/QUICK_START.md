@@ -7,8 +7,8 @@ This is a condensed guide to get your Job Scraper running on AWS EC2 quickly.
 **Production deployment MUST be from `/opt/scraper`**
 
 ```
-EC2 Server: 51.17.250.130 (api.hiddenjobs.me)
-SSH Key: /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem
+EC2 Server: 16.171.142.30 (api.hiddenjobs.me)
+SSH Key: /Users/gilr/IdeaProjects/pem/hiddenjobs-key.pem
 Deployment Path: /opt/scraper
 Compose File: docker-compose.production.yml
 ```
@@ -130,7 +130,7 @@ Your API is now running at: `http://YOUR_EC2_IP`
 
 ```bash
 # SSH to server
-ssh -i /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem ubuntu@51.17.250.130
+ssh -i /Users/gilr/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@16.171.142.30
 
 # Go to deployment directory (ALWAYS use this path!)
 cd /opt/scraper
@@ -158,18 +158,19 @@ sudo ./deployment/deploy.sh
 
 ```bash
 # From your local machine - copy updated files to EC2
-scp -i /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem \
+scp -i /Users/gilr/IdeaProjects/pem/hiddenjobs-key.pem \
   /Users/gilr/IdeaProjects/scrapper/src/path/to/file.py \
-  ubuntu@51.17.250.130:/tmp/
+  ubuntu@16.171.142.30:/tmp/
 
 # SSH to server and move files
-ssh -i /Users/gilr/IdeaProjects/pem/hidden-jobs-key.pem ubuntu@51.17.250.130
+ssh -i /Users/gilr/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@16.171.142.30
 sudo cp /tmp/file.py /opt/scraper/src/path/to/file.py
 sudo chown scraper:scraper /opt/scraper/src/path/to/file.py
 
-# Rebuild and restart
+# Rebuild and restart (IMPORTANT: also restart nginx to refresh DNS cache!)
 cd /opt/scraper
 sudo docker compose -f docker-compose.production.yml up -d --build api
+sudo docker compose -f docker-compose.production.yml restart nginx
 ```
 
 ---
@@ -188,25 +189,37 @@ docker compose -f docker-compose.production.yml logs
 
 **502 Bad Gateway?**
 
-This usually means nginx can't reach the API container. Check:
+This usually means nginx can't reach the API container. **Most common cause: nginx cached the old container IP after a rebuild.**
 
+### Quick Fix (90% of cases):
 ```bash
-# 1. Verify all containers are on the same network
+# Just restart nginx to refresh DNS cache
+cd /opt/scraper
+sudo docker compose -f docker-compose.production.yml restart nginx
+```
+
+### Why This Happens:
+Nginx caches DNS resolution at startup. When you rebuild/recreate containers (e.g., `docker compose up -d --build api`), the API container gets a new IP address, but nginx still points to the old cached IP → 502 error.
+
+**Rule: Always restart nginx after rebuilding any service containers.**
+
+### Full Troubleshooting:
+```bash
+# 1. Restart nginx (fixes most 502 errors)
+sudo docker compose -f docker-compose.production.yml restart nginx
+
+# 2. Verify all containers are on the same network
 sudo docker network inspect scraper_scraper_network --format '{{range .Containers}}{{.Name}} {{end}}'
 # Should show: scraper_api_prod scraper_nginx_prod scraper_postgres_prod scraper_redis_prod ...
 
-# 2. Test DNS resolution from nginx
-sudo docker exec scraper_nginx_prod ping -c 1 api
-# Should resolve to an IP like 172.18.0.x
+# 3. Test internal connectivity from nginx
+sudo docker exec scraper_nginx_prod wget -q -O- http://api:8000/health
+# Should return: {"status":"healthy"}
 
-# 3. If containers are on different networks, restart everything:
+# 4. If still failing, restart everything:
 cd /opt/scraper
 sudo docker compose -f docker-compose.production.yml down
 sudo docker compose -f docker-compose.production.yml up -d
-
-# 4. Check nginx config uses service name 'api', not container name 'scraper_api_prod'
-grep 'server.*8000' /opt/scraper/deployment/nginx.conf
-# Should show: server api:8000
 ```
 
 **Workers not running?**
