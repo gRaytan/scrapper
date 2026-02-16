@@ -5,7 +5,7 @@ from uuid import UUID
 import requests
 from datetime import datetime
 
-from src.scrapers.parsers.apple_parser import AppleParser
+from src.scrapers.parsers.embedded_js_parser import EmbeddedJSParser
 from src.utils.logger import logger
 
 router = APIRouter()
@@ -91,9 +91,9 @@ def _scrape_apple_sync(location: str = "israel-ISR", location_keywords: Optional
     response = requests.get(url, headers=headers, timeout=30)
     response.raise_for_status()
     
-    # Parse jobs
-    parser = AppleParser()
-    jobs = parser.parse(response.text)
+    # Parse jobs using EmbeddedJSParser with 'apple' site configuration
+    parser = EmbeddedJSParser(site_name='apple')
+    jobs = parser.parse_html(response.text)
     
     logger.info(f"Found {len(jobs)} jobs from Apple")
     
@@ -274,55 +274,6 @@ def _scrape_google_sync(location: str = "Israel"):
     return {
         "status": "success",
         "company": "Google",
-        "location": location,
-        "total_jobs": len(jobs),
-        "scraped_at": datetime.utcnow().isoformat(),
-        "jobs": jobs
-    }
-
-
-
-@router.get("/scrape/intel")
-async def scrape_intel(
-    location: Optional[str] = "Israel",
-    max_jobs: Optional[int] = 100
-):
-    """
-    Scrape Intel jobs using Workday API.
-    
-    Args:
-        location: Location filter (default: Israel)
-        max_jobs: Maximum number of jobs to fetch (default: 100)
-        
-    Returns:
-        Job listings from Intel
-        
-    Example:
-        GET /api/v1/scraper/scrape/intel
-        GET /api/v1/scraper/scrape/intel?location=United%20States&max_jobs=50
-    """
-    try:
-        result = _scrape_intel_sync(location, max_jobs)
-        return result
-    except Exception as e:
-        logger.error(f"Error scraping Intel: {e}")
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-def _scrape_intel_sync(location: str = "Israel", max_jobs: int = 100):
-    """Synchronous Intel scraping function."""
-    
-    logger.info(f"Scraping Intel jobs for location: {location}")
-    
-    # Parse jobs
-    parser = IntelParser()
-    jobs = parser.parse(location=location, max_jobs=max_jobs)
-    
-    logger.info(f"Total Intel jobs found: {len(jobs)}")
-    
-    return {
-        "status": "success",
-        "company": "Intel",
         "location": location,
         "total_jobs": len(jobs),
         "scraped_at": datetime.utcnow().isoformat(),
