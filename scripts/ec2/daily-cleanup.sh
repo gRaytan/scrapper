@@ -8,9 +8,9 @@ echo "[$(date)] Starting daily cleanup..."
 echo "Pruning system..."
 docker system prune -f
 
-# Remove unused images older than 1 day
-echo "Removing old unused images..."
-docker image prune -af --filter "until=24h"
+# Remove dangling images only (not tagged images that might be needed)
+echo "Removing dangling images..."
+docker image prune -f
 
 # Remove all build cache
 echo "Clearing build cache..."
