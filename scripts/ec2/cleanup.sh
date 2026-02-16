@@ -8,10 +8,7 @@ echo "[$(date)] Starting weekly cleanup..."
 echo "Cleaning unused Docker images..."
 sudo docker image prune -af --filter "until=168h"
 
-# Remove unused Docker volumes (not attached to any container)
-# NOTE: Be careful - this removes unattached volumes!
-echo "Cleaning unused Docker volumes..."
-sudo docker volume prune -f
+# NOTE: We do NOT prune volumes - this could delete postgres_data if container is stopped
 
 # Remove Docker build cache (keep 1GB)
 echo "Cleaning Docker build cache..."
