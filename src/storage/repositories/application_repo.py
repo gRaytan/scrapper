@@ -23,12 +23,18 @@ class ApplicationRepository:
         return application
     
     def get_by_id(self, application_id: UUID) -> Optional[UserJobApplication]:
-        """Get application by ID."""
-        return self.session.query(UserJobApplication).filter_by(id=application_id).first()
-    
+        """Get application by ID with all relationships loaded."""
+        return self.session.query(UserJobApplication).options(
+            joinedload(UserJobApplication.job_position).joinedload(JobPosition.company),
+            joinedload(UserJobApplication.interviews)
+        ).filter_by(id=application_id).first()
+
     def get_by_user_and_job(self, user_id: UUID, job_position_id: UUID) -> Optional[UserJobApplication]:
         """Get application by user and job position."""
-        return self.session.query(UserJobApplication).filter_by(
+        return self.session.query(UserJobApplication).options(
+            joinedload(UserJobApplication.job_position).joinedload(JobPosition.company),
+            joinedload(UserJobApplication.interviews)
+        ).filter_by(
             user_id=user_id,
             job_position_id=job_position_id
         ).first()
@@ -42,7 +48,8 @@ class ApplicationRepository:
     ) -> tuple[List[UserJobApplication], int]:
         """List applications for a user with optional status filter."""
         query = self.session.query(UserJobApplication).options(
-            joinedload(UserJobApplication.job_position).joinedload(JobPosition.company)
+            joinedload(UserJobApplication.job_position).joinedload(JobPosition.company),
+            joinedload(UserJobApplication.interviews)
         ).filter_by(user_id=user_id)
         
         if status:
