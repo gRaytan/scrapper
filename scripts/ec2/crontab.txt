@@ -1,0 +1,13 @@
+# EC2 Crontab Configuration
+# To install: crontab /path/to/crontab.txt
+# To view: crontab -l
+
+# Daily backup at 3 AM UTC
+0 3 * * * /home/ubuntu/backup.sh >> /home/ubuntu/logs/backup.log 2>&1
+
+# Daily cleanup at 4 AM UTC (after backup)
+0 4 * * * /home/ubuntu/daily-cleanup.sh >> /home/ubuntu/logs/cleanup.log 2>&1
+
+# Weekly deep cleanup on Sundays at 4:30 AM UTC
+30 4 * * 0 /home/ubuntu/cleanup.sh >> /home/ubuntu/logs/cleanup.log 2>&1
+
