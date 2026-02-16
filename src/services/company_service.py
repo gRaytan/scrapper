@@ -83,30 +83,35 @@ class CompanyService:
         page_size: int = 20,
         is_active: Optional[bool] = None,
         search: Optional[str] = None,
+        industry: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
         List companies with pagination and filtering.
-        
+
         Args:
             page: Page number (1-indexed)
             page_size: Number of items per page
             is_active: Filter by active status
             search: Search query for company name
-            
+            industry: Filter by industry
+
         Returns:
             Dictionary with companies and pagination info
         """
         from src.models.company import Company
-        
+
         # Build query
         query = self.session.query(Company)
-        
+
         # Apply filters
         if is_active is not None:
             query = query.filter(Company.is_active == is_active)
-        
+
         if search:
             query = query.filter(Company.name.ilike(f"%{search}%"))
+
+        if industry:
+            query = query.filter(Company.industry == industry)
         
         # Get total count
         total = query.count()
@@ -140,7 +145,64 @@ class CompanyService:
             "page_size": page_size,
             "companies": companies_with_counts,
         }
-    
+
+    def get_stats(self, industry: Optional[str] = None) -> Dict[str, Any]:
+        """
+        Get aggregate stats for companies.
+
+        Args:
+            industry: Optional industry filter
+
+        Returns:
+            Dictionary with total_companies, companies_with_jobs, total_jobs, industries_count
+        """
+        from src.models.company import Company
+        from sqlalchemy import func
+
+        # Base query for companies
+        company_query = self.session.query(Company)
+        if industry:
+            company_query = company_query.filter(Company.industry == industry)
+
+        total_companies = company_query.count()
+
+        # Companies with active jobs
+        companies_with_jobs_subquery = (
+            self.session.query(JobPosition.company_id)
+            .filter(JobPosition.is_active == True)
+            .distinct()
+        )
+        if industry:
+            companies_with_jobs_subquery = companies_with_jobs_subquery.join(
+                Company, Company.id == JobPosition.company_id
+            ).filter(Company.industry == industry)
+
+        companies_with_jobs = companies_with_jobs_subquery.count()
+
+        # Total active jobs
+        jobs_query = self.session.query(func.count(JobPosition.id)).filter(JobPosition.is_active == True)
+        if industry:
+            jobs_query = jobs_query.join(Company, Company.id == JobPosition.company_id).filter(Company.industry == industry)
+        total_jobs = jobs_query.scalar() or 0
+
+        # Total industries (only when not filtering by industry)
+        if industry:
+            industries_count = 1
+        else:
+            industries_count = (
+                self.session.query(Company.industry)
+                .filter(Company.industry.isnot(None))
+                .distinct()
+                .count()
+            )
+
+        return {
+            "total_companies": total_companies,
+            "companies_with_jobs": companies_with_jobs,
+            "total_jobs": total_jobs,
+            "industries_count": industries_count,
+        }
+
     def update_company(self, company_id: UUID, update_data: CompanyUpdate) -> Optional[dict]:
         """
         Update company.

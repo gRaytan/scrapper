@@ -31,12 +31,38 @@ def get_db_session():
         yield session
 
 
+@router.get("/stats")
+def get_company_stats(
+    industry: Optional[str] = Query(None, description="Filter by industry"),
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_db_session)
+):
+    """
+    Get aggregate stats for companies.
+
+    Returns total_companies, companies_with_jobs, total_jobs, industries_count.
+    Optionally filter by industry.
+
+    Requires JWT authentication.
+    """
+    try:
+        service = CompanyService(session)
+        return service.get_stats(industry=industry)
+    except Exception as e:
+        logger.error(f"Error getting company stats: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get company stats"
+        )
+
+
 @router.get("", response_model=CompanyListResponse)
 def list_companies(
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     is_active: Optional[bool] = Query(None, description="Filter by active status"),
     search: Optional[str] = Query(None, description="Search company name"),
+    industry: Optional[str] = Query(None, description="Filter by industry"),
     current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
@@ -46,6 +72,7 @@ def list_companies(
     **Filters:**
     - **is_active**: Filter by active status
     - **search**: Search in company name
+    - **industry**: Filter by industry
 
     **Pagination:**
     - **page**: Page number (default: 1)
@@ -60,6 +87,7 @@ def list_companies(
             page_size=page_size,
             is_active=is_active,
             search=search,
+            industry=industry,
         )
         
         # Transform result to match schema
