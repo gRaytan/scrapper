@@ -8,6 +8,3 @@
 # Daily cleanup at 4 AM UTC (after backup)
 0 4 * * * /home/ubuntu/daily-cleanup.sh >> /home/ubuntu/logs/cleanup.log 2>&1
 
-# Weekly deep cleanup on Sundays at 4:30 AM UTC
-30 4 * * 0 /home/ubuntu/cleanup.sh >> /home/ubuntu/logs/cleanup.log 2>&1
-
