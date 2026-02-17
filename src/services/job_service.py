@@ -72,6 +72,10 @@ class JobService:
         filters = []
         filters_applied = {}
 
+        # Always exclude manual jobs from the main job listings
+        # Manual jobs are user-created and should only appear in their tracker
+        filters.append(JobPosition.source_type != 'manual')
+
         if is_active is not None:
             filters.append(JobPosition.is_active == is_active)
             filters_applied["is_active"] = is_active

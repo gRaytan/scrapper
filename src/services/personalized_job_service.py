@@ -330,11 +330,13 @@ class PersonalizedJobService:
             }
 
         # Get active jobs from the last N days
+        # Exclude manual jobs - they are user-created and should only appear in their tracker
         cutoff = datetime.utcnow() - timedelta(days=days_back)
 
         query = self.session.query(JobPosition).filter(
             JobPosition.is_active == True,
-            JobPosition.created_at >= cutoff
+            JobPosition.created_at >= cutoff,
+            JobPosition.source_type != 'manual'
         ).options(joinedload(JobPosition.company))
 
         # Apply location filter if provided
