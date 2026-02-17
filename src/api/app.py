@@ -41,7 +41,7 @@ async def health():
 
 
 # Import and include routers
-from src.api.routes import auth, scraper, users, jobs, companies, alerts, applications, saved_filters
+from src.api.routes import auth, scraper, users, jobs, companies, alerts, applications, saved_filters, interview_questions
 
 app.include_router(auth.router, prefix="/api/v1/auth", tags=["authentication"])
 app.include_router(scraper.router, prefix="/api/v1/scraper", tags=["scraper"])
@@ -51,3 +51,4 @@ app.include_router(companies.router, prefix="/api/v1/companies", tags=["companie
 app.include_router(alerts.router, prefix="/api/v1", tags=["alerts"])
 app.include_router(applications.router, prefix="/api/v1/applications", tags=["applications"])
 app.include_router(saved_filters.router, prefix="/api/v1/saved-filters", tags=["saved-filters"])
+app.include_router(interview_questions.router, prefix="/api/v1", tags=["interview-questions"])
