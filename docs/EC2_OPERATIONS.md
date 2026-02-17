@@ -114,16 +114,22 @@ sudo docker system df
 # 4. Free up space if needed
 sudo docker system prune -af
 
-# 5. Deploy
+# 5. Deploy (builds images and starts containers)
 cd /home/ubuntu/scraper-upload
 ./deploy.sh
 
-# 6. Run migrations
+# 6. Run migrations (after containers are up)
 sudo docker compose -f docker-compose.production.yml exec -T api alembic upgrade head
 
 # 7. Verify
 sudo docker compose -f docker-compose.production.yml ps
 ```
+
+> **Note:** Migrations run after deploy because alembic executes inside the API container.
+> For schema changes that could break existing code, consider:
+> 1. Deploy migration-only changes first
+> 2. Run migration
+> 3. Deploy code that uses new schema
 
 ---
 
