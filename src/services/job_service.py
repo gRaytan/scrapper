@@ -423,12 +423,13 @@ class JobService:
             ],
         }
 
-    def get_jobs_over_time(self, months: int = 12) -> List[Dict[str, Any]]:
+    def get_jobs_over_time(self, months: int = 12, active_only: bool = False) -> List[Dict[str, Any]]:
         """
         Get job posting counts grouped by month.
 
         Args:
             months: Number of months to look back (default: 12)
+            active_only: If True, only count jobs that are still active/open (default: False)
 
         Returns:
             List of dicts with month and count
@@ -441,8 +442,8 @@ class JobService:
         start_date = datetime(today.year, today.month, 1) - timedelta(days=months * 31)
         start_date = datetime(start_date.year, start_date.month, 1)
 
-        # Query jobs grouped by year and month
-        results = (
+        # Build query
+        query = (
             self.session.query(
                 extract('year', JobPosition.posted_date).label('year'),
                 extract('month', JobPosition.posted_date).label('month'),
@@ -450,6 +451,15 @@ class JobService:
             )
             .filter(JobPosition.posted_date >= start_date)
             .filter(JobPosition.posted_date.isnot(None))
+        )
+
+        # Filter by active status if requested
+        if active_only:
+            query = query.filter(JobPosition.is_active == True)
+
+        # Group and order
+        results = (
+            query
             .group_by(
                 extract('year', JobPosition.posted_date),
                 extract('month', JobPosition.posted_date)
