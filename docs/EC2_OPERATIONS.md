@@ -88,13 +88,50 @@ sudo docker compose -f docker-compose.production.yml restart
 ./deploy.sh
 ```
 
+### Run Database Migrations
+```bash
+sudo docker compose -f docker-compose.production.yml exec -T api alembic upgrade head
+```
+
+---
+
+## Full Deployment Process
+
+Complete deployment from local machine:
+
+```bash
+# 1. Push code to EC2
+cd /Users/gilr/IdeaProjects/scrapper
+GIT_SSH_COMMAND="ssh -i /Users/gilr/IdeaProjects/pem/hiddenjobs-key.pem" git push ec2 main
+
+# 2. SSH to EC2
+ssh -i /Users/gilr/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@16.171.142.30
+
+# 3. Check disk space (optional)
+df -h /
+sudo docker system df
+
+# 4. Free up space if needed
+sudo docker system prune -af
+
+# 5. Deploy
+cd /home/ubuntu/scraper-upload
+./deploy.sh
+
+# 6. Run migrations
+sudo docker compose -f docker-compose.production.yml exec -T api alembic upgrade head
+
+# 7. Verify
+sudo docker compose -f docker-compose.production.yml ps
+```
+
 ---
 
 ## Cleanup
 
 ### Manual Cleanup
 ```bash
-/home/ubuntu/cleanup.sh
+sudo docker system prune -af
 ```
 
 ### What Gets Cleaned
