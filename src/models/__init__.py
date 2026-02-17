@@ -9,7 +9,7 @@ from .user_job_application import UserJobApplication, ApplicationInterview
 from .alert_notification import AlertNotification
 from .user_job_interaction import UserJobInteraction
 from .job_embedding import JobEmbedding
-from .interview_question import InterviewQuestion
+from .saved_filter import SavedFilter
 
 __all__ = [
     "Base",
@@ -25,5 +25,5 @@ __all__ = [
     "AlertNotification",
     "UserJobInteraction",
     "JobEmbedding",
-    "InterviewQuestion",
+    "SavedFilter",
 ]

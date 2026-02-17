@@ -55,6 +55,7 @@ class User(Base, UUIDMixin, TimestampMixin):
     applications = relationship("UserJobApplication", back_populates="user", cascade="all, delete-orphan")
     notifications = relationship("AlertNotification", back_populates="user")
     job_interactions = relationship("UserJobInteraction", back_populates="user", cascade="all, delete-orphan")
+    saved_filters = relationship("SavedFilter", back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, email='{self.email}')>"
