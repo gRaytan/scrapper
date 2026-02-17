@@ -274,6 +274,10 @@ def update_application(
     """Update an application's fields."""
     try:
         service = ApplicationService(session)
+
+        # Get explicitly set fields to distinguish between "not provided" and "set to null"
+        explicitly_set_fields = data.model_fields_set
+
         application = service.update_application(
             application_id=application_id,
             user_id=current_user.id,
@@ -287,7 +291,8 @@ def update_application(
             salary_min=data.salary_min,
             salary_max=data.salary_max,
             salary_currency=data.salary_currency,
-            next_interview_at=data.next_interview_at
+            next_interview_at=data.next_interview_at,
+            clear_next_interview='next_interview_at' in explicitly_set_fields and data.next_interview_at is None
         )
 
         if not application:

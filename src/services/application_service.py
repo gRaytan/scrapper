@@ -114,7 +114,8 @@ class ApplicationService:
         salary_min: Optional[int] = None,
         salary_max: Optional[int] = None,
         salary_currency: Optional[str] = None,
-        next_interview_at: Optional[datetime] = None
+        next_interview_at: Optional[datetime] = None,
+        clear_next_interview: bool = False
     ) -> Optional[UserJobApplication]:
         """
         Update application fields.
@@ -133,6 +134,7 @@ class ApplicationService:
             salary_max: Maximum salary
             salary_currency: Salary currency
             next_interview_at: Date/time of next interview
+            clear_next_interview: If True, explicitly clear the next_interview_at field
 
         Returns:
             Updated application or None if not found/not owned
@@ -174,9 +176,11 @@ class ApplicationService:
         if salary_currency is not None:
             update_data['salary_currency'] = salary_currency
 
-        # Interview tracking
+        # Interview tracking - handle both setting a value and clearing it
         if next_interview_at is not None:
             update_data['next_interview_at'] = next_interview_at
+        elif clear_next_interview:
+            update_data['next_interview_at'] = None
 
         if not update_data:
             return application
