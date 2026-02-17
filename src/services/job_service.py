@@ -339,6 +339,51 @@ class JobService:
             .all()
         )
 
+        # Get job title counts (distinct titles from job_positions)
+        job_title_counts = (
+            self.session.query(
+                JobPosition.title,
+                func.count(JobPosition.id).label('count')
+            )
+            .filter(JobPosition.is_active == True)
+            .filter(JobPosition.title.isnot(None))
+            .filter(JobPosition.title != '')
+            .group_by(JobPosition.title)
+            .order_by(func.count(JobPosition.id).desc())
+            .limit(100)
+            .all()
+        )
+
+        # Get industry counts (from companies table)
+        industry_counts = (
+            self.session.query(
+                Company.industry,
+                func.count(JobPosition.id).label('count')
+            )
+            .join(JobPosition, JobPosition.company_id == Company.id)
+            .filter(JobPosition.is_active == True)
+            .filter(Company.industry.isnot(None))
+            .filter(Company.industry != '')
+            .group_by(Company.industry)
+            .order_by(func.count(JobPosition.id).desc())
+            .all()
+        )
+
+        # Get company size counts (from companies table)
+        company_size_counts = (
+            self.session.query(
+                Company.size,
+                func.count(JobPosition.id).label('count')
+            )
+            .join(JobPosition, JobPosition.company_id == Company.id)
+            .filter(JobPosition.is_active == True)
+            .filter(Company.size.isnot(None))
+            .filter(Company.size != '')
+            .group_by(Company.size)
+            .order_by(func.count(JobPosition.id).desc())
+            .all()
+        )
+
         return {
             "locations": [
                 {"value": loc, "label": loc, "count": count}
@@ -359,6 +404,18 @@ class JobService:
             "seniority_levels": [
                 {"value": sl, "label": sl, "count": count}
                 for sl, count in seniority_counts if sl
+            ],
+            "job_titles": [
+                {"value": title, "label": title, "count": count}
+                for title, count in job_title_counts if title
+            ],
+            "industries": [
+                {"value": industry, "label": industry, "count": count}
+                for industry, count in industry_counts if industry
+            ],
+            "company_sizes": [
+                {"value": size, "label": size, "count": count}
+                for size, count in company_size_counts if size
             ],
         }
 

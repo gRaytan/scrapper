@@ -2,7 +2,8 @@
 
 ## Server Details
 - **Host:** ubuntu@16.171.142.30
-- **SSH:** `ssh -i /path/to/hiddenjobs-key.pem ubuntu@16.171.142.30`
+- **SSH Key:** `/Users/gilr/IdeaProjects/pem/hiddenjobs-key.pem`
+- **SSH:** `ssh -i /Users/gilr/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@16.171.142.30`
 
 ---
 
