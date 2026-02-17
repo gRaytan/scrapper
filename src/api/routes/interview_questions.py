@@ -145,25 +145,7 @@ def create_question(
             question_data=question_data,
         )
 
-        return InterviewQuestionResponse(
-            id=question.id,
-            company_id=question.company_id,
-            question=question.question,
-            role=question.role,
-            difficulty=question.difficulty,
-            answers=[
-                AnswerResponse(
-                    id=a.get("id", ""),
-                    answer=a.get("answer", ""),
-                    user_id=a.get("user_id", ""),
-                    created_at=_parse_answer_created_at(a.get("created_at")),
-                    upvotes=a.get("upvotes", 0)
-                ) for a in (question.answers or [])
-            ],
-            upvotes=question.upvotes,
-            created_at=question.created_at,
-            updated_at=question.updated_at
-        )
+        return _question_to_response(question, session)
     except HTTPException:
         raise
     except Exception as e:
