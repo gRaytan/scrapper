@@ -23,7 +23,7 @@ sentence-transformers==2.7.0
 # Database & Storage
 psycopg2-binary>=2.9.9
 asyncpg>=0.29.0
-sqlalchemy==2.0.23
+sqlalchemy>=2.0.23
 alembic==1.13.1
 redis==5.0.1
 hiredis>=2.3.2

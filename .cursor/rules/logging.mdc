@@ -1,0 +1,18 @@
+---
+description: Use logger instead of print for debug and application output
+globs: "**/*.py"
+alwaysApply: false
+---
+
+# Logging: Use Logger, Not Print
+
+- Use the project's logger (e.g. `loguru` via `from src.utils.logger import logger` or `config.settings`-aware logging) for debug output, diagnostics, and application messages.
+- Do **not** use `print()` for debug or runtime output; use `logger.debug()`, `logger.info()`, etc., so output is consistent and can be controlled by log level and configuration.
+
+```python
+# ❌ BAD
+print("[DEBUG] Database connection config:", data)
+
+# ✅ GOOD
+logger.debug("Database connection config: {}", data)
+```
