@@ -1,44 +1,43 @@
 # Web Scraping
-playwright>=1.40.0
+playwright==1.40.0
 playwright-stealth==2.0.0
 selenium==4.16.0
 undetected-chromedriver==3.5.4
 beautifulsoup4==4.12.2
-lxml>=4.9.3
+lxml==4.9.3
 httpx==0.25.2
 
-# LLM Integration (upgraded for tiktoken>=0.7 with Python 3.13 wheels; langchain 1.x + langchain-openai 1.x)
-openai>=1.109.1
+# LLM Integration
+openai==1.6.1
 anthropic==0.8.1
-tiktoken>=0.7.0
-langchain>=1.0.0
-langchain-openai>=1.0.0
+langchain==0.1.0
+langchain-openai==0.0.2
 instructor==0.4.5
 
 # Semantic Matching (lightweight embeddings - CPU only)
 --extra-index-url https://download.pytorch.org/whl/cpu
-torch==2.6.0+cpu
+torch==2.2.0+cpu
 sentence-transformers==2.7.0
 
 # Database & Storage
-psycopg2-binary>=2.9.9
-asyncpg>=0.29.0
-sqlalchemy>=2.0.23
+psycopg2-binary==2.9.9
+asyncpg==0.29.0
+sqlalchemy==2.0.23
 alembic==1.13.1
 redis==5.0.1
-hiredis>=2.3.2
+hiredis==2.3.2
 
 # Task Queue & Orchestration
 celery==5.3.4
 dramatiq==1.15.0
 apscheduler==3.10.4
 
-# Data Processing (pydantic>=2.10 for pydantic-core wheels on Python 3.13)
-pydantic>=2.10.0
-pydantic-settings>=2.1.0
-pandas>=2.1.4
+# Data Processing
+pydantic==2.5.3
+pydantic-settings==2.1.0
+pandas==2.1.4
 python-dateutil==2.8.2
-pyyaml>=6.0.1
+pyyaml==6.0.1
 
 # API
 fastapi==0.108.0
@@ -49,7 +48,7 @@ python-dotenv==1.0.0
 loguru==0.7.2
 tenacity==8.2.3
 fake-useragent==1.4.0
-aiohttp>=3.9.1
+aiohttp==3.9.1
 jinja2>=3.1.0
 
 # Development & Testing
