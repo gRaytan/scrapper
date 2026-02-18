@@ -17,6 +17,7 @@ from src.models.scraping_session import ScrapingSession
 from src.models.alert import Alert
 from src.models.user_job_application import UserJobApplication
 from src.models.alert_notification import AlertNotification
+from src.models.saved_filter import SavedFilter
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.

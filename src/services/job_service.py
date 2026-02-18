@@ -72,6 +72,10 @@ class JobService:
         filters = []
         filters_applied = {}
 
+        # Always exclude manual jobs from the main job listings
+        # Manual jobs are user-created and should only appear in their tracker
+        filters.append(JobPosition.source_type != 'manual')
+
         if is_active is not None:
             filters.append(JobPosition.is_active == is_active)
             filters_applied["is_active"] = is_active
@@ -339,6 +343,51 @@ class JobService:
             .all()
         )
 
+        # Get job title counts (distinct titles from job_positions)
+        job_title_counts = (
+            self.session.query(
+                JobPosition.title,
+                func.count(JobPosition.id).label('count')
+            )
+            .filter(JobPosition.is_active == True)
+            .filter(JobPosition.title.isnot(None))
+            .filter(JobPosition.title != '')
+            .group_by(JobPosition.title)
+            .order_by(func.count(JobPosition.id).desc())
+            .limit(100)
+            .all()
+        )
+
+        # Get industry counts (from companies table)
+        industry_counts = (
+            self.session.query(
+                Company.industry,
+                func.count(JobPosition.id).label('count')
+            )
+            .join(JobPosition, JobPosition.company_id == Company.id)
+            .filter(JobPosition.is_active == True)
+            .filter(Company.industry.isnot(None))
+            .filter(Company.industry != '')
+            .group_by(Company.industry)
+            .order_by(func.count(JobPosition.id).desc())
+            .all()
+        )
+
+        # Get company size counts (from companies table)
+        company_size_counts = (
+            self.session.query(
+                Company.size,
+                func.count(JobPosition.id).label('count')
+            )
+            .join(JobPosition, JobPosition.company_id == Company.id)
+            .filter(JobPosition.is_active == True)
+            .filter(Company.size.isnot(None))
+            .filter(Company.size != '')
+            .group_by(Company.size)
+            .order_by(func.count(JobPosition.id).desc())
+            .all()
+        )
+
         return {
             "locations": [
                 {"value": loc, "label": loc, "count": count}
@@ -360,14 +409,27 @@ class JobService:
                 {"value": sl, "label": sl, "count": count}
                 for sl, count in seniority_counts if sl
             ],
+            "job_titles": [
+                {"value": title, "label": title, "count": count}
+                for title, count in job_title_counts if title
+            ],
+            "industries": [
+                {"value": industry, "label": industry, "count": count}
+                for industry, count in industry_counts if industry
+            ],
+            "company_sizes": [
+                {"value": size, "label": size, "count": count}
+                for size, count in company_size_counts if size
+            ],
         }
 
-    def get_jobs_over_time(self, months: int = 12) -> List[Dict[str, Any]]:
+    def get_jobs_over_time(self, months: int = 12, active_only: bool = False) -> List[Dict[str, Any]]:
         """
         Get job posting counts grouped by month.
 
         Args:
             months: Number of months to look back (default: 12)
+            active_only: If True, only count jobs that are still active/open (default: False)
 
         Returns:
             List of dicts with month and count
@@ -380,8 +442,8 @@ class JobService:
         start_date = datetime(today.year, today.month, 1) - timedelta(days=months * 31)
         start_date = datetime(start_date.year, start_date.month, 1)
 
-        # Query jobs grouped by year and month
-        results = (
+        # Build query
+        query = (
             self.session.query(
                 extract('year', JobPosition.posted_date).label('year'),
                 extract('month', JobPosition.posted_date).label('month'),
@@ -389,6 +451,15 @@ class JobService:
             )
             .filter(JobPosition.posted_date >= start_date)
             .filter(JobPosition.posted_date.isnot(None))
+        )
+
+        # Filter by active status if requested
+        if active_only:
+            query = query.filter(JobPosition.is_active == True)
+
+        # Group and order
+        results = (
+            query
             .group_by(
                 extract('year', JobPosition.posted_date),
                 extract('month', JobPosition.posted_date)

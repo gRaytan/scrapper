@@ -201,6 +201,7 @@ def get_job_filters(
 @router.get("/analytics/over-time")
 def get_jobs_over_time(
     months: int = Query(12, ge=1, le=24, description="Number of months to look back"),
+    active_only: bool = Query(False, description="If true, only count jobs that are still open/active"),
     current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
@@ -212,13 +213,14 @@ def get_jobs_over_time(
 
     **Parameters:**
     - **months**: Number of months to look back (default: 12, max: 24)
+    - **active_only**: If true, only count jobs that are still open/active (default: false)
 
     Requires JWT authentication.
     """
     try:
         service = JobService(session)
-        data = service.get_jobs_over_time(months=months)
-        return {"data": data, "total_months": len(data)}
+        data = service.get_jobs_over_time(months=months, active_only=active_only)
+        return {"data": data, "total_months": len(data), "active_only": active_only}
     except Exception as e:
         logger.error(f"Error getting jobs over time: {e}")
         raise HTTPException(
