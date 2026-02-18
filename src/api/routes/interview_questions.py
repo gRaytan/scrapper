@@ -82,7 +82,14 @@ def list_company_questions(
     current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
-    """List interview questions for a company."""
+    """
+    List interview questions for a company.
+
+    - **company_id**: Company UUID
+    - **page**: Page number (default: 1)
+    - **page_size**: Items per page (default: 20, max: 100)
+    - **role**: Filter by role (optional)
+    """
     try:
         company_service = CompanyService(session)
         company = company_service.get_company(company_id)
@@ -128,7 +135,15 @@ def create_question(
     current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
-    """Create a new interview question for a company."""
+    """
+    Create a new interview question for a company.
+
+    - **company_id**: Company UUID
+    - **question_text**: The interview question
+    - **role**: Role this question was asked for
+    - **difficulty**: Easy, Medium, or Hard (optional)
+    - **interview_stage**: Phone Screen, Technical, Onsite, HR, etc. (optional)
+    """
     try:
         company_service = CompanyService(session)
         company = company_service.get_company(company_id)
@@ -149,6 +164,7 @@ def create_question(
     except HTTPException:
         raise
     except Exception as e:
+        logger.error("Error creating question for company %s: %s", company_id, e)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create interview question"
@@ -162,7 +178,12 @@ def add_answer(
     current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
-    """Add an answer to an interview question."""
+    """
+    Add an answer to an interview question.
+
+    - **question_id**: Question UUID
+    - **text**: The answer text
+    """
     try:
         service = InterviewQuestionService(session)
         question = service.add_answer(

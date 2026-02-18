@@ -163,6 +163,28 @@ curl http://localhost:8000/
 curl http://localhost:8000/health
 ```
 
+### 4. Connect the portal (HiddenJobs) to this API
+
+To use the Next.js portal against this local backend:
+
+**In the scrapper (this repo)** — allow the portal origin in CORS. In `.env` (or `.env.local`):
+
+```bash
+# For local dev with portal at http://localhost:3000
+CORS_ORIGINS=http://localhost:3000
+# Or allow all origins (dev only):
+# CORS_ORIGINS=*
+```
+
+**In the portal repo** (`hiddenjobs-portal`) — point at the local API. Create or edit `.env.local`:
+
+```bash
+BACKEND_API_URL=http://localhost:8000
+NEXT_PUBLIC_BACKEND_API_URL=http://localhost:8000
+```
+
+Then start the API (`uvicorn src.api.app:app --reload --host 0.0.0.0 --port 8000`) and the portal (`npm run dev`). The portal will call this backend for auth, jobs, companies, etc.
+
 ## 📝 Configuration Examples
 
 ### Adding a New Company

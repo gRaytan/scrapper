@@ -51,4 +51,3 @@ class InterviewQuestion(Base, UUIDMixin, TimestampMixin):
     def answer_count(self) -> int:
         """Get the number of answers."""
         return len(self.answers) if self.answers else 0
-

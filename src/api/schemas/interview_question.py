@@ -65,4 +65,3 @@ class InterviewQuestionListResponse(BaseModel):
 class RolesListResponse(BaseModel):
     """Schema for roles list response."""
     roles: List[str]
-

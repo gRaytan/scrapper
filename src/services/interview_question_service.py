@@ -167,4 +167,3 @@ class InterviewQuestionService:
             InterviewQuestion.company_id == company_id
         ).distinct()
         return sorted([r[0] for r in roles_query.all()])
-

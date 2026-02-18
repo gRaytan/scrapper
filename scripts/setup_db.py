@@ -1,5 +1,10 @@
 """Database setup and initialization script."""
 import sys
+from pathlib import Path
+
+# Ensure project root is on path when running this script directly
+sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
+
 from loguru import logger
 
 from src.utils.logger import setup_logging
