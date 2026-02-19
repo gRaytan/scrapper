@@ -286,7 +286,7 @@ class JobService:
             .all()
         )
 
-        # Get company counts
+        # Get company counts - return all companies with active jobs for frontend filtering
         company_counts = (
             self.session.query(
                 Company.name,
@@ -296,7 +296,6 @@ class JobService:
             .filter(JobPosition.is_active == True)
             .group_by(Company.name)
             .order_by(func.count(JobPosition.id).desc())
-            .limit(100)
             .all()
         )
 
@@ -484,33 +483,3 @@ class JobService:
                 })
 
         return data
-
-    def search_companies(self, query: str, limit: int = 20) -> List[Dict[str, Any]]:
-        """
-        Search companies by name with job counts.
-
-        Args:
-            query: Search query string
-            limit: Maximum number of results to return
-
-        Returns:
-            List of companies matching the query with job counts
-        """
-        company_counts = (
-            self.session.query(
-                Company.name,
-                func.count(JobPosition.id).label('count')
-            )
-            .join(JobPosition, JobPosition.company_id == Company.id)
-            .filter(JobPosition.is_active == True)
-            .filter(Company.name.ilike(f"%{query}%"))
-            .group_by(Company.name)
-            .order_by(func.count(JobPosition.id).desc())
-            .limit(limit)
-            .all()
-        )
-
-        return [
-            {"value": name, "label": name, "count": count}
-            for name, count in company_counts if name
-        ]
