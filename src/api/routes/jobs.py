@@ -198,6 +198,30 @@ def get_job_filters(
         )
 
 
+@router.get("/filters/companies/search")
+def search_companies(
+    q: str = Query(..., min_length=1, description="Search query for company name"),
+    limit: int = Query(20, ge=1, le=50, description="Maximum number of results"),
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_db_session)
+):
+    """
+    Search companies by name for autocomplete.
+
+    Returns companies matching the query with their job counts.
+    """
+    try:
+        service = JobService(session)
+        companies = service.search_companies(query=q, limit=limit)
+        return {"companies": companies}
+    except Exception as e:
+        logger.error(f"Error searching companies: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to search companies"
+        )
+
+
 @router.get("/analytics/over-time")
 def get_jobs_over_time(
     months: int = Query(12, ge=1, le=24, description="Number of months to look back"),
