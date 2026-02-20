@@ -285,3 +285,49 @@ cd /opt/scraper && git log --oneline -1
 # Compare with local
 cd ~/IdeaProjects/scrapper && git log --oneline -1
 ```
+
+---
+
+## ⚠️ CRITICAL: Docker Volume Management
+
+### Named Volumes (NEVER CHANGE)
+The production database uses **explicit named volumes** to prevent data loss:
+
+| Volume Name | Purpose |
+|-------------|---------|
+| `hiddenjobs_postgres_data` | PostgreSQL database |
+| `hiddenjobs_redis_data` | Redis cache |
+| `hiddenjobs_nginx_logs` | Nginx logs |
+
+**Why this matters:** Docker Compose normally prefixes volume names with the directory name (e.g., `scraper_postgres_data` from `/opt/scraper`). If the deployment directory ever changes, Docker would create NEW empty volumes, **wiping all data**.
+
+The explicit `name:` property in `docker-compose.production.yml` prevents this:
+```yaml
+volumes:
+  postgres_data:
+    driver: local
+    name: hiddenjobs_postgres_data  # <-- CRITICAL: explicit name
+```
+
+### Verify Volumes
+```bash
+# List all volumes
+sudo docker volume ls | grep hiddenjobs
+
+# Check volume is being used
+sudo docker inspect scraper_postgres_prod | grep -A 5 Mounts
+```
+
+### Restore from Backup
+If data is lost, restore from daily backups:
+```bash
+# List backups
+ls -la /home/ubuntu/backups/
+
+# Restore latest backup
+LATEST=$(ls -t /home/ubuntu/backups/*.sql.gz | head -1)
+gunzip -c $LATEST | sudo docker exec -i scraper_postgres_prod psql -U scraper -d scraper_db
+
+# Verify
+sudo docker exec scraper_postgres_prod psql -U scraper -d scraper_db -c 'SELECT COUNT(*) FROM users;'
+```
