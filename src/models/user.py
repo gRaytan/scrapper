@@ -80,7 +80,9 @@ class User(Base, UUIDMixin, TimestampMixin):
     @property
     def notification_email(self) -> str:
         """Get notification email from preferences or use primary email."""
-        return self.preferences.get("notification_email", self.email)
+        pref_email = self.preferences.get("notification_email")
+        # Return preference email only if it's a non-empty string, otherwise use primary email
+        return pref_email if pref_email else self.email
 
     @property
     def notification_enabled(self) -> bool:
