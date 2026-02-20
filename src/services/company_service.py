@@ -111,7 +111,8 @@ class CompanyService:
             query = query.filter(Company.name.ilike(f"%{search}%"))
 
         if industry:
-            query = query.filter(Company.industry == industry)
+            # Filter by industry_category (clustered industries)
+            query = query.filter(Company.industry_category == industry)
         
         # Get total count
         total = query.count()
@@ -162,7 +163,8 @@ class CompanyService:
         # Base query for companies
         company_query = self.session.query(Company)
         if industry:
-            company_query = company_query.filter(Company.industry == industry)
+            # Filter by industry_category (clustered industries)
+            company_query = company_query.filter(Company.industry_category == industry)
 
         total_companies = company_query.count()
 
@@ -175,23 +177,24 @@ class CompanyService:
         if industry:
             companies_with_jobs_subquery = companies_with_jobs_subquery.join(
                 Company, Company.id == JobPosition.company_id
-            ).filter(Company.industry == industry)
+            ).filter(Company.industry_category == industry)
 
         companies_with_jobs = companies_with_jobs_subquery.count()
 
         # Total active jobs
         jobs_query = self.session.query(func.count(JobPosition.id)).filter(JobPosition.is_active == True)
         if industry:
-            jobs_query = jobs_query.join(Company, Company.id == JobPosition.company_id).filter(Company.industry == industry)
+            jobs_query = jobs_query.join(Company, Company.id == JobPosition.company_id).filter(Company.industry_category == industry)
         total_jobs = jobs_query.scalar() or 0
 
-        # Total industries (only when not filtering by industry)
+        # Total industry categories (only when not filtering by industry)
         if industry:
             industries_count = 1
         else:
             industries_count = (
-                self.session.query(Company.industry)
-                .filter(Company.industry.isnot(None))
+                self.session.query(Company.industry_category)
+                .filter(Company.industry_category.isnot(None))
+                .filter(Company.industry_category != 'Other')
                 .distinct()
                 .count()
             )
@@ -202,6 +205,27 @@ class CompanyService:
             "total_jobs": total_jobs,
             "industries_count": industries_count,
         }
+
+    def get_industry_categories(self) -> list[str]:
+        """
+        Get list of distinct industry categories.
+
+        Returns:
+            List of industry category names (sorted alphabetically)
+        """
+        from src.models.company import Company
+
+        categories = (
+            self.session.query(Company.industry_category)
+            .filter(Company.industry_category.isnot(None))
+            .filter(Company.industry_category != '')
+            .filter(Company.industry_category != 'Other')
+            .distinct()
+            .order_by(Company.industry_category)
+            .all()
+        )
+
+        return [cat[0] for cat in categories if cat[0]]
 
     def update_company(self, company_id: UUID, update_data: CompanyUpdate) -> Optional[dict]:
         """

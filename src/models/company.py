@@ -19,6 +19,7 @@ class Company(Base, UUIDMixin, TimestampMixin):
     website: Mapped[str] = mapped_column(String(500), nullable=False)
     careers_url: Mapped[str] = mapped_column(String(500), nullable=False)
     industry: Mapped[Optional[str]] = mapped_column(String(100))
+    industry_category: Mapped[Optional[str]] = mapped_column(String(100), index=True)
     size: Mapped[Optional[str]] = mapped_column(String(50))
     location: Mapped[Optional[str]] = mapped_column(String(200))
     

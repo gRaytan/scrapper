@@ -357,17 +357,18 @@ class JobService:
             .all()
         )
 
-        # Get industry counts (from companies table)
+        # Get industry category counts (from companies table - clustered industries)
         industry_counts = (
             self.session.query(
-                Company.industry,
+                Company.industry_category,
                 func.count(JobPosition.id).label('count')
             )
             .join(JobPosition, JobPosition.company_id == Company.id)
             .filter(JobPosition.is_active == True)
-            .filter(Company.industry.isnot(None))
-            .filter(Company.industry != '')
-            .group_by(Company.industry)
+            .filter(Company.industry_category.isnot(None))
+            .filter(Company.industry_category != '')
+            .filter(Company.industry_category != 'Other')  # Exclude 'Other' from filters
+            .group_by(Company.industry_category)
             .order_by(func.count(JobPosition.id).desc())
             .all()
         )

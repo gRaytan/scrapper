@@ -31,9 +31,33 @@ def get_db_session():
         yield session
 
 
+@router.get("/industries")
+def get_industries(
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_db_session)
+):
+    """
+    Get list of industry categories for filtering.
+
+    Returns a list of distinct industry categories (clustered from 100+ industries to ~12).
+    Excludes 'Other' category.
+
+    Requires JWT authentication.
+    """
+    try:
+        service = CompanyService(session)
+        return service.get_industry_categories()
+    except Exception as e:
+        logger.error(f"Error getting industries: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get industries"
+        )
+
+
 @router.get("/stats")
 def get_company_stats(
-    industry: Optional[str] = Query(None, description="Filter by industry"),
+    industry: Optional[str] = Query(None, description="Filter by industry category"),
     current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
@@ -41,7 +65,7 @@ def get_company_stats(
     Get aggregate stats for companies.
 
     Returns total_companies, companies_with_jobs, total_jobs, industries_count.
-    Optionally filter by industry.
+    Optionally filter by industry category.
 
     Requires JWT authentication.
     """
