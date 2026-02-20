@@ -109,7 +109,7 @@ def _build_application_response(app) -> ApplicationResponse:
 
 @router.get("", response_model=ApplicationListResponse)
 def list_applications(
-    status: Optional[str] = Query(None, description="Filter by status"),
+    status_filter: Optional[str] = Query(None, alias="status", description="Filter by status"),
     page: int = Query(1, ge=1, description="Page number"),
     page_size: int = Query(20, ge=1, le=100, description="Items per page"),
     current_user: User = Depends(get_current_active_user),
@@ -135,7 +135,7 @@ def list_applications(
         service = ApplicationService(session)
         result = service.list_applications(
             user_id=current_user.id,
-            status=status,
+            status=status_filter,
             page=page,
             page_size=page_size
         )
