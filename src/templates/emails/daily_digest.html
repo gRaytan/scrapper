@@ -1,0 +1,165 @@
+{% extends "base.html" %}
+
+{% block title %}{{ job_count }} New Job{{ 's' if job_count > 1 else '' }} - {{ alert_name }} | HiddenJobs{% endblock %}
+
+{% block header_badge %}Daily Alert{% endblock %}
+
+{% block content %}
+<!-- Alert Banner -->
+<tr>
+    <td style="padding: 24px 32px 16px;" class="mobile-padding">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: linear-gradient(135deg, #7C3AED 0%, #9333EA 50%, #F97316 100%); border-radius: 12px; overflow: hidden;">
+            <tr>
+                <td style="padding: 20px 24px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td>
+                                <span style="display: inline-block; background: rgba(255,255,255,0.2); padding: 4px 12px; border-radius: 20px; font-size: 12px; color: #ffffff; font-weight: 500; margin-bottom: 8px;">
+                                    🎯 Alert: {{ alert_name }}
+                                </span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-top: 8px;">
+                                <span style="font-size: 28px; font-weight: 700; color: #ffffff;">{{ job_count }} New Job{{ 's' if job_count > 1 else '' }}</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-top: 4px;">
+                                <span style="font-size: 14px; color: rgba(255,255,255,0.9);">Found matching your criteria today</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>
+
+<!-- Greeting -->
+<tr>
+    <td style="padding: 8px 32px 16px;" class="mobile-padding">
+        <p style="margin: 0; color: #374151; font-size: 15px; line-height: 1.6;">
+            Hi {{ user_name or 'there' }} 👋
+        </p>
+        <p style="margin: 8px 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+            Here are the latest opportunities we found for you:
+        </p>
+    </td>
+</tr>
+
+<!-- Jobs List -->
+<tr>
+    <td style="padding: 0 32px;" class="mobile-padding">
+        {% for job in jobs[:20] %}
+        <!-- Job Card -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 12px;">
+            <tr>
+                <td style="padding: 16px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td style="width: 44px; vertical-align: top;">
+                                <div style="width: 44px; height: 44px; background: #f3f4f6; border-radius: 10px; text-align: center; line-height: 44px; font-size: 18px;">
+                                    {% if loop.index % 3 == 1 %}🏢{% elif loop.index % 3 == 2 %}🚀{% else %}💼{% endif %}
+                                </div>
+                            </td>
+                            <td style="padding-left: 12px; vertical-align: top;">
+                                <a href="{{ job.job_url }}" style="color: #1f2937; text-decoration: none; font-weight: 600; font-size: 16px; display: block;" class="job-title">
+                                    {{ job.title }}
+                                </a>
+                                <span style="color: #6b7280; font-size: 14px; display: block; margin-top: 2px;" class="company-name">
+                                    {{ job.company_name }}
+                                </span>
+                                <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top: 8px;">
+                                    <tr>
+                                        <td style="padding-right: 12px;">
+                                            <span style="color: #9ca3af; font-size: 12px;">📍 {{ job.location }}</span>
+                                        </td>
+                                        {% if job.remote_type %}
+                                        <td style="padding-right: 12px;">
+                                            {% if job.remote_type == 'Remote' %}
+                                            <span style="display: inline-block; background: #f0fdf4; color: #15803d; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 12px;">Remote</span>
+                                            {% elif job.remote_type == 'Hybrid' %}
+                                            <span style="display: inline-block; background: #eff6ff; color: #1d4ed8; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 12px;">Hybrid</span>
+                                            {% else %}
+                                            <span style="display: inline-block; background: #f3f4f6; color: #4b5563; font-size: 11px; font-weight: 500; padding: 2px 8px; border-radius: 12px;">On-site</span>
+                                            {% endif %}
+                                        </td>
+                                        {% endif %}
+                                        {% if job.posted_date %}
+                                        <td>
+                                            <span style="color: #9ca3af; font-size: 12px;">{{ job.posted_date }}</span>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                </table>
+                            </td>
+                            <td style="width: 32px; vertical-align: top; text-align: right;">
+                                <a href="{{ job.job_url }}" style="display: inline-block; width: 32px; height: 32px; background: #f5f3ff; border-radius: 8px; text-align: center; line-height: 32px; text-decoration: none;">
+                                    <span style="color: #7c3aed; font-size: 14px;">→</span>
+                                </a>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        {% endfor %}
+        
+        {% if job_count > 20 %}
+        <!-- More Jobs Note -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="margin-bottom: 12px;">
+            <tr>
+                <td style="text-align: center; padding: 12px; color: #6b7280; font-size: 14px;">
+                    ... and {{ job_count - 20 }} more job{{ 's' if job_count - 20 > 1 else '' }}
+                </td>
+            </tr>
+        </table>
+        {% endif %}
+    </td>
+</tr>
+
+<!-- CTA Button -->
+<tr>
+    <td style="padding: 24px 32px;" class="mobile-padding">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td align="center">
+                    <a href="{{ base_url }}/jobs" style="display: inline-block; background: linear-gradient(135deg, #7C3AED 0%, #9333EA 100%); color: #ffffff; padding: 14px 32px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 15px; box-shadow: 0 4px 14px 0 rgba(124, 58, 237, 0.4);">
+                        View All Jobs →
+                    </a>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>
+
+{% if show_tips %}
+<!-- Tip Card -->
+<tr>
+    <td style="padding: 0 32px 24px;" class="mobile-padding">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px;">
+            <tr>
+                <td style="padding: 16px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td style="width: 32px; vertical-align: top;">
+                                <span style="font-size: 20px;">💡</span>
+                            </td>
+                            <td style="padding-left: 8px;">
+                                <span style="font-size: 13px; font-weight: 600; color: #92400e; display: block;">Pro Tip</span>
+                                <span style="font-size: 13px; color: #a16207; display: block; margin-top: 4px; line-height: 1.5;">
+                                    {{ tip_text | default("Apply within 24 hours of a job posting to increase your chances by 3x!") }}
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>
+{% endif %}
+{% endblock %}
+
+{% block footer_text %}You're receiving this because you have job alerts enabled.{% endblock %}

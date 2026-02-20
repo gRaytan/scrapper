@@ -73,6 +73,7 @@ htmlcov/
 # Scraped content
 *.html
 *.htm
+!src/templates/**/*.html
 
 # Temporary files
 *.tmp
