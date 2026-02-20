@@ -204,10 +204,14 @@ services:
 volumes:
   postgres_data:
     driver: local
+    # CRITICAL: Use explicit name to prevent data loss when deployment directory changes
+    name: hiddenjobs_postgres_data
   redis_data:
     driver: local
+    name: hiddenjobs_redis_data
   nginx_logs:
     driver: local
+    name: hiddenjobs_nginx_logs
 
 networks:
   scraper_network:
