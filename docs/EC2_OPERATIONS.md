@@ -1,9 +1,147 @@
 # EC2 Operations Guide
 
 ## Server Details
-- **Host:** ubuntu@16.171.142.30
-- **SSH Key:** `/Users/gilr/IdeaProjects/pem/hiddenjobs-key.pem`
-- **SSH:** `ssh -i /Users/gilr/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@16.171.142.30`
+- **Host:** api.hiddenjobs.me (16.171.142.30)
+- **SSH Key:** `~/IdeaProjects/pem/hiddenjobs-key.pem`
+- **SSH:** `ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me`
+
+---
+
+## Architecture Overview
+
+```
+Local Machine                    EC2 Server
+─────────────                    ──────────
+scrapper/
+    │
+    └── git push ec2 main ──────► /home/ubuntu/git-repos/scraper.git (bare repo)
+                                        │
+                                        ▼ (post-receive hook)
+                                  /opt/scraper (git working directory)
+                                        │
+                                        ▼ (docker compose build & up)
+                                  Docker Containers:
+                                  - scraper_api_prod
+                                  - scraper_celery_worker_prod
+                                  - scraper_celery_beat_prod
+                                  - scraper_postgres_prod
+                                  - scraper_redis_prod
+                                  - scraper_nginx_prod
+```
+
+| Directory | Purpose |
+|-----------|---------|
+| `/home/ubuntu/git-repos/scraper.git` | Bare git repository (receives pushes) |
+| `/opt/scraper` | Production code (git working directory, containers built here) |
+| `/home/ubuntu/backups` | Database backups |
+
+---
+
+## Deployment
+
+### Quick Deploy (Code Only)
+
+```bash
+# From local machine - push code to EC2
+cd ~/IdeaProjects/scrapper
+GIT_SSH_COMMAND="ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" git push ec2 main
+```
+
+The post-receive hook automatically updates `/opt/scraper` with the new code.
+
+### Full Deploy (Rebuild Containers)
+
+```bash
+# 1. Push code
+GIT_SSH_COMMAND="ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" git push ec2 main
+
+# 2. SSH and rebuild containers
+ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me
+cd /opt/scraper
+sudo docker compose -f docker-compose.production.yml build --no-cache
+sudo docker compose -f docker-compose.production.yml up -d
+
+# 3. Run migrations (if needed)
+sudo docker compose -f docker-compose.production.yml exec -T api alembic upgrade head
+
+# 4. Verify
+sudo docker compose -f docker-compose.production.yml ps
+```
+
+### One-Liner Deploy (from local)
+
+```bash
+# Push + rebuild + restart (run from local machine)
+GIT_SSH_COMMAND="ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" git push ec2 main && \
+ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me \
+  "cd /opt/scraper && sudo docker compose -f docker-compose.production.yml build --no-cache && sudo docker compose -f docker-compose.production.yml up -d"
+```
+
+---
+
+## Git Server
+
+### Push Code from Local
+```bash
+cd ~/IdeaProjects/scrapper
+GIT_SSH_COMMAND="ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" git push ec2 main
+```
+
+### Git Remote Setup (one-time)
+```bash
+git remote add ec2 ubuntu@api.hiddenjobs.me:/home/ubuntu/git-repos/scraper.git
+```
+
+### Post-Receive Hook
+Located at `/home/ubuntu/git-repos/scraper.git/hooks/post-receive`:
+- Automatically runs `git fetch` + `git reset --hard` on `/opt/scraper`
+- Prints instructions for rebuilding containers
+
+---
+
+## Docker Operations
+
+### View Running Containers
+```bash
+cd /opt/scraper
+sudo docker compose -f docker-compose.production.yml ps
+```
+
+### View Logs
+```bash
+# All containers
+sudo docker compose -f docker-compose.production.yml logs --tail 100
+
+# Specific container
+sudo docker logs --tail 100 scraper_api_prod
+sudo docker logs --tail 100 scraper_celery_worker_prod
+sudo docker logs --tail 100 scraper_celery_beat_prod
+```
+
+### Restart Services (without rebuild)
+```bash
+cd /opt/scraper
+sudo docker compose -f docker-compose.production.yml restart
+```
+
+### Full Rebuild
+```bash
+cd /opt/scraper
+sudo docker compose -f docker-compose.production.yml build --no-cache
+sudo docker compose -f docker-compose.production.yml up -d
+```
+
+### Run Database Migrations
+```bash
+cd /opt/scraper
+sudo docker compose -f docker-compose.production.yml exec -T api alembic upgrade head
+```
+
+> **Note:** Migrations run after deploy because alembic executes inside the API container.
+> For schema changes that could break existing code, consider:
+> 1. Deploy migration-only changes first
+> 2. Run migration
+> 3. Deploy code that uses new schema
 
 ---
 
@@ -39,97 +177,6 @@ gunzip -c /home/ubuntu/backups/scraper_db_YYYYMMDD_HHMMSS.sql.gz | \
 cat /home/ubuntu/backups/scraper_db_YYYYMMDD_HHMMSS.sql | \
   sudo docker exec -i scraper_postgres_prod psql -U scraper -d scraper_db
 ```
-
----
-
-## Git Server
-
-### Push Code from Local
-```bash
-cd /path/to/scrapper
-GIT_SSH_COMMAND="ssh -i /path/to/hiddenjobs-key.pem" git push ec2 main
-```
-
-### Deploy After Push
-```bash
-ssh -i /path/to/hiddenjobs-key.pem ubuntu@16.171.142.30
-cd /home/ubuntu/scraper-upload
-./deploy.sh
-```
-
-### Git Remote Setup (one-time)
-```bash
-git remote add ec2 ubuntu@16.171.142.30:/home/ubuntu/git-repos/scraper.git
-```
-
----
-
-## Docker Operations
-
-### View Running Containers
-```bash
-sudo docker ps
-```
-
-### View Logs
-```bash
-sudo docker logs --tail 100 scraper_api_prod
-sudo docker logs --tail 100 scraper_celery_worker_prod
-```
-
-### Restart Services
-```bash
-cd /home/ubuntu/scraper-upload
-sudo docker compose -f docker-compose.production.yml restart
-```
-
-### Full Redeploy (with fresh images)
-```bash
-./deploy.sh
-```
-
-### Run Database Migrations
-```bash
-sudo docker compose -f docker-compose.production.yml exec -T api alembic upgrade head
-```
-
----
-
-## Full Deployment Process
-
-Complete deployment from local machine:
-
-```bash
-# 1. Push code to EC2
-cd /Users/gilr/IdeaProjects/scrapper
-GIT_SSH_COMMAND="ssh -i /Users/gilr/IdeaProjects/pem/hiddenjobs-key.pem" git push ec2 main
-
-# 2. SSH to EC2
-ssh -i /Users/gilr/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@16.171.142.30
-
-# 3. Check disk space (optional)
-df -h /
-sudo docker system df
-
-# 4. Free up space if needed
-sudo docker system prune -af
-
-# 5. Deploy (builds images and starts containers)
-cd /home/ubuntu/scraper-upload
-./deploy.sh
-
-# 6. Run migrations (after containers are up)
-sudo docker compose -f docker-compose.production.yml exec -T api alembic upgrade head
-
-# 7. Verify
-sudo docker compose -f docker-compose.production.yml ps
-```
-
-> **Note:** Migrations run after deploy because alembic executes inside the API container.
-> For schema changes that could break existing code, consider:
-> 1. Deploy migration-only changes first
-> 2. Run migration
-> 3. Deploy code that uses new schema
 
 ---
 
@@ -189,3 +236,52 @@ crontab -l
 | Daily 3 AM | Backup | `/home/ubuntu/logs/backup.log` |
 | Sunday 4 AM | Cleanup | `/home/ubuntu/logs/cleanup.log` |
 
+---
+
+## Troubleshooting
+
+### "No space left on device" during build
+```bash
+# Clean up Docker resources
+sudo docker system prune -af --volumes
+
+# Check disk space
+df -h /
+```
+
+### Container won't start
+```bash
+# Check logs
+sudo docker compose -f docker-compose.production.yml logs --tail 100
+
+# Check if .env file exists
+ls -la /opt/scraper/.env
+```
+
+### CORS errors
+CORS is handled by FastAPI (not nginx). Check:
+```bash
+# Verify CORS settings in container
+sudo docker exec scraper_api_prod python -c "from config.settings import settings; print(settings.cors_origins_list)"
+
+# Test CORS headers
+curl -H "Origin: https://hiddenjobs.me" -I https://api.hiddenjobs.me/health
+```
+
+### Git push rejected
+```bash
+# Check remote is configured
+git remote -v | grep ec2
+
+# Re-add remote if needed
+git remote add ec2 ubuntu@api.hiddenjobs.me:/home/ubuntu/git-repos/scraper.git
+```
+
+### Verify deployment
+```bash
+# Check git hash matches local
+cd /opt/scraper && git log --oneline -1
+
+# Compare with local
+cd ~/IdeaProjects/scrapper && git log --oneline -1
+```
