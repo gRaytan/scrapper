@@ -64,7 +64,9 @@ celery_app.conf.update(
     # - 1:00 AM: Company scraping (from companies.yaml, ~2 hours)
     # - 3:00 AM: LinkedIn by keyword (131 searches, ~2 hours)
     # - 5:00 AM: LinkedIn by company name (~2 hours)
-    # - 7:00 AM: Match all new jobs to user alerts (after all scrapers done)
+    # - 6:30 AM: Enrich job descriptions (fetch from job URLs)
+    # - 7:00 AM: Match all new jobs to user alerts + compute embeddings
+    # - 7:30 AM: Send daily digest emails
     beat_schedule={
         # Mark stale jobs as inactive daily - runs first, quick task
         'daily-mark-stale-jobs': {
@@ -104,6 +106,20 @@ celery_app.conf.update(
             'schedule': crontab(hour=5, minute=0),  # 5:00 AM UTC daily
             'options': {
                 'expires': 7200,  # 2 hours
+            }
+        },
+
+        # Enrich job descriptions - runs after scraping, before matching
+        # Fetches descriptions from job URLs for jobs that don't have them
+        'daily-enrich-job-descriptions': {
+            'task': 'src.workers.tasks.enrich_job_descriptions',
+            'schedule': crontab(hour=6, minute=30),  # 6:30 AM UTC daily
+            'kwargs': {
+                'batch_size': 200,  # Process up to 200 jobs per run
+                'days_back': 30  # Only enrich jobs from last 30 days
+            },
+            'options': {
+                'expires': 3600,  # 1 hour
             }
         },
 

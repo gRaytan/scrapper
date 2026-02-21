@@ -1547,3 +1547,85 @@ def send_daily_digest_emails(self: Task) -> Dict[str, Any]:
         logger.error(f"Daily digest email sending failed: {exc}")
         logger.exception(exc)
         raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))
+
+
+@celery_app.task(bind=True, name='src.workers.tasks.enrich_job_descriptions', max_retries=2)
+def enrich_job_descriptions(
+    self: Task,
+    batch_size: int = 100,
+    days_back: int = 30
+) -> Dict[str, Any]:
+    """
+    Enrich jobs with missing descriptions by fetching from job URLs.
+
+    This task finds jobs without descriptions and fetches them from the
+    original job posting pages. It uses platform-specific extractors for
+    Greenhouse, Workday, Eightfold, Phenom, Ashby, Lever, and generic sites.
+
+    Should run after scraping completes but before job matching, so that
+    matched jobs have descriptions for better user experience.
+
+    Args:
+        batch_size: Maximum number of jobs to process per run (default: 100)
+        days_back: Only process jobs from the last N days (default: 30)
+
+    Returns:
+        Dictionary with enrichment statistics
+    """
+    from src.services.job_enrichment_service import JobEnrichmentService
+
+    try:
+        logger.info("=" * 80)
+        logger.info("Starting job description enrichment...")
+        logger.info(f"  Batch size: {batch_size}")
+        logger.info(f"  Days back: {days_back}")
+        logger.info("=" * 80)
+
+        start_time = datetime.utcnow()
+
+        with db.get_session() as session:
+            enrichment_service = JobEnrichmentService(session)
+
+            # Get count of jobs needing enrichment before processing
+            jobs_needing_enrichment = enrichment_service._count_jobs_without_description(
+                days_back=days_back
+            )
+            logger.info(f"Found {jobs_needing_enrichment} jobs without descriptions")
+
+            # Process batch
+            result = enrichment_service.enrich_jobs_batch(
+                limit=batch_size,
+                days_back=days_back
+            )
+
+        duration = (datetime.utcnow() - start_time).total_seconds()
+
+        final_result = {
+            'status': 'success',
+            'started_at': start_time.isoformat(),
+            'completed_at': datetime.utcnow().isoformat(),
+            'duration_seconds': duration,
+            'jobs_needing_enrichment_before': jobs_needing_enrichment,
+            'jobs_processed': result.get('total_processed', 0),
+            'jobs_enriched': result.get('enriched', 0),
+            'jobs_failed': result.get('failed', 0),
+            'jobs_remaining': result.get('remaining', 0),
+            'batch_size': batch_size,
+            'days_back': days_back
+        }
+
+        logger.success("=" * 80)
+        logger.success("Job description enrichment completed!")
+        logger.success(f"  Processed: {final_result['jobs_processed']}")
+        logger.success(f"  Enriched: {final_result['jobs_enriched']}")
+        logger.success(f"  Failed: {final_result['jobs_failed']}")
+        logger.success(f"  Remaining: {final_result['jobs_remaining']}")
+        logger.success(f"  Duration: {duration:.2f}s")
+        logger.success("=" * 80)
+
+        return final_result
+
+    except Exception as exc:
+        logger.error(f"Job description enrichment failed: {exc}")
+        logger.exception(exc)
+        raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))
