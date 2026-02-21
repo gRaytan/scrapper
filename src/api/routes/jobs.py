@@ -12,6 +12,7 @@ from src.services.job_service import JobService
 from src.services.personalized_job_service import PersonalizedJobService
 from src.auth.dependencies import get_current_active_user
 from src.models.user import User
+from src.utils.description_parser import DescriptionParser
 from src.api.schemas.job import (
     JobListResponse,
     JobDetailResponse,
@@ -653,6 +654,8 @@ def get_job(
     - **job_id**: Job UUID
 
     Returns detailed job information including company details.
+    The description is parsed into structured sections (responsibilities,
+    requirements, nice_to_have, benefits) when possible.
     Requires JWT authentication.
     """
     try:
@@ -665,7 +668,42 @@ def get_job(
                 detail=f"Job {job_id} not found"
             )
 
-        return job
+        # Parse description into structured sections
+        parsed = DescriptionParser.parse(job.description)
+
+        # Build response with parsed sections
+        # Use parsed sections if available, otherwise fall back to DB fields
+        response_data = {
+            "id": job.id,
+            "title": job.title,
+            "company": job.company,
+            "description": parsed.about if parsed.about else job.description,
+            "location": job.location,
+            "remote_type": job.remote_type,
+            "employment_type": job.employment_type,
+            "department": job.department,
+            "seniority_level": job.seniority_level,
+            "job_type": job.job_type,
+            "salary_range": job.salary_range,
+            "responsibilities": parsed.responsibilities if parsed.responsibilities else None,
+            "requirements": parsed.requirements if parsed.requirements else job.requirements,
+            "nice_to_have": parsed.nice_to_have if parsed.nice_to_have else None,
+            "benefits": parsed.benefits if parsed.benefits else job.benefits,
+            "job_url": job.job_url,
+            "application_url": job.application_url,
+            "posted_date": job.posted_date,
+            "scraped_at": job.scraped_at,
+            "first_seen_at": job.first_seen_at,
+            "last_seen_at": job.last_seen_at,
+            "status": job.status,
+            "is_active": job.is_active,
+            "source_type": job.source_type,
+            "duplicate_metadata": job.duplicate_metadata,
+            "created_at": job.created_at,
+            "updated_at": job.updated_at,
+        }
+
+        return JobDetailResponse(**response_data)
     except HTTPException:
         raise
     except Exception as e:

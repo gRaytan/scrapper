@@ -62,7 +62,10 @@ class JobDetailResponse(JobBase):
     company: CompanyBrief
     description: Optional[str] = None
     salary_range: Optional[SalaryRange] = None
+    # Structured description sections (parsed from description text)
+    responsibilities: Optional[List[str]] = None
     requirements: Optional[List[str]] = None
+    nice_to_have: Optional[List[str]] = None
     benefits: Optional[List[str]] = None
     job_url: Optional[str] = None
     application_url: Optional[str] = None
