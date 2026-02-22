@@ -16,7 +16,7 @@ class CompanyMatchingService:
         "Meta": ["Facebook", "Meta Platforms", "Meta Platforms Inc"],
         "Google": ["Google LLC", "Alphabet", "Alphabet Inc"],
         "Microsoft": ["Microsoft Corporation", "MSFT"],
-        "Amazon": ["Amazon.com", "Amazon Web Services", "AWS"],
+        "Amazon": ["Amazon.com", "Amazon Web Services", "AWS", "Amazon Web Services (AWS)"],
         "Apple": ["Apple Inc", "Apple Computer"],
         "NVIDIA": ["Nvidia Corporation", "nVidia"],
         "Intel": ["Intel Corporation"],
@@ -28,6 +28,11 @@ class CompanyMatchingService:
         "SentinelOne": ["Sentinel One", "SentinelOne Inc"],
         "Palo Alto Networks": ["Palo Alto", "PANW"],
         "Trigo Vision": ["Trigo", "Trigo Retail"],
+        "Trax": ["Trax Retail"],
+        "Applied Materials": ["Applied Materials - Israel", "Applied Materials Israel"],
+        "Qualitest": ["Qualitest acq"],
+        "EON": ["Eon.io", "eon.io", "EON.io"],
+        "Confidential": ["Confidential Company", "Confidential Jobs", "Confidential Careers"],
     }
     
     # Minimum similarity threshold for fuzzy matching
