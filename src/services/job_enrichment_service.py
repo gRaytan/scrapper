@@ -37,7 +37,7 @@ class JobEnrichmentService:
         limit: int = 100,
         company_id: Optional[UUID] = None,
         days_back: int = 30,
-        skip_linkedin: bool = True
+        skip_linkedin: bool = False
     ) -> List[JobPosition]:
         """Get jobs that don't have descriptions.
 
@@ -45,7 +45,7 @@ class JobEnrichmentService:
             limit: Maximum number of jobs to return
             company_id: Optional filter by company
             days_back: Only get jobs from the last N days
-            skip_linkedin: If True, exclude LinkedIn URLs (they require auth)
+            skip_linkedin: If True, exclude LinkedIn URLs
 
         Returns:
             List of jobs without descriptions
@@ -65,7 +65,7 @@ class JobEnrichmentService:
             )
         )
 
-        # Skip LinkedIn URLs - they require authentication
+        # Optionally skip LinkedIn URLs
         if skip_linkedin:
             query = query.filter(~JobPosition.job_url.contains("linkedin.com"))
 
@@ -142,7 +142,27 @@ class JobEnrichmentService:
         # Lever
         if "lever.co" in job_url:
             return self._extract_lever_description(soup)
-        
+
+        # SmartRecruiters
+        if "smartrecruiters.com" in job_url or "jobs.smartrecruiters" in job_url:
+            return self._extract_smartrecruiters_description(soup)
+
+        # Getro (job boards on getro.com or custom domains using Getro)
+        if "getro.com" in job_url or "jobs.getro" in job_url:
+            return self._extract_getro_description(soup)
+
+        # Comeet
+        if "comeet.com" in job_url or "comeet.co" in job_url:
+            return self._extract_comeet_description(soup)
+
+        # Jibe (used by many enterprises)
+        if "jibe.com" in job_url or "jobs.jibe" in job_url:
+            return self._extract_jibe_description(soup)
+
+        # LinkedIn (public job pages)
+        if "linkedin.com/jobs" in job_url:
+            return self._extract_linkedin_description(soup)
+
         # Generic fallback
         return self._extract_generic_description(soup)
 
@@ -240,7 +260,96 @@ class JobEnrichmentService:
         desc = soup.find("div", class_="section-wrapper")
         if desc:
             return self._clean_text(desc.get_text())
-        
+
+        return None
+
+    def _extract_smartrecruiters_description(self, soup: BeautifulSoup) -> Optional[str]:
+        """Extract description from SmartRecruiters job page."""
+        # SmartRecruiters uses specific class for job description
+        desc = soup.find("div", class_="job-description")
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        # Alternative: section with job-ad class
+        desc = soup.find("section", class_="job-ad")
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        # Try RichText component (newer SmartRecruiters)
+        desc = soup.find("div", class_="RichText")
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        # Try sectionBody (another variant)
+        desc = soup.find("div", class_="sectionBody")
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        return None
+
+    def _extract_getro_description(self, soup: BeautifulSoup) -> Optional[str]:
+        """Extract description from Getro job page."""
+        # Getro uses job-description class
+        desc = soup.find("div", class_="job-description")
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        # Alternative: content area
+        desc = soup.find("div", class_="job-content")
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        # Try job-details section
+        desc = soup.find("div", class_="job-details")
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        return None
+
+    def _extract_comeet_description(self, soup: BeautifulSoup) -> Optional[str]:
+        """Extract description from Comeet job page."""
+        # Comeet uses position-description
+        desc = soup.find("div", class_="position-description")
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        # Alternative: job-description
+        desc = soup.find("div", class_="job-description")
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        return None
+
+    def _extract_jibe_description(self, soup: BeautifulSoup) -> Optional[str]:
+        """Extract description from Jibe job page."""
+        desc = soup.find("div", class_="job-description")
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        # Jibe often uses jobDescription ID
+        desc = soup.find("div", {"id": "jobDescription"})
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        return None
+
+    def _extract_linkedin_description(self, soup: BeautifulSoup) -> Optional[str]:
+        """Extract description from LinkedIn public job page."""
+        # LinkedIn uses show-more-less-html__markup for job descriptions
+        desc = soup.find("div", class_="show-more-less-html__markup")
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        # Alternative: description__text
+        desc = soup.find("div", class_="description__text")
+        if desc:
+            return self._clean_text(desc.get_text())
+
+        # Try decorated-job-posting__details
+        desc = soup.find("div", class_="decorated-job-posting__details")
+        if desc:
+            return self._clean_text(desc.get_text())
+
         return None
 
     def _extract_generic_description(self, soup: BeautifulSoup) -> Optional[str]:
@@ -343,9 +452,8 @@ class JobEnrichmentService:
         if not job_url:
             return True
 
-        # LinkedIn requires authentication - skip these URLs
-        if "linkedin.com" in job_url:
-            return True
+        # Note: LinkedIn public job pages CAN be scraped, so we don't skip them
+        # The extractor will handle extraction from public LinkedIn job pages
 
         return False
 
@@ -432,9 +540,9 @@ class JobEnrichmentService:
         self,
         company_id: Optional[UUID] = None,
         days_back: int = 30,
-        skip_linkedin: bool = True
+        skip_linkedin: bool = False
     ) -> int:
-        """Count jobs without descriptions (excluding LinkedIn by default)."""
+        """Count jobs without descriptions."""
         cutoff_date = datetime.utcnow() - timedelta(days=days_back)
 
         query = self.db.query(func.count(JobPosition.id)).filter(
@@ -450,7 +558,7 @@ class JobEnrichmentService:
             )
         )
 
-        # Skip LinkedIn URLs - they require authentication
+        # Optionally skip LinkedIn URLs
         if skip_linkedin:
             query = query.filter(~JobPosition.job_url.contains("linkedin.com"))
 
