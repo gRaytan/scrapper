@@ -76,35 +76,61 @@ class JobEnrichmentService:
 
         return query.all()
 
+    def _normalize_job_url(self, job_url: str) -> str:
+        """Normalize job URL to fix known issues with stored URLs.
+
+        Args:
+            job_url: Original job URL from database
+
+        Returns:
+            Normalized URL that should work for fetching
+        """
+        # Fix Workday URLs: Add /External_Career_Site if missing
+        # Old format: https://company.wd12.myworkdayjobs.com/job/Location/Title
+        # New format: https://company.wd12.myworkdayjobs.com/External_Career_Site/job/Location/Title
+        if "myworkdayjobs.com" in job_url and "/External_Career_Site/" not in job_url:
+            # Insert External_Career_Site before /job/
+            job_url = re.sub(
+                r'(\.myworkdayjobs\.com)/job/',
+                r'\1/External_Career_Site/job/',
+                job_url
+            )
+            logger.debug(f"Normalized Workday URL: {job_url}")
+
+        return job_url
+
     def fetch_job_description(self, job_url: str) -> Optional[str]:
         """Fetch job description from the job URL (synchronous).
-        
+
         Args:
             job_url: URL of the job posting
-            
+
         Returns:
             Job description text or None if failed
         """
+        # Normalize URL to fix known issues
+        normalized_url = self._normalize_job_url(job_url)
+
         try:
             headers = {
                 "User-Agent": self.USER_AGENT,
                 "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
                 "Accept-Language": "en-US,en;q=0.5",
             }
-            
+
             with httpx.Client(timeout=30.0, follow_redirects=True) as client:
-                response = client.get(job_url, headers=headers)
+                response = client.get(normalized_url, headers=headers)
                 response.raise_for_status()
-                
+
                 html = response.text
-                description = self._extract_description(html, job_url)
+                description = self._extract_description(html, normalized_url)
                 return description
-                
+
         except httpx.HTTPStatusError as e:
-            logger.warning(f"HTTP error fetching {job_url}: {e.response.status_code}")
+            logger.warning(f"HTTP error fetching {normalized_url}: {e.response.status_code}")
             return None
         except Exception as e:
-            logger.error(f"Error fetching job description from {job_url}: {e}")
+            logger.error(f"Error fetching job description from {normalized_url}: {e}")
             return None
 
     def _extract_description(self, html: str, job_url: str) -> Optional[str]:
