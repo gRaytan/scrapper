@@ -429,7 +429,7 @@ companies:
       max_pages: 50
     wait_time: 1
     workday_config:
-      base_url: https://salesforce.wd12.myworkdayjobs.com
+      base_url: https://salesforce.wd12.myworkdayjobs.com/External_Career_Site
       search_text: Israel
       applied_facets: {}
     response_structure:
@@ -448,7 +448,7 @@ companies:
       job_url:
         field: externalPath
         transform: prepend_url
-        base_url: https://salesforce.wd12.myworkdayjobs.com
+        base_url: https://salesforce.wd12.myworkdayjobs.com/External_Career_Site
       is_remote:
         field: locationsText
         transform: contains_keywords
