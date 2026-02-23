@@ -171,7 +171,7 @@ def create_alert_for_current_user(
     """
     try:
         service = AlertService(session)
-        result = service.create_alert(current_user.id, alert_data, process_existing_jobs=False)
+        result = service.create_alert(current_user.id, alert_data)
         return result["alert"]
     except ValueError as e:
         raise HTTPException(
@@ -208,7 +208,7 @@ def create_alert(
 
     try:
         service = AlertService(session)
-        result = service.create_alert(user_id, alert_data, process_existing_jobs=False)
+        result = service.create_alert(user_id, alert_data)
         return result["alert"]
     except ValueError as e:
         raise HTTPException(
