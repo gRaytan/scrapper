@@ -168,13 +168,10 @@ def create_alert_for_current_user(
     - **notification_config**: Notification configuration
 
     Requires JWT authentication.
-
-    Note: When an alert is created, it automatically matches against existing
-    jobs from the last 30 days and creates notifications for matching jobs.
     """
     try:
         service = AlertService(session)
-        result = service.create_alert(current_user.id, alert_data)
+        result = service.create_alert(current_user.id, alert_data, process_existing_jobs=False)
         return result["alert"]
     except ValueError as e:
         raise HTTPException(
@@ -201,9 +198,6 @@ def create_alert(
 
     Users can only create alerts for themselves.
     Requires JWT authentication.
-
-    Note: When an alert is created, it automatically matches against existing
-    jobs from the last 30 days and creates notifications for matching jobs.
     """
     # Users can only create alerts for themselves
     if user_id != current_user.id:
@@ -214,7 +208,7 @@ def create_alert(
 
     try:
         service = AlertService(session)
-        result = service.create_alert(user_id, alert_data)
+        result = service.create_alert(user_id, alert_data, process_existing_jobs=False)
         return result["alert"]
     except ValueError as e:
         raise HTTPException(
