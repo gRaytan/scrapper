@@ -11,7 +11,6 @@ from src.models.job_position import JobPosition
 from src.models.alert import Alert
 from src.models.alert_notification import AlertNotification
 from src.api.schemas.alert import AlertCreate, AlertUpdate, AlertStats
-from src.services.job_matching_service import JobMatchingService
 
 logger = logging.getLogger(__name__)
 
@@ -29,20 +28,20 @@ class AlertService:
         self,
         user_id: UUID,
         alert_data: AlertCreate,
-        process_existing_jobs: bool = True,
-        days_back: int = 30
     ) -> Dict[str, Any]:
         """
         Create a new alert for a user.
 
+        Job matching against existing jobs is handled by background workers
+        (process_new_jobs task), not during alert creation. This keeps the
+        API fast and avoids transaction complexity.
+
         Args:
             user_id: User UUID
             alert_data: Alert creation data
-            process_existing_jobs: Whether to match against existing jobs
-            days_back: How many days back to look for existing jobs
 
         Returns:
-            Dictionary with alert and matching statistics
+            Dictionary with alert
 
         Raises:
             ValueError: If user not found
@@ -69,25 +68,11 @@ class AlertService:
             "notification_config": alert_data.notification_config,
         }
 
-        # Create alert
+        # Create alert and commit
         alert = self.alert_repo.create(alert_dict)
-
-        # Process existing jobs if alert is active
-        matching_result = None
-        if process_existing_jobs and alert.is_active:
-            matching_service = JobMatchingService(self.session)
-            matching_result = matching_service.process_alert_against_existing_jobs(
-                alert=alert,
-                days_back=days_back
-            )
-            logger.info(
-                f"New alert '{alert.name}' matched {matching_result.get('matches_found', 0)} "
-                f"existing jobs from last {days_back} days"
-            )
 
         return {
             "alert": alert,
-            "existing_jobs_matched": matching_result
         }
     
     def get_alert(self, alert_id: UUID, include_stats: bool = False) -> Optional[dict]:
