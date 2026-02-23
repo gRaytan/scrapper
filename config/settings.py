@@ -100,7 +100,38 @@ class Settings(BaseSettings):
     debug: bool = True
 
     # LinkedIn Job Search
-    linkedin_job_positions: str = "Software Engineer,Backend Developer,Frontend Developer,Full Stack Developer,DevOps Engineer,Data Engineer,Data Scientist,Machine Learning Engineer,Product Manager,QA Engineer,Security Engineer,Cloud Engineer,Mobile Developer,Site Reliability Engineer,VP Engineering,VP R&D,VP of Engineering,VP of R&D,Vice President Engineering,Vice President R&D,Director of Engineering,Director of R&D,Engineering Director,R&D Director,Head of Engineering,Head of R&D,CTO,Chief Technology Officer"
+    # Categories: Engineering, Data/Analytics, Product, Business Analyst, Marketing, Sales, GTM, Customer Success
+    linkedin_job_positions: str = (
+        # Engineering & Technical
+        "Software Engineer,Backend Developer,Frontend Developer,Full Stack Developer,"
+        "DevOps Engineer,Data Engineer,Data Scientist,Machine Learning Engineer,"
+        "QA Engineer,Security Engineer,Cloud Engineer,Mobile Developer,Site Reliability Engineer,"
+        "VP Engineering,VP R&D,VP of Engineering,VP of R&D,Vice President Engineering,Vice President R&D,"
+        "Director of Engineering,Director of R&D,Engineering Director,R&D Director,"
+        "Head of Engineering,Head of R&D,CTO,Chief Technology Officer,"
+        # Product
+        "Product Manager,Senior Product Manager,VP Product,Head of Product,Chief Product Officer,"
+        # Business Analyst & BI
+        "Business Analyst,Senior Business Analyst,BI Analyst,Senior BI Analyst,"
+        "Business Data Analyst,Senior Business Data Analyst,Business Intelligence Analyst,"
+        # Marketing
+        "Marketing Manager,Senior Marketing Manager,VP Marketing,CMO,Chief Marketing Officer,"
+        "Product Marketing Manager,Senior Product Marketing Manager,Head of Product Marketing,"
+        "Growth Marketing Manager,Demand Generation Manager,Digital Marketing Manager,"
+        "Content Marketing Manager,Brand Manager,Marketing Director,Head of Marketing,"
+        # Sales
+        "Account Executive,Senior Account Executive,Enterprise Account Executive,"
+        "Sales Development Representative,SDR,Business Development Representative,BDR,"
+        "Account Manager,Senior Account Manager,Sales Manager,Regional Sales Manager,"
+        "VP Sales,Head of Sales,Chief Revenue Officer,CRO,Sales Director,"
+        # GTM & Partnerships
+        "GTM Manager,Go-to-Market Manager,Partner Manager,Partnerships Manager,"
+        "Channel Manager,Alliances Manager,Business Development Manager,Strategic Partnerships,"
+        "VP Partnerships,Head of Partnerships,VP Business Development,"
+        # Customer Success
+        "Customer Success Manager,Senior Customer Success Manager,VP Customer Success,"
+        "Head of Customer Success,Customer Success Director,Account Success Manager"
+    )
     linkedin_search_location: str = "Israel"
     linkedin_max_pages: int = 10
 
