@@ -18,20 +18,20 @@ logger = logging.getLogger(__name__)
 
 # Job family classification mapping
 JOB_FAMILIES = {
-    "Software Engineer": ["software engineer", "software developer", "backend engineer", "frontend engineer", "full stack", "fullstack", "web developer", "application developer", "developer", "programmer", "swe", "integration engineer"],
+    "Software Engineer": ["software engineer", "software developer", "backend engineer", "frontend engineer", "full stack", "fullstack", "full-stack", "web developer", "application developer", "application engineer", "developer", "programmer", "swe", "integration engineer", "robotics engineer"],
     "Data Scientist": ["data scientist", "machine learning", "ml engineer", "ai engineer", "deep learning", "nlp engineer", "computer vision", "research scientist", "artificial intelligence engineer"],
-    "Data Engineer": ["data engineer", "etl", "data pipeline", "big data", "data architect", "analytics engineer", "bi engineer"],
+    "Data Engineer": ["data engineer", "etl", "data pipeline", "big data", "data architect", "analytics engineer", "bi engineer", "data center engineer"],
     "Data Analyst": ["data analyst", "business analyst", "analytics", "bi analyst", "reporting analyst", "insights analyst", "product analyst", "system analyst"],
-    "Product Manager": ["product manager", "product owner", "product lead", "product director", "group product manager", "director of product", "program manager", "project manager", "technical program manager", "technical project manager"],
+    "Product Manager": ["product manager", "product owner", "product lead", "product director", "group product manager", "director of product", "program manager", "project manager", "technical program manager", "technical project manager", "pmo", "planner"],
     "DevOps Engineer": ["devops", "sre", "site reliability", "platform engineer", "infrastructure", "release engineer", "devsecops"],
     "QA Engineer": ["qa engineer", "quality assurance", "test engineer", "sdet", "automation engineer", "quality engineer", "verification engineer"],
     "Designer": ["designer", "ux", "ui", "product designer", "graphic designer", "visual designer", "interaction designer"],
-    "Engineering Manager": ["engineering manager", "tech lead", "team lead", "vp engineering", "director of engineering", "head of engineering", "principal engineer", "staff engineer", "architect", "chief technology officer", "cto"],
+    "Engineering Manager": ["engineering manager", "tech lead", "team lead", "vp engineering", "director of engineering", "head of engineering", "principal engineer", "staff engineer", "architect", "chief technology officer", "cto", "vp r&d", "chief information officer", "cio"],
     "Security Engineer": ["security engineer", "cybersecurity", "infosec", "security analyst", "penetration tester", "security architect", "security researcher"],
     "Mobile Developer": ["mobile developer", "ios developer", "android developer", "react native", "flutter", "mobile engineer"],
-    "Cloud Engineer": ["cloud engineer", "aws", "azure", "gcp", "cloud architect", "solutions architect", "system administrator", "network engineer", "system engineer", "it specialist", "information technology specialist", "help desk", "technical support"],
+    "Cloud Engineer": ["cloud engineer", "aws", "azure", "gcp", "cloud architect", "solutions architect", "system administrator", "network engineer", "system engineer", "it specialist", "information technology specialist", "help desk", "technical support", "it technician"],
     "Solutions Engineer": ["solutions engineer", "sales engineer", "pre-sales", "technical account", "customer engineer"],
-    "Hardware Engineer": ["hardware engineer", "chip design", "mechanical engineer", "electrical engineer", "embedded engineer", "firmware engineer", "algorithm engineer"],
+    "Hardware Engineer": ["hardware engineer", "hardware systems engineer", "chip design", "physical design", "mechanical engineer", "electrical engineer", "embedded engineer", "firmware engineer", "algorithm engineer"],
     "Technical Writer": ["technical writer", "documentation", "content writer"],
     "Marketing": ["marketing", "growth", "seo", "content marketing", "digital marketing", "brand", "demand generation", "product marketing", "pmm", "cmo"],
     "Sales": ["sales", "account executive", "business development", "bdr", "sdr", "account manager", "sales manager", "vp sales", "cro", "revenue operations"],
@@ -39,7 +39,8 @@ JOB_FAMILIES = {
     "GTM & Partnerships": ["gtm", "go-to-market", "partnerships", "partner manager", "channel", "alliances", "strategic partnerships"],
     "HR & Recruiting": ["recruiter", "talent acquisition", "hr", "human resources", "people operations", "hrbp"],
     "Finance": ["finance", "accountant", "controller", "financial analyst", "cfo", "fp&a", "bookkeeper"],
-    "Operations": ["operations", "ops manager", "chief of staff", "office manager", "business operations"],
+    "Operations": ["operations", "ops manager", "chief of staff", "office manager", "business operations", "business applications"],
+    "Legal": ["legal counsel", "lawyer", "attorney", "legal"],
 }
 
 DEFAULT_JOB_FAMILY = "Other"
