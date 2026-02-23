@@ -213,11 +213,19 @@ class JobService:
         total = query.count()
         
         # Apply sorting
-        sort_field = getattr(JobPosition, sort_by, JobPosition.posted_date)
-        if sort_order == "desc":
-            query = query.order_by(sort_field.desc())
+        # For posted_date, use COALESCE to fall back to first_seen_at for jobs without posted_date
+        if sort_by == "posted_date":
+            sort_expr = func.coalesce(JobPosition.posted_date, JobPosition.first_seen_at)
+            if sort_order == "desc":
+                query = query.order_by(sort_expr.desc().nullslast())
+            else:
+                query = query.order_by(sort_expr.asc().nullsfirst())
         else:
-            query = query.order_by(sort_field.asc())
+            sort_field = getattr(JobPosition, sort_by, JobPosition.posted_date)
+            if sort_order == "desc":
+                query = query.order_by(sort_field.desc())
+            else:
+                query = query.order_by(sort_field.asc())
         
         # Apply pagination
         offset = (page - 1) * page_size
