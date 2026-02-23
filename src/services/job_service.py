@@ -4,6 +4,7 @@ import math
 from typing import Optional, List, Dict, Any, Set
 from uuid import UUID
 from datetime import datetime
+from collections import defaultdict
 
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import and_, or_, func
@@ -14,6 +15,43 @@ from src.models.job_position import JobPosition
 from src.models.company import Company
 
 logger = logging.getLogger(__name__)
+
+# Job family classification mapping
+JOB_FAMILIES = {
+    "Software Engineer": ["software engineer", "software developer", "backend engineer", "frontend engineer", "full stack", "fullstack", "web developer", "application developer", "developer", "programmer", "swe"],
+    "Data Scientist": ["data scientist", "machine learning", "ml engineer", "ai engineer", "deep learning", "nlp engineer", "computer vision", "research scientist"],
+    "Data Engineer": ["data engineer", "etl", "data pipeline", "big data", "data architect", "analytics engineer", "bi engineer"],
+    "Data Analyst": ["data analyst", "business analyst", "analytics", "bi analyst", "reporting analyst", "insights analyst"],
+    "Product Manager": ["product manager", "product owner", "product lead", "product director", "group product manager"],
+    "DevOps Engineer": ["devops", "sre", "site reliability", "platform engineer", "infrastructure", "release engineer"],
+    "QA Engineer": ["qa engineer", "quality assurance", "test engineer", "sdet", "automation engineer", "quality engineer"],
+    "Designer": ["designer", "ux", "ui", "product designer", "graphic designer", "visual designer", "interaction designer"],
+    "Engineering Manager": ["engineering manager", "tech lead", "team lead", "vp engineering", "director of engineering", "head of engineering", "principal engineer", "staff engineer", "architect"],
+    "Security Engineer": ["security engineer", "cybersecurity", "infosec", "security analyst", "penetration tester", "security architect"],
+    "Mobile Developer": ["mobile developer", "ios developer", "android developer", "react native", "flutter", "mobile engineer"],
+    "Cloud Engineer": ["cloud engineer", "aws", "azure", "gcp", "cloud architect", "solutions architect"],
+    "Solutions Engineer": ["solutions engineer", "sales engineer", "pre-sales", "technical account", "customer engineer"],
+    "Marketing": ["marketing", "growth", "seo", "content marketing", "digital marketing", "brand", "demand generation", "product marketing", "pmm", "cmo"],
+    "Sales": ["sales", "account executive", "business development", "bdr", "sdr", "account manager", "sales manager", "vp sales", "cro", "revenue operations"],
+    "Customer Success": ["customer success", "csm", "customer success manager", "renewals", "expansion"],
+    "GTM & Partnerships": ["gtm", "go-to-market", "partnerships", "partner manager", "channel", "alliances", "strategic partnerships"],
+    "HR & Recruiting": ["recruiter", "talent acquisition", "hr", "human resources", "people operations", "hrbp"],
+    "Finance": ["finance", "accountant", "controller", "financial analyst", "cfo", "fp&a"],
+    "Operations": ["operations", "ops manager", "chief of staff", "office manager", "business operations"],
+}
+
+DEFAULT_JOB_FAMILY = "Other"
+
+
+def get_job_family(title: str) -> str:
+    """Classify a job title into a job family."""
+    if not title:
+        return DEFAULT_JOB_FAMILY
+    lower_title = title.lower()
+    for family, keywords in JOB_FAMILIES.items():
+        if any(keyword in lower_title for keyword in keywords):
+            return family
+    return DEFAULT_JOB_FAMILY
 
 
 class JobService:
@@ -34,6 +72,8 @@ class JobService:
         company_names: Optional[List[str]] = None,
         locations: Optional[List[str]] = None,
         departments: Optional[List[str]] = None,
+        titles: Optional[List[str]] = None,
+        job_families: Optional[List[str]] = None,
         remote_type: Optional[List[str]] = None,
         employment_type: Optional[List[str]] = None,
         seniority_level: Optional[List[str]] = None,
@@ -115,7 +155,27 @@ class JobService:
         if departments:
             filters.append(JobPosition.department.in_(departments))
             filters_applied["departments"] = departments
-        
+
+        if titles:
+            filters.append(JobPosition.title.in_(titles))
+            filters_applied["titles"] = titles
+
+        if job_families:
+            # Filter by job family - match titles that belong to selected job families
+            family_filters = []
+            for family in job_families:
+                if family in JOB_FAMILIES:
+                    # Match any keyword from this job family
+                    for keyword in JOB_FAMILIES[family]:
+                        family_filters.append(func.lower(JobPosition.title).contains(keyword))
+                elif family == DEFAULT_JOB_FAMILY:
+                    # For "Other" category, we need to exclude all known families
+                    # This is complex, so we'll use a different approach
+                    pass
+            if family_filters:
+                filters.append(or_(*family_filters))
+            filters_applied["job_families"] = job_families
+
         if remote_type:
             filters.append(JobPosition.remote_type.in_(remote_type))
             filters_applied["remote_type"] = remote_type
@@ -342,7 +402,7 @@ class JobService:
             .all()
         )
 
-        # Get job title counts (distinct titles from job_positions)
+        # Get job title counts (distinct titles from job_positions) - no limit, return all
         job_title_counts = (
             self.session.query(
                 JobPosition.title,
@@ -353,7 +413,6 @@ class JobService:
             .filter(JobPosition.title != '')
             .group_by(JobPosition.title)
             .order_by(func.count(JobPosition.id).desc())
-            .limit(100)
             .all()
         )
 
@@ -388,6 +447,20 @@ class JobService:
             .all()
         )
 
+        # Calculate job family counts by classifying each job title
+        job_family_counts = defaultdict(int)
+        for title, count in job_title_counts:
+            if title:
+                family = get_job_family(title)
+                job_family_counts[family] += count
+
+        # Sort job families by count descending
+        sorted_job_families = sorted(
+            job_family_counts.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )
+
         return {
             "locations": [
                 {"value": loc, "label": loc, "count": count}
@@ -412,6 +485,10 @@ class JobService:
             "job_titles": [
                 {"value": title, "label": title, "count": count}
                 for title, count in job_title_counts if title
+            ],
+            "job_families": [
+                {"value": family, "label": family, "count": count}
+                for family, count in sorted_job_families
             ],
             "industries": [
                 {"value": industry, "label": industry, "count": count}

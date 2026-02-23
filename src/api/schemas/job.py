@@ -197,5 +197,6 @@ class JobFiltersResponse(BaseModel):
     remote_types: List[FilterOption] = Field(default_factory=list, description="Available remote type filters")
     seniority_levels: List[FilterOption] = Field(default_factory=list, description="Available seniority level filters")
     job_titles: List[FilterOption] = Field(default_factory=list, description="Available job title filters")
+    job_families: List[FilterOption] = Field(default_factory=list, description="Available job family/department filters")
     industries: List[FilterOption] = Field(default_factory=list, description="Available industry filters")
     company_sizes: List[FilterOption] = Field(default_factory=list, description="Available company size filters")
