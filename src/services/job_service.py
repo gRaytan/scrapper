@@ -157,7 +157,9 @@ class JobService:
             filters_applied["departments"] = departments
 
         if titles:
-            filters.append(JobPosition.title.in_(titles))
+            # Use partial match (contains) so "DevOps Engineer" matches "Senior DevOps Engineer"
+            title_filters = [func.lower(JobPosition.title).contains(t.lower()) for t in titles]
+            filters.append(or_(*title_filters))
             filters_applied["titles"] = titles
 
         if job_families:
