@@ -1,5 +1,11 @@
 # EC2 Operations Guide
 
+Daily operations runbook for the HiddenJobs scraper on EC2.
+
+> **For initial EC2 setup** (first-time provisioning), see: **[deployment/README.md](../deployment/README.md)**
+
+---
+
 ## Server Details
 - **Host:** api.hiddenjobs.me (16.171.142.30)
 - **SSH Key:** `~/IdeaProjects/pem/hiddenjobs-key.pem`
@@ -49,32 +55,43 @@ GIT_SSH_COMMAND="ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" git push ec2 main
 
 The post-receive hook automatically updates `/opt/scraper` with the new code.
 
-### Full Deploy (Rebuild Containers)
+### Restart Only (Code Changes, No Dependencies)
 
 ```bash
-# 1. Push code
-GIT_SSH_COMMAND="ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" git push ec2 main
-
-# 2. SSH and rebuild containers
-ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me
-cd /opt/scraper
-sudo docker compose -f docker-compose.production.yml build --no-cache
-sudo docker compose -f docker-compose.production.yml up -d
-
-# 3. Run migrations (if needed)
-sudo docker compose -f docker-compose.production.yml exec -T api alembic upgrade head
-
-# 4. Verify
-sudo docker compose -f docker-compose.production.yml ps
+# After git push, just restart - no rebuild needed for Python code changes
+ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me \
+  "cd /opt/scraper && sudo docker compose -f docker-compose.production.yml restart api"
 ```
 
-### One-Liner Deploy (from local)
+### Rebuild (New Python Dependencies)
 
 ```bash
-# Push + rebuild + restart (run from local machine)
-GIT_SSH_COMMAND="ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" git push ec2 main && \
 ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me \
-  "cd /opt/scraper && sudo docker compose -f docker-compose.production.yml build --no-cache && sudo docker compose -f docker-compose.production.yml up -d"
+  "cd /opt/scraper && sudo docker compose -f docker-compose.production.yml build api && \
+   sudo docker compose -f docker-compose.production.yml up -d api"
+```
+
+### Full Rebuild (New System Dependencies)
+
+```bash
+ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me \
+  "cd /opt/scraper && sudo docker compose -f docker-compose.production.yml build --no-cache api && \
+   sudo docker compose -f docker-compose.production.yml up -d api"
+```
+
+### Deployment Time Comparison
+
+| Change Type | Command | Time |
+|-------------|---------|------|
+| Code only (Python files) | `restart api` | ~5 sec |
+| New Python dependency | `build api && up -d api` | ~3 min |
+| New system dependency | `build --no-cache api && up -d api` | ~15 min |
+
+### Run Migrations (if needed)
+
+```bash
+ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me \
+  "cd /opt/scraper && sudo docker compose -f docker-compose.production.yml exec -T api alembic upgrade head"
 ```
 
 ---

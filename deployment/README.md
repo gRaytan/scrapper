@@ -1,15 +1,15 @@
-# AWS EC2 Docker Deployment Guide
+# AWS EC2 Initial Setup Guide
 
-This guide will help you deploy the Job Scraper application on AWS EC2 using Docker.
+This guide covers **first-time setup** of a new EC2 instance for the Job Scraper.
+
+> **For daily operations** (deploying code, viewing logs, backups, troubleshooting), see: **[docs/EC2_OPERATIONS.md](../docs/EC2_OPERATIONS.md)**
 
 ## Table of Contents
 - [Prerequisites](#prerequisites)
 - [EC2 Instance Setup](#ec2-instance-setup)
 - [Initial Configuration](#initial-configuration)
-- [Deployment](#deployment)
-- [Post-Deployment](#post-deployment)
-- [Maintenance](#maintenance)
-- [Troubleshooting](#troubleshooting)
+- [First Deployment](#first-deployment)
+- [Post-Setup](#post-setup)
 
 ---
 
@@ -144,7 +144,7 @@ vim config/scraping_rules.yaml
 
 ---
 
-## Deployment
+## First Deployment
 
 ### Step 1: Deploy Application
 
@@ -187,224 +187,45 @@ curl http://YOUR_EC2_PUBLIC_IP/health
 
 ---
 
-## Post-Deployment
+## Post-Setup
 
 ### Configure SSL (Optional but Recommended)
 
-#### Using Let's Encrypt (Free)
-
 ```bash
-# Install certbot
-sudo apt-get install -y certbot
-
-# Stop nginx temporarily
-docker compose -f docker-compose.production.yml stop nginx
-
-# Get certificate
-sudo certbot certonly --standalone -d your-domain.com
-
-# Copy certificates
-sudo mkdir -p /opt/scraper/deployment/ssl
-sudo cp /etc/letsencrypt/live/your-domain.com/fullchain.pem /opt/scraper/deployment/ssl/
-sudo cp /etc/letsencrypt/live/your-domain.com/privkey.pem /opt/scraper/deployment/ssl/
-sudo chown -R scraper:scraper /opt/scraper/deployment/ssl
-
-# Update nginx.conf to enable HTTPS (uncomment HTTPS server block)
-vim deployment/nginx.conf
-
-# Restart nginx
-docker compose -f docker-compose.production.yml up -d nginx
+# Run SSL setup script
+sudo /opt/scraper/deployment/setup_ssl.sh
 ```
+
+Or manually with Let's Encrypt - see `deployment/setup_ssl.sh` for details.
 
 ### Setup Automated Backups
 
 ```bash
-# Make backup script executable
-chmod +x deployment/backup.sh
-
-# Test backup
-./deployment/backup.sh
-
-# Add to crontab (daily at 2 AM)
+# Add to crontab (daily at 3 AM)
 crontab -e
 
 # Add this line:
-0 2 * * * /opt/scraper/deployment/backup.sh >> /opt/scraper/logs/backup.log 2>&1
+0 3 * * * /home/ubuntu/backup.sh >> /home/ubuntu/logs/backup.log 2>&1
 ```
 
-### Configure Monitoring
+### Setup Git Remote for Deployments
 
 ```bash
-# View logs
-docker compose -f docker-compose.production.yml logs -f
-
-# View specific service logs
-docker compose -f docker-compose.production.yml logs -f api
-docker compose -f docker-compose.production.yml logs -f celery_worker
-docker compose -f docker-compose.production.yml logs -f celery_beat
+# One-time setup on local machine
+git remote add ec2 ubuntu@api.hiddenjobs.me:/home/ubuntu/git-repos/scraper.git
 ```
 
 ---
 
-## Maintenance
+## Next Steps
 
-### Common Commands
+Your EC2 instance is now set up. For daily operations, see:
 
-```bash
-# View running containers
-docker compose -f docker-compose.production.yml ps
-
-# View logs
-docker compose -f docker-compose.production.yml logs -f [service_name]
-
-# Restart a service
-docker compose -f docker-compose.production.yml restart [service_name]
-
-# Stop all services
-docker compose -f docker-compose.production.yml down
-
-# Start all services
-docker compose -f docker-compose.production.yml up -d
-
-# Rebuild and restart
-docker compose -f docker-compose.production.yml up -d --build
-
-# Execute command in container
-docker compose -f docker-compose.production.yml exec api /bin/bash
-```
-
-### Update Application
-
-```bash
-# Pull latest changes
-git pull
-
-# Rebuild and restart
-./deployment/deploy.sh
-```
-
-### Database Operations
-
-```bash
-# Access PostgreSQL
-docker compose -f docker-compose.production.yml exec postgres psql -U scraper -d scraper_db
-
-# Run migrations
-docker compose -f docker-compose.production.yml exec api alembic upgrade head
-
-# Backup database
-./deployment/backup.sh
-
-# Restore database
-gunzip < /opt/scraper/backups/scraper_db_TIMESTAMP.sql.gz | \
-  docker compose -f docker-compose.production.yml exec -T postgres psql -U scraper -d scraper_db
-```
-
----
-
-## Troubleshooting
-
-### Services Won't Start
-
-```bash
-# Check logs
-docker compose -f docker-compose.production.yml logs
-
-# Check specific service
-docker compose -f docker-compose.production.yml logs api
-
-# Verify environment variables
-docker compose -f docker-compose.production.yml config
-```
-
-### Database Connection Issues
-
-```bash
-# Check PostgreSQL is running
-docker compose -f docker-compose.production.yml ps postgres
-
-# Check database logs
-docker compose -f docker-compose.production.yml logs postgres
-
-# Test connection
-docker compose -f docker-compose.production.yml exec postgres psql -U scraper -d scraper_db -c "SELECT 1;"
-```
-
-### Worker Not Processing Tasks
-
-```bash
-# Check worker logs
-docker compose -f docker-compose.production.yml logs celery_worker
-
-# Check beat scheduler
-docker compose -f docker-compose.production.yml logs celery_beat
-
-# Restart workers
-docker compose -f docker-compose.production.yml restart celery_worker celery_beat
-```
-
-### High Memory Usage
-
-```bash
-# Check resource usage
-docker stats
-
-# Reduce worker concurrency in docker-compose.production.yml
-# Change: --concurrency=2 to --concurrency=1
-```
-
-### Disk Space Issues
-
-```bash
-# Check disk usage
-df -h
-
-# Clean up Docker
-docker system prune -a
-
-# Clean old logs
-find /opt/scraper/logs -name "*.log" -mtime +7 -delete
-```
-
----
-
-## Security Best Practices
-
-1. **Change Default Passwords**: Update all passwords in `.env`
-2. **Enable Firewall**: Use UFW to restrict access
-3. **Use HTTPS**: Configure SSL certificates
-4. **Regular Updates**: Keep system and Docker updated
-5. **Backup Regularly**: Automate database backups
-6. **Monitor Logs**: Check for suspicious activity
-7. **Restrict SSH**: Use key-based authentication only
-8. **Use Secrets Management**: Consider AWS Secrets Manager for production
-
----
-
-## Support
-
-For issues or questions:
-- Check logs: `docker compose -f docker-compose.production.yml logs`
-- Review documentation in `/docs`
-- Check GitHub issues
-
----
-
-## Quick Reference
-
-### Service URLs
-- API: `http://YOUR_EC2_IP/`
-- Health Check: `http://YOUR_EC2_IP/health`
-- API Docs: `http://YOUR_EC2_IP/docs`
-
-### Important Paths
-- Application: `/opt/scraper`
-- Logs: `/opt/scraper/logs`
-- Backups: `/opt/scraper/backups`
-- Config: `/opt/scraper/config`
-
-### Key Files
-- Environment: `.env`
-- Docker Compose: `docker-compose.production.yml`
-- Nginx Config: `deployment/nginx.conf`
+📖 **[docs/EC2_OPERATIONS.md](../docs/EC2_OPERATIONS.md)** - Covers:
+- Deploying code changes
+- Viewing logs
+- Docker operations
+- Backups & restore
+- Troubleshooting
+- Volume management
 
