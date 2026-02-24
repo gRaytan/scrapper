@@ -91,6 +91,7 @@ class Settings(BaseSettings):
     onesignal_api_key: Optional[str] = None
     onesignal_from_email: str = "noreply@hiddenjobs.me"
     onesignal_from_name: str = "HiddenJobs"
+    onesignal_webhook_secret: Optional[str] = None  # For verifying webhook signatures
 
     # Email Digest Configuration
     email_digest_hour_utc: int = 6  # 6 AM UTC = 8 AM Israel time

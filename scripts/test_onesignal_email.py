@@ -63,24 +63,30 @@ def test_simple_email(to_email: str):
     print("\n--- Test 2: Job Digest Email ---")
     test_jobs = [
         {
+            'id': 'test-uuid-001',
             'title': 'Senior Software Engineer',
             'company_name': 'TechCorp',
             'location': 'Tel Aviv, Israel',
-            'job_url': 'https://hiddenjobs.me/position/test-1',
+            'job_url': 'https://example.com/original-job-1',  # Kept as fallback
+            'remote_type': 'Hybrid',
             'posted_date': 'Feb 24'
         },
         {
+            'id': 'test-uuid-002',
             'title': 'Product Manager',
             'company_name': 'StartupXYZ',
             'location': 'Remote',
-            'job_url': 'https://hiddenjobs.me/position/test-2',
+            'job_url': 'https://example.com/original-job-2',
+            'remote_type': 'Remote',
             'posted_date': 'Feb 23'
         },
         {
+            'id': 'test-uuid-003',
             'title': 'DevOps Engineer',
             'company_name': 'CloudInc',
             'location': 'Herzliya, Israel',
-            'job_url': 'https://hiddenjobs.me/position/test-3',
+            'job_url': 'https://example.com/original-job-3',
+            'remote_type': 'On-site',
             'posted_date': 'Feb 22'
         }
     ]

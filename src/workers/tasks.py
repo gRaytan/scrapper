@@ -1479,10 +1479,12 @@ def send_daily_digest_emails(self: Task) -> Dict[str, Any]:
                         job_data = []
                         for job in jobs:
                             job_data.append({
+                                'id': str(job.id),  # Include job ID for HiddenJobs position URL
                                 'title': job.title,
                                 'company_name': job.company.name if job.company else 'Unknown',
                                 'location': job.location or 'Not specified',
-                                'job_url': job.job_url,
+                                'job_url': job.job_url,  # Kept as fallback
+                                'remote_type': job.remote_type,  # Include remote type for badge display
                                 'posted_date': job.posted_date.strftime('%b %d') if job.posted_date else ''
                             })
 
@@ -1497,8 +1499,11 @@ def send_daily_digest_emails(self: Task) -> Dict[str, Any]:
                         if result.get('success'):
                             notification.delivery_status = 'sent'
                             notification.sent_at = datetime.utcnow()
+                            # Store OneSignal notification ID for webhook tracking
+                            if result.get('notification_id'):
+                                notification.external_notification_id = result['notification_id']
                             emails_sent += 1
-                            logger.info(f"Email sent to {to_email} for alert '{alert.name}' ({len(jobs)} jobs)")
+                            logger.info(f"Email sent to {to_email} for alert '{alert.name}' ({len(jobs)} jobs) [id={result.get('notification_id')}]")
                         else:
                             notification.delivery_status = 'failed'
                             notification.error_message = result.get('error', 'Unknown error')

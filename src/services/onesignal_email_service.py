@@ -100,7 +100,7 @@ class OneSignalEmailService:
         Returns:
             The subscription_id if successful, None otherwise
         """
-        # Check cache first
+        # Check cache firstdas
         if email in self._subscription_cache:
             return self._subscription_cache[email]
 
@@ -250,9 +250,15 @@ class OneSignalEmailService:
 
             if response.status_code == 200:
                 data = response.json()
-                message_id = data.get("id")
-                logger.info(f"Email sent successfully to {to_email} via OneSignal: {message_id}")
-                return {"success": True, "id": message_id}
+                notification_id = data.get("id")
+                logger.info(f"Email sent successfully to {to_email} via OneSignal: {notification_id}")
+                return {
+                    "success": True,
+                    "id": notification_id,
+                    "notification_id": notification_id,  # Alias for clarity
+                    "external_id": data.get("external_id"),
+                    "recipients": data.get("recipients", 0)
+                }
             else:
                 error_msg = response.text
                 logger.error(f"OneSignal API error ({response.status_code}): {error_msg}")

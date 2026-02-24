@@ -63,6 +63,13 @@ class AlertNotification(Base, UUIDMixin, TimestampMixin):
 
     delivery_method: Mapped[str] = mapped_column(String(50), nullable=False)  # email, sms, push, webhook
 
+    # External provider tracking (for webhooks)
+    external_notification_id: Mapped[Optional[str]] = mapped_column(
+        String(255),
+        nullable=True,
+        index=True
+    )  # OneSignal notification ID for webhook correlation
+
     # Error tracking
     error_message: Mapped[Optional[str]] = mapped_column(Text)
     retry_count: Mapped[int] = mapped_column(default=0, nullable=False)
