@@ -80,11 +80,30 @@ class EmailProvider(Protocol):
     ) -> Dict[str, Any]:
         """
         Send a welcome email.
-        
+
         Args:
             to_email: Recipient email address
             user_name: User's display name
-        
+
+        Returns:
+            Dict with 'success' bool and optional 'id' or 'error'
+        """
+        ...
+
+    def send_onboarding_reminder_email(
+        self,
+        to_email: str,
+        user_name: str,
+        reminder_number: int
+    ) -> Dict[str, Any]:
+        """
+        Send an onboarding reminder email.
+
+        Args:
+            to_email: Recipient email address
+            user_name: User's display name
+            reminder_number: Which reminder this is (1, 2, or 3)
+
         Returns:
             Dict with 'success' bool and optional 'id' or 'error'
         """
@@ -159,6 +178,10 @@ class _DummyEmailProvider:
         return {"success": False, "error": "No email provider configured"}
     
     def send_welcome_email(self, to_email: str, user_name: str) -> Dict[str, Any]:
+        return {"success": False, "error": "No email provider configured"}
+
+    def send_onboarding_reminder_email(self, to_email: str, user_name: str,
+                                       reminder_number: int) -> Dict[str, Any]:
         return {"success": False, "error": "No email provider configured"}
 
 

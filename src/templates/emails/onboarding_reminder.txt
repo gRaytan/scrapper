@@ -1,0 +1,31 @@
+HiddenJobs - Complete Your Profile (Reminder {{ reminder_number }}/3)
+=====================================================
+
+Hi {{ user_name }}! 👋
+
+You're Almost There!
+--------------------
+
+We noticed you started setting up your HiddenJobs profile but didn't finish. 
+Complete your onboarding to unlock personalized job recommendations tailored just for you!
+
+What you'll get:
+✓ Daily alerts for jobs matching your skills
+✓ AI-powered job recommendations  
+✓ Save and track your favorite positions
+✓ Be first to know about new opportunities
+
+Complete your profile now: {{ base_url }}/onboarding
+(Takes less than 2 minutes)
+
+💡 Did you know?
+Users with complete profiles receive 5x more relevant job matches than those without!
+
+---
+
+You're receiving this because you started your HiddenJobs profile but haven't completed it yet.
+
+Manage your notifications: {{ base_url }}/profile?tab=notifications
+
+© {{ current_year }} HiddenJobs. Made with 💜 in Israel.
+

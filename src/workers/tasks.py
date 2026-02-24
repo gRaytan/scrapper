@@ -1636,3 +1636,144 @@ def enrich_job_descriptions(
         logger.error(f"Job description enrichment failed: {exc}")
         logger.exception(exc)
         raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))
+
+
+@celery_app.task(bind=True, name='src.workers.tasks.send_onboarding_reminder_emails', max_retries=3)
+def send_onboarding_reminder_emails(self: Task) -> Dict[str, Any]:
+    """
+    Send reminder emails to users who started but didn't complete onboarding.
+
+    This task runs daily and sends up to 3 reminders (one per day) to users who:
+    - Have not completed onboarding (onboarding_completed = False in preferences)
+    - Don't have job_titles or locations set in preferences
+    - Are active users
+    - Haven't received all 3 reminders yet
+    - Registered at least 24 hours ago (for first reminder)
+    - Last reminder was at least 24 hours ago (for subsequent reminders)
+
+    Returns:
+        Dictionary with email sending statistics
+    """
+    from sqlalchemy import or_, and_
+    from src.models.user import User
+    from src.services.email_provider import get_email_service
+
+    try:
+        logger.info("=" * 80)
+        logger.info("Starting onboarding reminder email sending...")
+        logger.info("=" * 80)
+
+        start_time = datetime.utcnow()
+        cutoff_time = start_time - timedelta(hours=24)
+
+        email_service = get_email_service()
+
+        if not email_service.is_configured:
+            logger.warning("Email provider not configured. Skipping onboarding reminders.")
+            return {
+                'status': 'skipped',
+                'reason': 'Email provider not configured',
+                'emails_sent': 0
+            }
+
+        emails_sent = 0
+        emails_failed = 0
+        users_processed = 0
+
+        with db.get_session() as session:
+            # Query users who need onboarding reminders
+            # Conditions:
+            # 1. is_active = True
+            # 2. onboarding_reminder_count < 3
+            # 3. Either:
+            #    a. Never sent reminder AND created_at < cutoff (24h ago)
+            #    b. Last reminder was sent > 24h ago
+            users = session.query(User).filter(
+                User.is_active == True,
+                User.onboarding_reminder_count < 3,
+                or_(
+                    # First reminder: never sent, registered 24h+ ago
+                    and_(
+                        User.last_onboarding_reminder_at.is_(None),
+                        User.created_at < cutoff_time
+                    ),
+                    # Subsequent reminders: last reminder was 24h+ ago
+                    User.last_onboarding_reminder_at < cutoff_time
+                )
+            ).all()
+
+            logger.info(f"Found {len(users)} users to check for onboarding reminders")
+
+            for user in users:
+                try:
+                    # Check if user has completed onboarding
+                    preferences = user.preferences or {}
+                    onboarding_completed = preferences.get("onboarding_completed", False)
+
+                    # Fallback check: if user has job_titles or locations, they've completed
+                    if not onboarding_completed:
+                        has_job_titles = bool(preferences.get("job_titles"))
+                        has_locations = bool(preferences.get("locations"))
+                        onboarding_completed = has_job_titles or has_locations
+
+                    if onboarding_completed:
+                        # User has completed onboarding, skip and reset count
+                        logger.debug(f"User {user.email} has completed onboarding, skipping")
+                        continue
+
+                    # Send reminder email
+                    reminder_number = user.onboarding_reminder_count + 1
+                    user_name = user.full_name or user.email.split('@')[0]
+
+                    logger.info(f"Sending onboarding reminder #{reminder_number} to {user.email}")
+
+                    result = email_service.send_onboarding_reminder_email(
+                        to_email=user.notification_email,
+                        user_name=user_name,
+                        reminder_number=reminder_number
+                    )
+
+                    if result.get('success'):
+                        user.onboarding_reminder_count = reminder_number
+                        user.last_onboarding_reminder_at = datetime.utcnow()
+                        emails_sent += 1
+                        logger.info(f"Onboarding reminder #{reminder_number} sent to {user.email}")
+                    else:
+                        emails_failed += 1
+                        logger.error(f"Failed to send onboarding reminder to {user.email}: {result.get('error')}")
+
+                    users_processed += 1
+
+                except Exception as e:
+                    logger.error(f"Error processing user {user.id}: {e}")
+                    emails_failed += 1
+
+            session.commit()
+
+        duration = (datetime.utcnow() - start_time).total_seconds()
+
+        result = {
+            'status': 'success',
+            'started_at': start_time.isoformat(),
+            'completed_at': datetime.utcnow().isoformat(),
+            'duration_seconds': duration,
+            'users_checked': len(users) if 'users' in dir() else 0,
+            'users_processed': users_processed,
+            'emails_sent': emails_sent,
+            'emails_failed': emails_failed
+        }
+
+        logger.success("=" * 80)
+        logger.success("ONBOARDING REMINDER EMAIL SENDING COMPLETED")
+        logger.success(f"  Users processed: {users_processed}")
+        logger.success(f"  Emails sent: {emails_sent}")
+        logger.success(f"  Emails failed: {emails_failed}")
+        logger.success(f"  Duration: {duration:.2f}s")
+        logger.success("=" * 80)
+
+        return result
+
+    except Exception as exc:
+        logger.error(f"Onboarding reminder email sending failed: {exc}")
+        logger.exception(exc)
+        raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))

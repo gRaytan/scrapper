@@ -145,6 +145,16 @@ celery_app.conf.update(
             }
         },
 
+        # Send onboarding reminder emails - daily at 10:30 AM Israel time
+        # 8:30 AM UTC = 10:30 AM Israel time (winter, UTC+2)
+        'daily-onboarding-reminders': {
+            'task': 'src.workers.tasks.send_onboarding_reminder_emails',
+            'schedule': crontab(hour=8, minute=30),  # 8:30 AM UTC daily
+            'options': {
+                'expires': 3600,  # 1 hour
+            }
+        },
+
         # Cleanup old scraping sessions every week
         'weekly-cleanup': {
             'task': 'src.workers.tasks.cleanup_old_sessions',

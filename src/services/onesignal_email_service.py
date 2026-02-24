@@ -383,5 +383,54 @@ class OneSignalEmailService:
         return result
 
 
+    def send_onboarding_reminder_email(
+        self,
+        to_email: str,
+        user_name: str,
+        reminder_number: int
+    ) -> Dict[str, Any]:
+        """
+        Send an onboarding reminder email to users who haven't completed onboarding.
+
+        Args:
+            to_email: Recipient email address
+            user_name: User's display name
+            reminder_number: Which reminder this is (1, 2, or 3)
+
+        Returns:
+            Response dict with success status
+        """
+        subject = "🎯 Complete your HiddenJobs profile - get personalized job matches!"
+        if reminder_number == 2:
+            subject = "⏰ Don't miss out! Complete your HiddenJobs profile"
+        elif reminder_number == 3:
+            subject = "🔔 Last chance: Finish setting up HiddenJobs"
+
+        context = {
+            "user_name": user_name or "there",
+            "reminder_number": reminder_number,
+        }
+
+        html_content = self.render_template("onboarding_reminder.html", context)
+        text_content = self.render_template("onboarding_reminder.txt", context)
+
+        result = self.send_email(to_email, subject, html_content, text_content)
+
+        # Track email sent event in Mixpanel
+        if result.get("success"):
+            track_email_event(
+                event_name="Email Sent",
+                user_email=to_email,
+                user_name=user_name,
+                properties={
+                    "email_type": "onboarding_reminder",
+                    "email_provider": "onesignal",
+                    "reminder_number": reminder_number,
+                }
+            )
+
+        return result
+
+
 # Singleton instance
 onesignal_email_service = OneSignalEmailService()

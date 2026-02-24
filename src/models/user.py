@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional
 from uuid import UUID
 
-from sqlalchemy import Boolean, String, DateTime, JSON
+from sqlalchemy import Boolean, String, DateTime, JSON, Integer
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 import bcrypt
 
@@ -46,6 +46,10 @@ class User(Base, UUIDMixin, TimestampMixin):
 
     # Activity tracking
     last_login_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
+    # Onboarding reminder tracking
+    onboarding_reminder_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    last_onboarding_reminder_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
     # User preferences (stored as JSON)
     preferences: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)

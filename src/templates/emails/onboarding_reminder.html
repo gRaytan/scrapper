@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+
+{% block title %}Complete Your Profile - HiddenJobs{% endblock %}
+
+{% block header_badge %}Reminder {{ reminder_number }}/3{% endblock %}
+
+{% block content %}
+<!-- Banner -->
+<tr>
+    <td style="padding: 24px 32px 16px;" class="mobile-padding">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: linear-gradient(135deg, #7C3AED 0%, #9333EA 50%, #F97316 100%); border-radius: 12px; overflow: hidden;">
+            <tr>
+                <td style="padding: 24px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td style="text-align: center;">
+                                <span style="font-size: 48px;">🎯</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-top: 12px; text-align: center;">
+                                <span style="font-size: 24px; font-weight: 700; color: #ffffff;">You're Almost There!</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-top: 8px; text-align: center;">
+                                <span style="font-size: 14px; color: rgba(255,255,255,0.9);">Complete your profile to get personalized job matches</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>
+
+<!-- Greeting -->
+<tr>
+    <td style="padding: 8px 32px 16px;" class="mobile-padding">
+        <p style="margin: 0; color: #374151; font-size: 15px; line-height: 1.6;">
+            Hi {{ user_name }} 👋
+        </p>
+        <p style="margin: 12px 0 0; color: #6b7280; font-size: 14px; line-height: 1.7;">
+            We noticed you started setting up your HiddenJobs profile but didn't finish. 
+            Complete your onboarding to unlock personalized job recommendations tailored just for you!
+        </p>
+    </td>
+</tr>
+
+<!-- Benefits List -->
+<tr>
+    <td style="padding: 0 32px 16px;" class="mobile-padding">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: #f9fafb; border-radius: 12px;">
+            <tr>
+                <td style="padding: 20px;">
+                    <p style="margin: 0 0 12px; color: #374151; font-weight: 600; font-size: 14px;">What you'll get:</p>
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td style="padding: 6px 0;">
+                                <span style="color: #10b981; margin-right: 8px;">✓</span>
+                                <span style="color: #4b5563; font-size: 14px;">Daily alerts for jobs matching your skills</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0;">
+                                <span style="color: #10b981; margin-right: 8px;">✓</span>
+                                <span style="color: #4b5563; font-size: 14px;">AI-powered job recommendations</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0;">
+                                <span style="color: #10b981; margin-right: 8px;">✓</span>
+                                <span style="color: #4b5563; font-size: 14px;">Save and track your favorite positions</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0;">
+                                <span style="color: #10b981; margin-right: 8px;">✓</span>
+                                <span style="color: #4b5563; font-size: 14px;">Be first to know about new opportunities</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>
+
+<!-- CTA Button -->
+<tr>
+    <td style="padding: 8px 32px 24px;" class="mobile-padding">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td align="center">
+                    <a href="{{ base_url }}/onboarding" style="display: inline-block; background: linear-gradient(135deg, #7C3AED 0%, #9333EA 100%); color: #ffffff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 4px 14px 0 rgba(124, 58, 237, 0.4);">
+                        Complete My Profile →
+                    </a>
+                </td>
+            </tr>
+            <tr>
+                <td align="center" style="padding-top: 12px;">
+                    <span style="color: #9ca3af; font-size: 12px;">Takes less than 2 minutes</span>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>
+
+<!-- Tip Card -->
+<tr>
+    <td style="padding: 0 32px 24px;" class="mobile-padding">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); border-radius: 12px;">
+            <tr>
+                <td style="padding: 16px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td style="width: 32px; vertical-align: top;">
+                                <span style="font-size: 20px;">💡</span>
+                            </td>
+                            <td style="padding-left: 8px;">
+                                <span style="font-size: 13px; font-weight: 600; color: #92400e; display: block;">Did you know?</span>
+                                <span style="font-size: 13px; color: #a16207; display: block; margin-top: 4px; line-height: 1.5;">
+                                    Users with complete profiles receive 5x more relevant job matches than those without!
+                                </span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>
+{% endblock %}
+
+{% block footer_text %}You're receiving this because you started your HiddenJobs profile but haven't completed it yet.{% endblock %}
+
