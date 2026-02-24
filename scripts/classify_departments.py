@@ -25,7 +25,9 @@ DEPARTMENT_PATTERNS = {
         'react developer', 'python developer', 'java developer', 'node developer', '.net developer',
         'golang developer', 'go developer', 'rust developer', 'c++ developer', 'c developer',
         'software architect', 'solutions architect', 'principal engineer', 'staff engineer',
-        'senior engineer', 'junior developer', 'entry level developer', 'development engineer'
+        'junior developer', 'entry level developer', 'development engineer',
+        'cloud software', 'php developer', 'cobol', 'mobile app developer',
+        'r&d engineer', 'r&d developer', 'embedded software', 'sw engineer', 'sw developer'
     ],
     'Hardware Engineering': [
         'hardware engineer', 'hardware developer', 'fpga engineer', 'asic engineer',
@@ -33,14 +35,17 @@ DEPARTMENT_PATTERNS = {
         'firmware engineer', 'firmware developer', 'pcb engineer', 'electrical engineer',
         'electronics engineer', 'rf engineer', 'analog engineer', 'digital design engineer',
         'silicon engineer', 'ic designer', 'verification engineer', 'validation engineer',
-        'hardware architect', 'system architect', 'rtl engineer', 'physical design',
-        'dft engineer', 'soc engineer', 'chip architect', 'emulation engineer'
+        'hardware architect', 'rtl engineer', 'physical design',
+        'dft engineer', 'soc engineer', 'chip architect', 'emulation engineer',
+        'mechanical engineer', 'electronics hardware', 'field testing engineer',
+        'automotive engineer'
     ],
     'DevOps & Infrastructure': [
         'devops', 'sre', 'site reliability', 'platform engineer', 'infrastructure engineer',
         'cloud engineer', 'systems engineer', 'kubernetes', 'docker', 'cicd', 'ci/cd',
         'build engineer', 'release engineer', 'deployment', 'aws engineer', 'azure engineer',
-        'gcp engineer', 'linux engineer', 'unix engineer', 'network engineer', 'noc engineer'
+        'gcp engineer', 'linux engineer', 'unix engineer', 'network engineer', 'noc engineer',
+        'system admin', 'sys admin', 'system architect', 'it engineer', 'it specialist'
     ],
     'Data Engineering': [
         'data engineer', 'data platform', 'etl developer', 'analytics engineer',
@@ -50,32 +55,37 @@ DEPARTMENT_PATTERNS = {
     'Data Science & AI': [
         'data scientist', 'machine learning', 'ml engineer', 'ai engineer', 'research scientist',
         'deep learning', 'nlp engineer', 'computer vision', 'data analyst', 'business intelligence',
-        'bi analyst', 'ai researcher', 'ml researcher', 'applied scientist', 'research engineer'
+        'bi analyst', 'ai researcher', 'ml researcher', 'applied scientist', 'research engineer',
+        'ai scientist', 'product analyst', 'data science engineer', 'online data analyst'
     ],
     'QA & Testing': [
         'qa engineer', 'quality assurance', 'test engineer', 'sdet', 'automation engineer',
-        'quality engineer', 'test automation', 'software tester', 'manual tester'
+        'quality engineer', 'test automation', 'software tester', 'manual tester',
+        'cyber field engineer'
     ],
     'Security': [
         'security engineer', 'security analyst', 'appsec', 'infosec', 'penetration',
         'security researcher', 'cyber security', 'cybersecurity', 'information security',
-        'security architect', 'soc analyst', 'threat', 'vulnerability', 'red team', 'blue team'
+        'security architect', 'soc analyst', 'threat', 'vulnerability', 'red team', 'blue team',
+        'security operations center'
     ],
     # Product & Design
     'Product Management': [
         'product manager', 'product owner', 'group product manager', 'director of product',
-        'vp product', 'head of product', 'chief product', 'product lead', 'product director'
+        'vp product', 'head of product', 'chief product', 'product lead', 'product director',
+        'staff product manager', 'senior product manager', 'product management'
     ],
     'Design': [
         'designer', 'ux designer', 'ui designer', 'product designer', 'graphic designer',
         'visual designer', 'interaction designer', 'ux researcher', 'user researcher',
-        'creative director', 'art director', 'brand designer'
+        'creative director', 'art director', 'brand designer', 'marketing designer'
     ],
     # Leadership
     'Engineering Management': [
         'engineering manager', 'r&d manager', 'team lead', 'tech lead', 'vp r&d',
         'vp engineering', 'director of engineering', 'head of engineering', 'cto',
-        'engineering director', 'development manager', 'r&d director', 'chief technology'
+        'engineering director', 'development manager', 'r&d director', 'chief technology',
+        'r&d team lead', 'technical lead'
     ],
     # Business Functions
     'Sales': [
@@ -86,27 +96,32 @@ DEPARTMENT_PATTERNS = {
     'Marketing': [
         'marketing manager', 'marketing specialist', 'growth', 'content', 'brand',
         'communications', 'digital marketing', 'performance marketing', 'product marketing',
-        'demand generation', 'marketing director', 'cmo', 'head of marketing'
+        'demand generation', 'marketing director', 'cmo', 'head of marketing',
+        'copywriter', 'brand copywriter'
     ],
     'HR & People': [
         'recruiter', 'talent acquisition', 'hr ', 'human resources', 'people operations',
         'hr manager', 'hr director', 'compensation', 'benefits', 'payroll',
-        'learning and development', 'organizational development', 'hrbp'
+        'learning and development', 'organizational development', 'hrbp',
+        'talent sourcer', 'hr ai'
     ],
     'Finance & Legal': [
         'finance', 'accountant', 'controller', 'fp&a', 'financial analyst',
         'cfo', 'finance manager', 'tax', 'treasury', 'audit', 'legal', 'counsel',
-        'compliance', 'lawyer', 'attorney', 'paralegal', 'contracts'
+        'compliance', 'lawyer', 'attorney', 'paralegal', 'contracts',
+        'bookkeeper', 'contract manager', 'assistant controller', 'credit analyst',
+        'purchasing manager'
     ],
     'Customer Success': [
         'customer success', 'client success', 'customer support', 'technical support',
         'support engineer', 'solutions engineer', 'implementation', 'onboarding',
-        'customer experience', 'cx', 'client services'
+        'customer experience', 'cx', 'client services', 'support partner'
     ],
     'Operations': [
         'operations manager', 'office manager', 'admin', 'procurement', 'logistics',
         'supply chain', 'facilities', 'project manager', 'program manager',
-        'business operations', 'strategy and operations', 'chief of staff'
+        'business operations', 'strategy and operations', 'chief of staff',
+        'technical project manager', 'integration expert', 'interface expert'
     ],
 }
 
