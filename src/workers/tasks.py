@@ -1378,7 +1378,7 @@ def send_daily_digest_emails(self: Task) -> Dict[str, Any]:
     This task runs daily after job matching completes. It:
     1. Gets all pending notifications grouped by user
     2. Fetches job details for each notification
-    3. Sends digest emails via AWS SES
+    3. Sends digest emails via OneSignal
     4. Marks notifications as sent
     5. Tracks email events in Mixpanel
 
@@ -1390,7 +1390,7 @@ def send_daily_digest_emails(self: Task) -> Dict[str, Any]:
     from src.models.job_position import JobPosition
     from src.models.user import User
     from src.models.alert import Alert
-    from src.services.email_service import email_service
+    from src.services.email_provider import get_email_service
 
     try:
         logger.info("=" * 80)
@@ -1398,12 +1398,14 @@ def send_daily_digest_emails(self: Task) -> Dict[str, Any]:
         logger.info("=" * 80)
 
         start_time = datetime.utcnow()
-        
+
+        email_service = get_email_service()
+
         if not email_service.is_configured:
-            logger.warning("AWS SES not configured. Skipping email sending.")
+            logger.warning("Email provider not configured. Skipping email sending.")
             return {
                 'status': 'skipped',
-                'reason': 'AWS SES not configured',
+                'reason': 'Email provider not configured',
                 'emails_sent': 0
             }
 
@@ -1484,7 +1486,7 @@ def send_daily_digest_emails(self: Task) -> Dict[str, Any]:
                                 'posted_date': job.posted_date.strftime('%b %d') if job.posted_date else ''
                             })
 
-                        # Send email via AWS SES
+                        # Send email via configured provider
                         result = email_service.send_job_digest_email(
                             to_email=to_email,
                             user_name=user_name,

@@ -85,7 +85,8 @@ class Settings(BaseSettings):
     ses_from_name: str = "HiddenJobs"
     aws_region: str = "eu-north-1"
 
-    # OneSignal Email Configuration (legacy)
+    # OneSignal Email Configuration
+    onesignal_enabled: bool = True  # Use OneSignal for emails (SES is fallback)
     onesignal_app_id: Optional[str] = None
     onesignal_api_key: Optional[str] = None
     onesignal_from_email: str = "noreply@hiddenjobs.me"
