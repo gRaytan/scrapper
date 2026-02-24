@@ -29,8 +29,11 @@ router = APIRouter()
 
 def get_db_session():
     """Dependency to get database session."""
-    with db.get_session() as session:
+    session = db.SessionLocal()
+    try:
         yield session
+    finally:
+        session.close()
 
 
 @router.get("/users/me/alerts", response_model=AlertListResponse)
@@ -170,26 +173,29 @@ def create_alert_for_current_user(
     Requires JWT authentication.
     """
     import time
+    import sys
     start_time = time.time()
-    logger.info(f"[create_alert] START - user={current_user.id}, alert_name={alert_data.name}")
+    print(f"[create_alert] START - user={current_user.id}, alert_name={alert_data.name}", flush=True)
 
     try:
-        logger.info(f"[create_alert] Creating AlertService... elapsed={time.time() - start_time:.2f}s")
+        print(f"[create_alert] Creating AlertService... elapsed={time.time() - start_time:.2f}s", flush=True)
         service = AlertService(session)
 
-        logger.info(f"[create_alert] Calling service.create_alert... elapsed={time.time() - start_time:.2f}s")
+        print(f"[create_alert] Calling service.create_alert... elapsed={time.time() - start_time:.2f}s", flush=True)
         result = service.create_alert(current_user.id, alert_data)
 
-        logger.info(f"[create_alert] SUCCESS - alert_id={result['alert'].id}, total_time={time.time() - start_time:.2f}s")
-        return result["alert"]
+        print(f"[create_alert] SUCCESS - alert_id={result['alert'].id}, total_time={time.time() - start_time:.2f}s", flush=True)
+        alert = result["alert"]
+        print(f"[create_alert] Returning alert object... elapsed={time.time() - start_time:.2f}s", flush=True)
+        return alert
     except ValueError as e:
-        logger.error(f"[create_alert] ValueError: {e}, elapsed={time.time() - start_time:.2f}s")
+        print(f"[create_alert] ValueError: {e}, elapsed={time.time() - start_time:.2f}s", flush=True)
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(e)
         )
     except Exception as e:
-        logger.error(f"[create_alert] Error: {e}, elapsed={time.time() - start_time:.2f}s")
+        print(f"[create_alert] Error: {e}, elapsed={time.time() - start_time:.2f}s", flush=True)
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to create alert"
