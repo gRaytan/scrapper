@@ -20,7 +20,7 @@ We found {{ job_count }} new job{{ 's' if job_count > 1 else '' }} matching your
 {% endif %}
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-View all jobs: {{ base_url }}/jobs
+View all jobs: {{ base_url }}/dashboard
 
 {% if show_tips %}
 💡 Pro Tip: {{ tip_text | default("Apply within 24 hours of a job posting to increase your chances by 3x!") }}
