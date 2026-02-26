@@ -1447,7 +1447,14 @@ def send_daily_digest_emails(self: Task) -> Dict[str, Any]:
             for user_id, notifications in user_notifications.items():
                 try:
                     user = notifications[0].user
-                    
+
+                    # Skip test/admin accounts
+                    if 'test' in user.email.lower() or user.email.endswith('@example.com') or user.email == 'admin@hiddenjobs.me':
+                        logger.info(f"Skipping test account: {user.email}")
+                        for n in notifications:
+                            n.delivery_status = 'skipped'
+                        continue
+
                     # Check if user has notifications enabled
                     if not user.notification_enabled:
                         logger.info(f"User {user_id} has notifications disabled, skipping")
@@ -1688,6 +1695,7 @@ def send_onboarding_reminder_emails(self: Task) -> Dict[str, Any]:
             # 3. Either:
             #    a. Never sent reminder AND created_at < cutoff (24h ago)
             #    b. Last reminder was sent > 24h ago
+            # 4. Exclude test/admin accounts
             users = session.query(User).filter(
                 User.is_active == True,
                 User.onboarding_reminder_count < 3,
@@ -1699,7 +1707,11 @@ def send_onboarding_reminder_emails(self: Task) -> Dict[str, Any]:
                     ),
                     # Subsequent reminders: last reminder was 24h+ ago
                     User.last_onboarding_reminder_at < cutoff_time
-                )
+                ),
+                # Exclude test/admin accounts
+                ~User.email.ilike('%test%'),
+                ~User.email.ilike('%@example.com'),
+                ~User.email.ilike('admin@hiddenjobs.me'),
             ).all()
 
             logger.info(f"Found {len(users)} users to check for onboarding reminders")
