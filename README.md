@@ -12,6 +12,15 @@ A scalable Python-based web scraper for extracting job positions from 100+ compa
 - 🔄 **Adaptive**: Automatically adjusts to page structure changes
 - 📈 **Monitoring**: Comprehensive logging and error tracking
 
+## 📚 Documentation
+
+**Start here:** [docs/TABLE_OF_CONTENTS.md](docs/TABLE_OF_CONTENTS.md)
+
+Key docs:
+- [EC2 Operations](docs/EC2_OPERATIONS.md) - Deployment & server management
+- [API Usage](docs/API_USAGE.md) - API endpoints
+- [Architecture](docs/ARCHITECTURE.md) - System design
+
 ## Architecture
 
 ```

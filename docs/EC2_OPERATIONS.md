@@ -18,14 +18,11 @@ Daily operations runbook for the HiddenJobs scraper on EC2.
 ```
 Local Machine                    EC2 Server
 ─────────────                    ──────────
-scrapper/
+~/IdeaProjects/scrapper/
     │
-    └── git push ec2 main ──────► /home/ubuntu/git-repos/scraper.git (bare repo)
+    └── rsync ─────────────────► /opt/scraper (production code)
                                         │
-                                        ▼ (post-receive hook)
-                                  /opt/scraper (git working directory)
-                                        │
-                                        ▼ (docker compose build & up)
+                                        ▼ (deploy.sh or docker commands)
                                   Docker Containers:
                                   - scraper_api_prod
                                   - scraper_celery_worker_prod
@@ -37,82 +34,73 @@ scrapper/
 
 | Directory | Purpose |
 |-----------|---------|
-| `/home/ubuntu/git-repos/scraper.git` | Bare git repository (receives pushes) |
-| `/opt/scraper` | Production code (git working directory, containers built here) |
+| `/opt/scraper` | Production code (containers built here) |
 | `/home/ubuntu/backups` | Database backups |
+
+### Docker Networking
+
+| Term | Example | Used For |
+|------|---------|----------|
+| Service name | `api` | Docker DNS resolution (nginx config uses `api:8000`) |
+| Container name | `scraper_api_prod` | External commands (`docker logs scraper_api_prod`) |
+| Network | `scraper_scraper_network` | All containers must be on same network for DNS |
 
 ---
 
-## Deployment
+## Deployment (FROM LOCAL MACHINE)
 
-### Quick Deploy (Code Only)
+### Step 1: Sync Files to EC2
 
-```bash
-# From local machine - push code to EC2
-cd ~/IdeaProjects/scrapper
-GIT_SSH_COMMAND="ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" git push ec2 main
-```
-
-The post-receive hook automatically updates `/opt/scraper` with the new code.
-
-### Restart Only (Code Changes, No Dependencies)
+**Always run this first to copy your local changes to the server:**
 
 ```bash
-# After git push, just restart - no rebuild needed for Python code changes
-ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me \
-  "cd /opt/scraper && sudo docker compose -f docker-compose.production.yml restart api"
+rsync -avz --exclude '.git' --exclude '__pycache__' --exclude '*.pyc' \
+  --exclude 'data/' --exclude 'logs/' --exclude '.env' --exclude 'backups/' \
+  -e "ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" \
+  ~/IdeaProjects/scrapper/ ubuntu@api.hiddenjobs.me:/opt/scraper/
 ```
 
-### Rebuild (New Python Dependencies)
-
-```bash
-ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me \
-  "cd /opt/scraper && sudo docker compose -f docker-compose.production.yml build api && \
-   sudo docker compose -f docker-compose.production.yml up -d api"
-```
-
-### Full Rebuild (New System Dependencies)
-
-```bash
-ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me \
-  "cd /opt/scraper && sudo docker compose -f docker-compose.production.yml build --no-cache api && \
-   sudo docker compose -f docker-compose.production.yml up -d api"
-```
-
-### Deployment Time Comparison
+### Step 2: Apply Changes
 
 | Change Type | Command | Time |
 |-------------|---------|------|
-| Code only (Python files) | `restart api` | ~5 sec |
-| New Python dependency | `build api && up -d api` | ~3 min |
-| New system dependency | `build --no-cache api && up -d api` | ~15 min |
+| Code only (Python files) | `./deployment/deploy.sh` | ~5 sec |
+| New Python dependency | `./deployment/deploy.sh --build` | ~3 min |
+| New system dependency | `./deployment/deploy.sh --full` | ~15 min |
+| Migrations only | `./deployment/deploy.sh --migrate` | ~5 sec |
 
-### Run Migrations (if needed)
-
+**Run from local via SSH:**
 ```bash
+# Code changes only (restart)
 ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me \
-  "cd /opt/scraper && sudo docker compose -f docker-compose.production.yml exec -T api alembic upgrade head"
+  "cd /opt/scraper && sudo ./deployment/deploy.sh"
+
+# With rebuild (new Python deps)
+ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me \
+  "cd /opt/scraper && sudo ./deployment/deploy.sh --build"
+
+# Full rebuild (Dockerfile/system changes)
+ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me \
+  "cd /opt/scraper && sudo ./deployment/deploy.sh --full"
 ```
 
----
+### One-Liner Deploy Commands
 
-## Git Server
-
-### Push Code from Local
+**Quick deploy (code changes only):**
 ```bash
-cd ~/IdeaProjects/scrapper
-GIT_SSH_COMMAND="ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" git push ec2 main
+rsync -avz --exclude '.git' --exclude '__pycache__' --exclude '*.pyc' --exclude 'data/' --exclude 'logs/' --exclude '.env' --exclude 'backups/' -e "ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" ~/IdeaProjects/scrapper/ ubuntu@api.hiddenjobs.me:/opt/scraper/ && ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me "cd /opt/scraper && sudo ./deployment/deploy.sh"
 ```
 
-### Git Remote Setup (one-time)
+**Deploy with rebuild:**
 ```bash
-git remote add ec2 ubuntu@api.hiddenjobs.me:/home/ubuntu/git-repos/scraper.git
+rsync -avz --exclude '.git' --exclude '__pycache__' --exclude '*.pyc' --exclude 'data/' --exclude 'logs/' --exclude '.env' --exclude 'backups/' -e "ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" ~/IdeaProjects/scrapper/ ubuntu@api.hiddenjobs.me:/opt/scraper/ && ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem ubuntu@api.hiddenjobs.me "cd /opt/scraper && sudo ./deployment/deploy.sh --build"
 ```
 
-### Post-Receive Hook
-Located at `/home/ubuntu/git-repos/scraper.git/hooks/post-receive`:
-- Automatically runs `git fetch` + `git reset --hard` on `/opt/scraper`
-- Prints instructions for rebuilding containers
+### Step 3: Verify
+
+```bash
+curl -s https://api.hiddenjobs.me/health | jq
+```
 
 ---
 
@@ -273,6 +261,36 @@ sudo docker compose -f docker-compose.production.yml logs --tail 100
 
 # Check if .env file exists
 ls -la /opt/scraper/.env
+```
+
+### 502 Bad Gateway
+
+This usually means nginx can't reach the API container. **Most common cause: nginx cached the old container IP after a rebuild.**
+
+**Quick Fix (90% of cases):**
+```bash
+cd /opt/scraper
+sudo docker compose -f docker-compose.production.yml restart nginx
+```
+
+**Why this happens:** Nginx caches DNS resolution at startup. When you rebuild containers, the API gets a new IP, but nginx still points to the old cached IP.
+
+**Rule: Always restart nginx after rebuilding any service containers.**
+
+**Full troubleshooting:**
+```bash
+# 1. Restart nginx (fixes most 502 errors)
+sudo docker compose -f docker-compose.production.yml restart nginx
+
+# 2. Verify all containers are on the same network
+sudo docker network inspect scraper_scraper_network --format '{{range .Containers}}{{.Name}} {{end}}'
+
+# 3. Test internal connectivity from nginx
+sudo docker exec scraper_nginx_prod wget -q -O- http://api:8000/health
+
+# 4. If still failing, restart everything
+sudo docker compose -f docker-compose.production.yml down
+sudo docker compose -f docker-compose.production.yml up -d
 ```
 
 ### CORS errors

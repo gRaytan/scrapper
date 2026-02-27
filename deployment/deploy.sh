@@ -1,19 +1,19 @@
 #!/bin/bash
 # Deployment script for Job Scraper on EC2
 #
-# IMPORTANT: This script must be run from /opt/scraper on the EC2 server
-# DO NOT run docker compose from any other directory!
+# USAGE (run on EC2 server):
+#   ./deployment/deploy.sh           # Restart only (code changes)
+#   ./deployment/deploy.sh --build   # Rebuild with cache (new Python deps)
+#   ./deployment/deploy.sh --full    # Full rebuild no cache (system deps)
+#   ./deployment/deploy.sh --migrate # Run migrations only
+#
+# FILES ARE SYNCED VIA RSYNC FROM LOCAL MACHINE (see docs/EC2_OPERATIONS.md)
+# This script does NOT pull from git - it uses whatever files are in /opt/scraper
 #
 # Production deployment location: /opt/scraper
 # Production compose file: docker-compose.production.yml
-#
-# Run this script as the 'scraper' user or with sudo
 
 set -e  # Exit on error
-
-echo "=========================================="
-echo "Job Scraper Deployment Script"
-echo "=========================================="
 
 # Colors for output
 RED='\033[0;31m'
@@ -21,114 +21,95 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-print_success() {
-    echo -e "${GREEN}✓ $1${NC}"
-}
+print_success() { echo -e "${GREEN}✓ $1${NC}"; }
+print_error() { echo -e "${RED}✗ $1${NC}"; }
+print_info() { echo -e "${YELLOW}ℹ $1${NC}"; }
 
-print_error() {
-    echo -e "${RED}✗ $1${NC}"
-}
+# Parse arguments
+MODE="restart"
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --build)   MODE="build"; shift ;;
+        --full)    MODE="full"; shift ;;
+        --migrate) MODE="migrate"; shift ;;
+        --help|-h)
+            echo "Usage: $0 [--build|--full|--migrate]"
+            echo "  (no args)  Restart API only (~5 sec)"
+            echo "  --build    Rebuild with cache (~3 min)"
+            echo "  --full     Full rebuild no cache (~15 min)"
+            echo "  --migrate  Run DB migrations only"
+            exit 0
+            ;;
+        *) print_error "Unknown option: $1"; exit 1 ;;
+    esac
+done
 
-print_info() {
-    echo -e "${YELLOW}ℹ $1${NC}"
-}
+echo "=========================================="
+echo "Job Scraper Deployment - Mode: $MODE"
+echo "=========================================="
 
-# CRITICAL: Verify we're in the correct deployment directory
-EXPECTED_DIR="/opt/scraper"
-CURRENT_DIR="$(pwd)"
-
-# Get script directory
+# Get script directory and cd to project root
 SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 PROJECT_ROOT="$(dirname "$SCRIPT_DIR")"
-
 cd "$PROJECT_ROOT"
 
 # Verify deployment directory
+EXPECTED_DIR="/opt/scraper"
 if [ "$PROJECT_ROOT" != "$EXPECTED_DIR" ]; then
-    print_error "WRONG DEPLOYMENT DIRECTORY!"
-    print_error "Expected: $EXPECTED_DIR"
-    print_error "Current:  $PROJECT_ROOT"
-    print_info ""
-    print_info "Production deployment MUST be from /opt/scraper"
-    print_info "Please run: cd /opt/scraper && ./deployment/deploy.sh"
+    print_error "WRONG DIRECTORY! Expected: $EXPECTED_DIR, Got: $PROJECT_ROOT"
     exit 1
 fi
 
-print_success "Correct deployment directory: $PROJECT_ROOT"
+# Check required files
+[ ! -f .env ] && print_error ".env file not found!" && exit 1
+[ ! -f docker-compose.production.yml ] && print_error "docker-compose.production.yml not found!" && exit 1
 
-# Check if .env file exists
-if [ ! -f .env ]; then
-    print_error ".env file not found!"
-    print_info "Please create .env file from .env.production template"
-    exit 1
+COMPOSE="docker compose -f docker-compose.production.yml"
+
+case $MODE in
+    restart)
+        print_info "Restarting API container..."
+        $COMPOSE restart api
+        $COMPOSE restart nginx  # Refresh DNS cache
+        print_success "API restarted"
+        ;;
+    build)
+        print_info "Building API with cache..."
+        $COMPOSE build api
+        $COMPOSE up -d api
+        $COMPOSE restart nginx
+        print_success "API rebuilt and started"
+        ;;
+    full)
+        print_info "Full rebuild (no cache)..."
+        $COMPOSE build --no-cache api
+        $COMPOSE up -d api
+        $COMPOSE restart nginx
+        print_success "API fully rebuilt and started"
+        ;;
+    migrate)
+        print_info "Running database migrations..."
+        $COMPOSE exec -T api alembic upgrade head
+        print_success "Migrations completed"
+        exit 0
+        ;;
+esac
+
+# Wait and verify
+sleep 3
+print_info "Service status:"
+$COMPOSE ps api nginx
+
+# Health check
+print_info "Health check..."
+if curl -sf http://localhost:8000/health > /dev/null 2>&1; then
+    print_success "API is healthy!"
+else
+    print_error "API health check failed - check logs"
+    $COMPOSE logs --tail=20 api
 fi
-
-print_success ".env file found"
-
-# Check if docker-compose.production.yml exists
-if [ ! -f docker-compose.production.yml ]; then
-    print_error "docker-compose.production.yml not found!"
-    exit 1
-fi
-
-print_success "docker-compose.production.yml found"
-
-# Pull latest changes (if using git)
-if [ -d .git ]; then
-    print_info "Pulling latest changes from git..."
-    git pull
-    print_success "Git pull completed"
-fi
-
-# Build Docker images (api, celery_worker, celery_beat use the same Dockerfile)
-# Build only the api service - the image is shared by all Python services
-print_info "Building Docker images (using cache)..."
-docker compose -f docker-compose.production.yml build api
-print_success "Docker images built"
-
-# Optional: Force rebuild without cache (uncomment if needed)
-# docker compose -f docker-compose.production.yml build --no-cache api
-
-# Stop existing containers
-print_info "Stopping existing containers..."
-docker compose -f docker-compose.production.yml down
-print_success "Existing containers stopped"
-
-# Start services
-print_info "Starting services..."
-docker compose -f docker-compose.production.yml up -d
-print_success "Services started"
-
-# Wait for services to be healthy
-print_info "Waiting for services to be healthy..."
-sleep 10
-
-# Check service status
-print_info "Checking service status..."
-docker compose -f docker-compose.production.yml ps
-
-# Run database migrations
-print_info "Running database migrations..."
-docker compose -f docker-compose.production.yml exec -T api alembic upgrade head
-print_success "Database migrations completed"
-
-# Show logs
-print_info "Showing recent logs..."
-docker compose -f docker-compose.production.yml logs --tail=50
 
 echo ""
-echo "=========================================="
 print_success "Deployment Complete!"
-echo "=========================================="
-echo ""
-print_info "Service URLs:"
-echo "  API: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):80"
-echo "  Health: http://$(curl -s http://169.254.169.254/latest/meta-data/public-ipv4):80/health"
-echo ""
-print_info "Useful commands:"
-echo "  View logs: docker compose -f docker-compose.production.yml logs -f [service]"
-echo "  Restart: docker compose -f docker-compose.production.yml restart [service]"
-echo "  Stop all: docker compose -f docker-compose.production.yml down"
-echo "  Shell access: docker compose -f docker-compose.production.yml exec [service] /bin/bash"
 echo ""
 
