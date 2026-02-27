@@ -10,6 +10,7 @@ from sqlalchemy.orm import Session
 from src.storage.database import db
 from src.services.job_service import JobService
 from src.services.personalized_job_service import PersonalizedJobService
+from src.services.cache_service import get_cache_service
 from src.auth.dependencies import get_current_active_user
 from src.models.user import User
 from src.utils.description_parser import DescriptionParser
@@ -58,10 +59,19 @@ def get_public_jobs(
     Jobs are diversified across companies (max 2 per company) for variety.
     Users must sign in to access full job details.
 
+    **Response is cached in Redis for 6 hours to improve performance.**
+
     **Parameters:**
     - **limit**: Number of jobs to return (default: 10, max: 20)
     """
     try:
+        # Check cache first
+        cache = get_cache_service()
+        cached_data = cache.get_public_jobs(limit)
+        if cached_data:
+            logger.debug(f"Returning cached public jobs (limit={limit})")
+            return PublicJobsResponse(**cached_data)
+
         from src.models.job_position import JobPosition
         from src.models.company import Company
         from sqlalchemy import desc, func
@@ -118,7 +128,13 @@ def get_public_jobs(
                 first_seen_at=job.first_seen_at,
             ))
 
-        return PublicJobsResponse(total=total_count, jobs=jobs)
+        response = PublicJobsResponse(total=total_count, jobs=jobs)
+        
+        # Cache the response for 6 hours
+        cache.set_public_jobs(limit, response.model_dump())
+        logger.info(f"Cached public jobs response (limit={limit}, total={total_count})")
+
+        return response
 
     except Exception as e:
         logger.error(f"Error getting public jobs: {e}")
