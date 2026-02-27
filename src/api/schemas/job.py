@@ -98,6 +98,41 @@ class PersonalizedJobItem(BaseModel):
     match_count: int = Field(description="Number of alerts that matched this job")
 
 
+# ============ Public (Unauthenticated) Schemas ============
+
+class PublicCompanyBrief(BaseModel):
+    """Brief company info for public job listings (no sensitive data)."""
+    model_config = ConfigDict(from_attributes=True)
+
+    name: str
+    industry: Optional[str] = None
+    logo_url: Optional[str] = None
+
+
+class PublicJobItem(BaseModel):
+    """Schema for public job listing (no sensitive URLs or IDs)."""
+    model_config = ConfigDict(from_attributes=True)
+
+    id: UUID  # Needed for redirect after login
+    title: str
+    location: Optional[str] = None
+    remote_type: Optional[str] = None
+    employment_type: Optional[str] = None
+    department: Optional[str] = None
+    seniority_level: Optional[str] = None
+    company_name: str
+    company_logo: Optional[str] = None
+    company_industry: Optional[str] = None
+    posted_date: Optional[datetime] = None
+    # Intentionally excluded: application_url, job_url, description, requirements, benefits
+
+
+class PublicJobsResponse(BaseModel):
+    """Schema for public jobs response (landing page)."""
+    total: int = Field(description="Total number of jobs available")
+    jobs: List[PublicJobItem] = Field(description="List of featured jobs")
+
+
 class PersonalizedJobsResponse(BaseModel):
     """Schema for personalized jobs response."""
     total: int = Field(description="Total number of matching jobs")

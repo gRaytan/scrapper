@@ -28,6 +28,8 @@ from src.api.schemas.job import (
     JobPreferencesResponse,
     JobFiltersResponse,
     FilterOption,
+    PublicJobItem,
+    PublicJobsResponse,
 )
 
 logger = logging.getLogger(__name__)
@@ -40,6 +42,75 @@ def get_db_session():
     with db.get_session() as session:
         yield session
 
+
+# ============ PUBLIC ENDPOINTS (No Auth Required) ============
+
+@router.get("/public", response_model=PublicJobsResponse)
+def get_public_jobs(
+    limit: int = Query(10, ge=1, le=20, description="Number of jobs to return"),
+    session: Session = Depends(get_db_session)
+):
+    """
+    Get featured jobs for the public landing page.
+
+    This endpoint does NOT require authentication.
+    Returns the latest jobs without sensitive URLs (application_url, job_url).
+    Users must sign in to access full job details.
+
+    **Parameters:**
+    - **limit**: Number of jobs to return (default: 10, max: 20)
+    """
+    try:
+        from src.models.job_position import JobPosition
+        from src.models.company import Company
+        from sqlalchemy import desc
+
+        # Query latest active jobs with company info
+        query = (
+            session.query(JobPosition, Company)
+            .join(Company, JobPosition.company_id == Company.id)
+            .filter(JobPosition.is_active == True)
+            .filter(JobPosition.status == 'active')
+            .order_by(desc(JobPosition.posted_date))
+            .limit(limit)
+        )
+
+        results = query.all()
+
+        # Get total count of active jobs
+        total_count = session.query(JobPosition).filter(
+            JobPosition.is_active == True,
+            JobPosition.status == 'active'
+        ).count()
+
+        # Map to public schema
+        jobs = []
+        for job, company in results:
+            jobs.append(PublicJobItem(
+                id=job.id,
+                title=job.title,
+                location=job.location,
+                remote_type=job.remote_type,
+                employment_type=job.employment_type,
+                department=job.department,
+                seniority_level=job.seniority_level,
+                company_name=company.name,
+                company_logo=company.logo_url,
+                company_industry=company.industry,
+                posted_date=job.posted_date,
+            ))
+
+        return PublicJobsResponse(total=total_count, jobs=jobs)
+
+    except Exception as e:
+        logger.error(f"Error getting public jobs: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to get public jobs"
+        )
+
+
+# ============ AUTHENTICATED ENDPOINTS ============
 
 @router.get("/me/personalized", response_model=PersonalizedJobsResponse)
 def get_personalized_jobs(
