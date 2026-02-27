@@ -55,6 +55,7 @@ def get_public_jobs(
 
     This endpoint does NOT require authentication.
     Returns the latest jobs without sensitive URLs (application_url, job_url).
+    Jobs are diversified across companies (max 2 per company) for variety.
     Users must sign in to access full job details.
 
     **Parameters:**
@@ -63,25 +64,41 @@ def get_public_jobs(
     try:
         from src.models.job_position import JobPosition
         from src.models.company import Company
-        from sqlalchemy import desc
+        from sqlalchemy import desc, func
+        from sqlalchemy.orm import aliased
 
-        # Query latest active jobs with company info
-        query = (
-            session.query(JobPosition, Company)
-            .join(Company, JobPosition.company_id == Company.id)
-            .filter(JobPosition.is_active == True)
-            .filter(JobPosition.status == 'active')
-            .order_by(desc(JobPosition.posted_date))
-            .limit(limit)
-        )
-
-        results = query.all()
-
-        # Get total count of active jobs
+        # Get total count of active jobs first
         total_count = session.query(JobPosition).filter(
             JobPosition.is_active == True,
             JobPosition.status == 'active'
         ).count()
+
+        # Use a window function to rank jobs within each company by first_seen_at
+        # This ensures we get a diverse mix of companies (max 2 jobs per company)
+        subquery = (
+            session.query(
+                JobPosition.id,
+                func.row_number().over(
+                    partition_by=JobPosition.company_id,
+                    order_by=desc(JobPosition.first_seen_at)
+                ).label('row_num')
+            )
+            .filter(JobPosition.is_active == True)
+            .filter(JobPosition.status == 'active')
+            .subquery()
+        )
+
+        # Query jobs where row_num <= 2 (max 2 per company), ordered by first_seen_at
+        query = (
+            session.query(JobPosition, Company)
+            .join(subquery, JobPosition.id == subquery.c.id)
+            .join(Company, JobPosition.company_id == Company.id)
+            .filter(subquery.c.row_num <= 2)  # Max 2 jobs per company
+            .order_by(desc(JobPosition.first_seen_at))
+            .limit(limit)
+        )
+
+        results = query.all()
 
         # Map to public schema
         jobs = []
@@ -95,9 +112,10 @@ def get_public_jobs(
                 department=job.department,
                 seniority_level=job.seniority_level,
                 company_name=company.name,
-                company_logo=None,  # Company model doesn't have logo_url
+                company_logo=company.logo_url if hasattr(company, 'logo_url') else None,
                 company_industry=company.industry,
                 posted_date=job.posted_date,
+                first_seen_at=job.first_seen_at,
             ))
 
         return PublicJobsResponse(total=total_count, jobs=jobs)

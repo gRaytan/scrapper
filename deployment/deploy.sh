@@ -80,10 +80,14 @@ if [ -d .git ]; then
     print_success "Git pull completed"
 fi
 
-# Build Docker images
-print_info "Building Docker images..."
-docker compose -f docker-compose.production.yml build --no-cache
+# Build Docker images (api, celery_worker, celery_beat use the same Dockerfile)
+# Build only the api service - the image is shared by all Python services
+print_info "Building Docker images (using cache)..."
+docker compose -f docker-compose.production.yml build api
 print_success "Docker images built"
+
+# Optional: Force rebuild without cache (uncomment if needed)
+# docker compose -f docker-compose.production.yml build --no-cache api
 
 # Stop existing containers
 print_info "Stopping existing containers..."

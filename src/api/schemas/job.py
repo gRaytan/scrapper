@@ -124,6 +124,7 @@ class PublicJobItem(BaseModel):
     company_logo: Optional[str] = None
     company_industry: Optional[str] = None
     posted_date: Optional[datetime] = None
+    first_seen_at: Optional[datetime] = None  # When we first discovered this job
     # Intentionally excluded: application_url, job_url, description, requirements, benefits
 
 

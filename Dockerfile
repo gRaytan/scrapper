@@ -30,18 +30,24 @@ RUN apt-get update && apt-get install -y \
     fonts-unifont \
     && rm -rf /var/lib/apt/lists/*
 
-# Install Python dependencies
+# Install Python dependencies (cached if requirements.txt unchanged)
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Install Playwright browsers (skip install-deps as we installed them above)
+# Install Playwright browsers (cached layer - ~500MB download)
+# This layer is preserved unless requirements.txt or base image changes
 RUN playwright install chromium
-
-# Copy application code
-COPY . .
 
 # Create necessary directories
 RUN mkdir -p data/raw data/processed data/exports logs
+
+# Copy application code (separate layers for better caching)
+# Config changes less frequently than source code
+COPY config/ ./config/
+COPY scripts/ ./scripts/
+COPY src/ ./src/
+COPY alembic/ ./alembic/
+COPY alembic.ini ./
 
 # Set Python path
 ENV PYTHONPATH=/app
