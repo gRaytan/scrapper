@@ -95,7 +95,7 @@ def get_public_jobs(
                 department=job.department,
                 seniority_level=job.seniority_level,
                 company_name=company.name,
-                company_logo=company.logo_url,
+                company_logo=None,  # Company model doesn't have logo_url
                 company_industry=company.industry,
                 posted_date=job.posted_date,
             ))
