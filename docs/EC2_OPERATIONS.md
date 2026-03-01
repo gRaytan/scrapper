@@ -6,6 +6,34 @@ Daily operations runbook for the HiddenJobs scraper on EC2.
 
 ---
 
+## ⚠️ CRITICAL: Deployment Rules
+
+> **ALWAYS use rsync with `--exclude '.env'` to deploy. NEVER copy the `.env` file to production.**
+>
+> The production `.env` file contains secrets (OneSignal API keys, AWS credentials) that are configured
+> directly on the server. If you overwrite it, **emails and other services will break**.
+
+### The ONLY correct way to deploy:
+```bash
+rsync -avz --exclude '.git' --exclude '__pycache__' --exclude '*.pyc' \
+  --exclude 'data/' --exclude 'logs/' --exclude '.env' --exclude 'backups/' \
+  -e "ssh -i ~/IdeaProjects/pem/hiddenjobs-key.pem" \
+  ~/IdeaProjects/scrapper/ ubuntu@api.hiddenjobs.me:/opt/scraper/
+```
+
+### ❌ DO NOT:
+- Copy `.env` file manually to production
+- Use `scp` without excluding `.env`
+- Use `git push ec2` (deprecated, may overwrite files)
+- Run rsync without the `--exclude '.env'` flag
+
+### If credentials get wiped:
+1. Check local `.env` file for the correct values
+2. SSH to server and update `/opt/scraper/.env`
+3. Recreate containers: `sudo docker compose -f docker-compose.production.yml up -d --force-recreate`
+
+---
+
 ## Server Details
 - **Host:** api.hiddenjobs.me (16.171.142.30)
 - **SSH Key:** `~/IdeaProjects/pem/hiddenjobs-key.pem`
@@ -50,6 +78,9 @@ Local Machine                    EC2 Server
 ## Deployment (FROM LOCAL MACHINE)
 
 ### Step 1: Sync Files to EC2
+
+> ⚠️ **IMPORTANT:** The rsync command MUST include `--exclude '.env'` to protect production secrets.
+> See [CRITICAL: Deployment Rules](#️-critical-deployment-rules) at the top of this document.
 
 **Always run this first to copy your local changes to the server:**
 
