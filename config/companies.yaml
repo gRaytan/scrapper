@@ -1818,3 +1818,25 @@ companies:
     scraper_type: comeet
     api_endpoint: https://www.comeet.co/careers-api/2.0/company/72.00F/positions?token=27F9FC16779FC13F8EFA13F84FE27F77D
     pagination_type: none
+- name: Grip Security
+  website: https://www.grip.security/
+  careers_url: https://www.comeet.com/jobs/grip/A8.001
+  industry: SaaS Security
+  location: Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Tel-Aviv
+    - Herzliya
+    - Ramat Gan
+    - IL
+  scraping_config:
+    scraper_type: comeet
+    api_endpoint: https://www.comeet.co/careers-api/2.0/company/A8.001/positions?token=8A133C63C672B253C673C67019E311424DA9
+    pagination_type: none
