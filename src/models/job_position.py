@@ -28,9 +28,10 @@ class JobPosition(Base, UUIDMixin, TimestampMixin):
 
     # Basic information
     title: Mapped[str] = mapped_column(String(500), nullable=False, index=True)
+    normalized_title: Mapped[Optional[str]] = mapped_column(String(500), index=True)  # Normalized title for filtering
     description: Mapped[Optional[str]] = mapped_column(Text)
     location: Mapped[Optional[str]] = mapped_column(String(200), index=True)
-    
+
     # Job details
     remote_type: Mapped[Optional[str]] = mapped_column(String(50))  # remote, hybrid, onsite
     employment_type: Mapped[Optional[str]] = mapped_column(String(50))  # full-time, part-time, contract

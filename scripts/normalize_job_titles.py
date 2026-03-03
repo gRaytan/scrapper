@@ -97,24 +97,49 @@ SYNONYM_MAPPING = {
 }
 
 # Patterns to remove (company codes, locations, tech stacks, etc.)
+# These are applied in order - more specific patterns first
 REMOVAL_PATTERNS = [
-    r'\s*-\s*[A-Z][a-z]+\s*\d+',  # e.g., "- Base44"
-    r'\s*-\s*[A-Z]{2,}',  # e.g., "- ISR", "- EU"
-    r'\s*\([^)]*\)',  # Remove anything in parentheses
-    r'\s*-\s*.*Team$',  # e.g., "- GenAI Team"
-    r'\s*-\s*.*Platform$',  # e.g., "- Securities Platform"
-    r'\s*,\s*.*$',  # Remove everything after comma
-    r'\s+JB-\d+',  # Job codes like "JB-26693"
-    r'\s+\d{4,}',  # Job codes like "7225"
+    # Remove everything after comma (specializations, locations, etc.)
+    r',\s*.*$',  # e.g., ", Network Management", ", Bangkok Based"
+
+    # Remove everything in parentheses (tech stacks, codes, locations)
+    r'\s*\([^)]*\)',  # e.g., "(Python)", "(AWS)", "(23743)", "(Bangkok-based)"
+
+    # Remove everything after dash (specializations, teams, products)
+    r'\s*-\s*.*$',  # e.g., "- Security", "- GenAI Team", "- Base44", "- Cortex XSIAM"
+
+    # Remove job codes (various formats)
+    r'\s+JB-\d+',  # e.g., "JB-26693"
+    r'\s+\d{4,}',  # e.g., "7225", "237489"
+    r'\s+#\d+',  # e.g., "#1234"
 ]
 
-# Tech stack keywords to remove from base title
+# Tech stack keywords to remove from base title (before other removals)
 TECH_STACK_KEYWORDS = [
+    # Programming languages
     'Python', 'Java', 'JavaScript', 'TypeScript', 'Go', 'Golang', 'Rust',
-    'C\\+\\+', 'C#', '\\.NET', 'Node\\.js', 'React', 'Angular', 'Vue',
-    'AWS', 'Azure', 'GCP', 'Kubernetes', 'Docker', 'Redis', 'MongoDB',
-    'PostgreSQL', 'MySQL', 'Salesforce', 'SAP', 'Oracle',
-    'GenAI', 'LLM', 'AI', 'ML', 'Data-Focused', 'Cloud', 'Distributed Systems'
+    'C\\+\\+', 'C#', '\\.NET', 'Node\\.js', 'Ruby', 'PHP', 'Scala', 'Kotlin',
+
+    # Frontend frameworks
+    'React', 'Angular', 'Vue', 'Svelte', 'Next\\.js', 'Nuxt',
+
+    # Cloud & Infrastructure
+    'AWS', 'Azure', 'GCP', 'Google Cloud', 'Kubernetes', 'K8s', 'Docker',
+    'Terraform', 'Ansible', 'Jenkins', 'CI/CD',
+
+    # Databases
+    'Redis', 'MongoDB', 'PostgreSQL', 'MySQL', 'Cassandra', 'DynamoDB',
+    'Elasticsearch', 'SQL', 'NoSQL',
+
+    # Enterprise software
+    'Salesforce', 'SAP', 'Oracle', 'ServiceNow', 'Workday',
+
+    # AI/ML (but keep "AI Engineer" and "ML Engineer" as roles)
+    'GenAI', 'LLM', 'NLP', 'Data-Focused', 'Deep Learning',
+
+    # Other tech terms
+    'Cloud', 'Distributed Systems', 'Microservices', 'API', 'REST',
+    'GraphQL', 'Kafka', 'RabbitMQ', 'gRPC',
 ]
 
 # ============================================================================
