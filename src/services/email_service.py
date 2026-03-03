@@ -279,6 +279,116 @@ class SESEmailService:
 
         return result
 
+    def send_onboarding_reminder_email(
+        self,
+        to_email: str,
+        user_name: str,
+        reminder_number: int
+    ) -> Dict[str, Any]:
+        """
+        Send an onboarding reminder email to users who haven't completed onboarding.
+
+        Args:
+            to_email: Recipient email address
+            user_name: User's display name
+            reminder_number: Which reminder this is (1, 2, or 3)
+
+        Returns:
+            Response dict with success status
+        """
+        subject = "🎯 Complete your HiddenJobs profile - get personalized job matches!"
+        if reminder_number == 2:
+            subject = "⏰ Don't miss out! Complete your HiddenJobs profile"
+        elif reminder_number == 3:
+            subject = "🔔 Last chance: Finish setting up HiddenJobs"
+
+        context = {
+            "user_name": user_name or "there",
+            "reminder_number": reminder_number,
+        }
+
+        html_content = self.render_template("onboarding_reminder.html", context)
+        text_content = self.render_template("onboarding_reminder.txt", context)
+
+        result = self.send_email(to_email, subject, html_content, text_content)
+
+        # Track email sent event in Mixpanel
+        if result.get("success"):
+            track_email_event(
+                event_name="Email Sent",
+                user_email=to_email,
+                user_name=user_name,
+                properties={
+                    "email_type": "onboarding_reminder",
+                    "reminder_number": reminder_number,
+                }
+            )
+
+        return result
+
+    def send_alert_creation_reminder_email(
+        self,
+        to_email: str,
+        user_name: str,
+        jobs: List[Dict[str, Any]],
+        reminder_number: int
+    ) -> Dict[str, Any]:
+        """
+        Send an alert creation reminder email with job recommendations.
+
+        Args:
+            to_email: Recipient email address
+            user_name: User's display name
+            jobs: List of job dicts with id, title, company_name, location, posted_date
+            reminder_number: Which reminder this is (1-5)
+
+        Returns:
+            Response dict with success status
+        """
+        job_count = len(jobs)
+
+        # Dynamic subject based on reminder number
+        if reminder_number == 1:
+            subject = f"🔔 Don't miss out! {job_count} jobs waiting for you"
+        elif reminder_number == 2:
+            subject = f"⏰ Still {job_count} jobs matching your profile - create an alert!"
+        elif reminder_number == 3:
+            subject = f"🎯 {job_count} opportunities you might miss without alerts"
+        elif reminder_number == 4:
+            subject = f"💼 Last reminder: {job_count} jobs perfect for you"
+        else:
+            subject = f"🚀 Final chance: Set up alerts for {job_count}+ jobs"
+
+        context = {
+            "user_name": user_name or "there",
+            "reminder_number": reminder_number,
+            "jobs": jobs,
+            "job_count": job_count,
+        }
+
+        html_content = self.render_template("alert_creation_reminder.html", context)
+        text_content = self.render_template("alert_creation_reminder.txt", context)
+
+        result = self.send_email(to_email, subject, html_content, text_content)
+
+        # Track email sent event in Mixpanel
+        if result.get("success"):
+            companies = list(set(job.get("company_name", "Unknown") for job in jobs))
+            track_email_event(
+                event_name="Email Sent",
+                user_email=to_email,
+                user_name=user_name,
+                properties={
+                    "email_type": "alert_creation_reminder",
+                    "reminder_number": reminder_number,
+                    "job_count": job_count,
+                    "companies": companies[:10],  # Limit to 10 companies
+                    "company_count": len(companies),
+                }
+            )
+
+        return result
+
 
 # Singleton instance
 email_service = SESEmailService()

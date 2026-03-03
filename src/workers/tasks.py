@@ -1789,3 +1789,223 @@ def send_onboarding_reminder_emails(self: Task) -> Dict[str, Any]:
         logger.error(f"Onboarding reminder email sending failed: {exc}")
         logger.exception(exc)
         raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))
+
+
+@celery_app.task(bind=True, name='src.workers.tasks.send_alert_creation_reminder_emails', max_retries=3)
+def send_alert_creation_reminder_emails(self: Task) -> Dict[str, Any]:
+    """
+    Send reminder emails to users who completed onboarding but haven't created any alerts.
+
+    This task runs daily and sends up to 5 reminders (every 3 days) to users who:
+    - Have completed onboarding (have job_titles or locations in preferences)
+    - Have not created any alerts (alert count = 0)
+    - Are active users
+    - Haven't received all 5 reminders yet
+    - Either: completed onboarding at least 72 hours ago (for first reminder)
+      OR: last reminder was at least 72 hours ago (for subsequent reminders)
+
+    Returns:
+        Dictionary with email sending statistics
+    """
+    from sqlalchemy import or_, and_, func
+    from sqlalchemy.orm import joinedload
+    from src.models.user import User
+    from src.models.alert import Alert
+    from src.models.job_position import JobPosition
+    from src.models.company import Company
+    from src.services.email_provider import get_email_service
+
+    try:
+        logger.info("=" * 80)
+        logger.info("Starting alert creation reminder email sending...")
+        logger.info("=" * 80)
+
+        start_time = datetime.utcnow()
+        cutoff_time = start_time - timedelta(hours=72)  # 3 days ago
+
+        email_service = get_email_service()
+
+        if not email_service.is_configured:
+            logger.warning("Email provider not configured. Skipping alert creation reminders.")
+            return {
+                'status': 'skipped',
+                'reason': 'Email provider not configured',
+                'emails_sent': 0
+            }
+
+        emails_sent = 0
+        emails_failed = 0
+        users_processed = 0
+
+        with db.get_session() as session:
+            # Query users who need alert creation reminders
+            # Use LEFT JOIN to count alerts per user
+            users_query = session.query(User, func.count(Alert.id).label('alert_count')).outerjoin(
+                Alert, User.id == Alert.user_id
+            ).filter(
+                User.is_active == True,
+                User.alert_reminder_count < 5,
+                or_(
+                    # First reminder: never sent, created 72h+ ago
+                    and_(
+                        User.last_alert_reminder_at.is_(None),
+                        User.created_at < cutoff_time
+                    ),
+                    # Subsequent reminders: last reminder was 72h+ ago
+                    User.last_alert_reminder_at < cutoff_time
+                ),
+                # Exclude test/admin accounts
+                ~User.email.ilike('%test%'),
+                ~User.email.ilike('%@example.com'),
+                ~User.email.ilike('admin@hiddenjobs.me'),
+            ).group_by(User.id).having(
+                func.count(Alert.id) == 0  # Only users with 0 alerts
+            )
+
+            users_with_counts = users_query.all()
+            logger.info(f"Found {len(users_with_counts)} users to check for alert creation reminders")
+
+            for user, alert_count in users_with_counts:
+                try:
+                    # Check if user has completed onboarding
+                    preferences = user.preferences or {}
+
+                    # Check if alert reminders are enabled
+                    if not user.alert_reminders_enabled:
+                        logger.debug(f"User {user.email} has disabled alert reminders, skipping")
+                        continue
+
+                    # Check if user has completed onboarding
+                    has_job_titles = bool(preferences.get("job_titles"))
+                    has_locations = bool(preferences.get("locations"))
+                    onboarding_completed = preferences.get("onboarding_completed", False) or has_job_titles or has_locations
+
+                    if not onboarding_completed:
+                        # User hasn't completed onboarding, skip
+                        logger.debug(f"User {user.email} hasn't completed onboarding, skipping")
+                        continue
+
+                    # Fetch relevant jobs based on user preferences
+                    job_titles = preferences.get("job_titles", [])
+                    locations = preferences.get("locations", [])
+                    industries = preferences.get("industries", [])
+
+                    # Build job query
+                    job_query = session.query(JobPosition).options(
+                        joinedload(JobPosition.company)
+                    ).filter(
+                        JobPosition.is_active == True,
+                        JobPosition.source_type != 'manual',  # Exclude manual jobs
+                        JobPosition.posted_date >= (start_time - timedelta(days=30))  # Last 30 days
+                    )
+
+                    # Apply filters based on user preferences
+                    filters = []
+
+                    if job_titles:
+                        # Match job titles (case-insensitive partial match)
+                        title_filters = [JobPosition.title.ilike(f"%{title}%") for title in job_titles]
+                        filters.append(or_(*title_filters))
+
+                    if locations:
+                        # Match locations (case-insensitive partial match)
+                        location_filters = [JobPosition.location.ilike(f"%{loc}%") for loc in locations]
+                        filters.append(or_(*location_filters))
+
+                    # If we have filters, apply them
+                    if filters:
+                        job_query = job_query.filter(or_(*filters))
+
+                    # If user has industry preferences, try to match those too
+                    if industries:
+                        # Join with company to filter by industry
+                        job_query = job_query.join(Company).filter(
+                            or_(*[Company.industry.ilike(f"%{ind}%") for ind in industries])
+                        )
+
+                    # Get up to 5 most recent jobs
+                    jobs = job_query.order_by(JobPosition.posted_date.desc()).limit(5).all()
+
+                    # If no jobs found with filters, get some recent jobs as fallback
+                    if not jobs:
+                        logger.info(f"No matching jobs for {user.email}, using fallback")
+                        jobs = session.query(JobPosition).options(
+                            joinedload(JobPosition.company)
+                        ).filter(
+                            JobPosition.is_active == True,
+                            JobPosition.source_type != 'manual',
+                            JobPosition.posted_date >= (start_time - timedelta(days=7))  # Last week
+                        ).order_by(JobPosition.posted_date.desc()).limit(5).all()
+
+                    if not jobs:
+                        logger.warning(f"No jobs available for {user.email}, skipping reminder")
+                        continue
+
+                    # Prepare job data for email template
+                    job_data = []
+                    for job in jobs:
+                        job_data.append({
+                            "id": str(job.id),
+                            "title": job.title,
+                            "company_name": job.company.name if job.company else "Unknown",
+                            "location": job.location or "Remote",
+                            "posted_date": job.posted_date.strftime("%b %d, %Y") if job.posted_date else "Recently"
+                        })
+
+                    # Send reminder email
+                    reminder_number = user.alert_reminder_count + 1
+                    user_name = user.full_name or user.email.split('@')[0]
+
+                    logger.info(f"Sending alert creation reminder #{reminder_number} to {user.email} with {len(job_data)} jobs")
+
+                    result = email_service.send_alert_creation_reminder_email(
+                        to_email=user.notification_email,
+                        user_name=user_name,
+                        jobs=job_data,
+                        reminder_number=reminder_number
+                    )
+
+                    if result.get('success'):
+                        user.alert_reminder_count = reminder_number
+                        user.last_alert_reminder_at = datetime.utcnow()
+                        emails_sent += 1
+                        logger.info(f"Alert creation reminder #{reminder_number} sent to {user.email}")
+                    else:
+                        emails_failed += 1
+                        logger.error(f"Failed to send alert creation reminder to {user.email}: {result.get('error')}")
+
+                    users_processed += 1
+
+                except Exception as e:
+                    logger.error(f"Error processing user {user.id}: {e}")
+                    emails_failed += 1
+
+            session.commit()
+
+        duration = (datetime.utcnow() - start_time).total_seconds()
+
+        result = {
+            'status': 'success',
+            'started_at': start_time.isoformat(),
+            'completed_at': datetime.utcnow().isoformat(),
+            'duration_seconds': duration,
+            'users_checked': len(users_with_counts) if 'users_with_counts' in dir() else 0,
+            'users_processed': users_processed,
+            'emails_sent': emails_sent,
+            'emails_failed': emails_failed
+        }
+
+        logger.success("=" * 80)
+        logger.success("ALERT CREATION REMINDER EMAIL SENDING COMPLETED")
+        logger.success(f"  Users processed: {users_processed}")
+        logger.success(f"  Emails sent: {emails_sent}")
+        logger.success(f"  Emails failed: {emails_failed}")
+        logger.success(f"  Duration: {duration:.2f}s")
+        logger.success("=" * 80)
+
+        return result
+
+    except Exception as exc:
+        logger.error(f"Alert creation reminder email sending failed: {exc}")
+        logger.exception(exc)
+        raise self.retry(exc=exc, countdown=300 * (2 ** self.request.retries))

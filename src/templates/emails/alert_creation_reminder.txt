@@ -1,0 +1,38 @@
+HiddenJobs - Create Your First Alert (Reminder {{ reminder_number }}/5)
+
+Hi {{ user_name }},
+
+You've completed your profile, but you haven't created any job alerts yet!
+
+Set up alerts now and never miss opportunities that match your preferences.
+
+{% if jobs and jobs|length > 0 %}
+🎯 JOBS MATCHING YOUR PREFERENCES:
+{% for job in jobs[:5] %}
+
+{{ loop.index }}. {{ job.title }}
+   Company: {{ job.company_name }}
+   Location: {{ job.location }}
+   {% if job.posted_date %}Posted: {{ job.posted_date }}{% endif %}
+   View: {{ base_url }}/position/{{ job.id }}
+{% endfor %}
+{% endif %}
+
+WHY CREATE ALERTS?
+
+✓ Get notified instantly when new jobs match
+✓ Never miss opportunities at your dream companies  
+✓ Save time - jobs come to you automatically
+
+CREATE YOUR FIRST ALERT:
+{{ base_url }}/alerts
+
+---
+
+You're receiving this because you completed onboarding but haven't created any job alerts yet.
+
+To unsubscribe or manage your email preferences, visit:
+{{ base_url }}/settings
+
+© {{ current_year }} HiddenJobs. All rights reserved.
+

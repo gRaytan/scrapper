@@ -51,6 +51,10 @@ class User(Base, UUIDMixin, TimestampMixin):
     onboarding_reminder_count: Mapped[int] = mapped_column(default=0, nullable=False)
     last_onboarding_reminder_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
 
+    # Alert creation reminder tracking
+    alert_reminder_count: Mapped[int] = mapped_column(default=0, nullable=False)
+    last_alert_reminder_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True))
+
     # User preferences (stored as JSON)
     preferences: Mapped[dict] = mapped_column(JSON, nullable=False, default=dict)
 
@@ -97,4 +101,14 @@ class User(Base, UUIDMixin, TimestampMixin):
     def digest_mode(self) -> bool:
         """Check if user prefers daily digest over immediate notifications."""
         return self.preferences.get("digest_mode", False)
+
+    @property
+    def onboarding_reminders_enabled(self) -> bool:
+        """Check if onboarding reminder emails are enabled."""
+        return self.preferences.get("onboarding_reminders_enabled", True)
+
+    @property
+    def alert_reminders_enabled(self) -> bool:
+        """Check if alert creation reminder emails are enabled."""
+        return self.preferences.get("alert_reminders_enabled", True)
 

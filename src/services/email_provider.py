@@ -109,6 +109,27 @@ class EmailProvider(Protocol):
         """
         ...
 
+    def send_alert_creation_reminder_email(
+        self,
+        to_email: str,
+        user_name: str,
+        jobs: List[Dict[str, Any]],
+        reminder_number: int
+    ) -> Dict[str, Any]:
+        """
+        Send an alert creation reminder email with job recommendations.
+
+        Args:
+            to_email: Recipient email address
+            user_name: User's display name
+            jobs: List of job dicts with id, title, company_name, location, posted_date
+            reminder_number: Which reminder this is (1-5)
+
+        Returns:
+            Dict with 'success' bool and optional 'id' or 'error'
+        """
+        ...
+
 
 # Cached provider instance
 _email_provider: Optional[EmailProvider] = None

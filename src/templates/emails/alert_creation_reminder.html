@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Create Your First Alert - HiddenJobs{% endblock %}
+
+{% block header_badge %}Reminder {{ reminder_number }}/5{% endblock %}
+
+{% block content %}
+<!-- Banner -->
+<tr>
+    <td style="padding: 24px 32px 16px;" class="mobile-padding">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: linear-gradient(135deg, #7C3AED 0%, #9333EA 50%, #F97316 100%); border-radius: 12px; overflow: hidden;">
+            <tr>
+                <td style="padding: 24px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td style="text-align: center;">
+                                <span style="font-size: 48px;">🔔</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-top: 12px; text-align: center;">
+                                <span style="font-size: 24px; font-weight: 700; color: #ffffff;">Don't Miss Out!</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding-top: 8px; text-align: center;">
+                                <span style="font-size: 14px; color: rgba(255,255,255,0.9);">{{ job_count }} job{{ 's' if job_count > 1 else '' }} waiting for you</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>
+
+<!-- Greeting -->
+<tr>
+    <td style="padding: 8px 32px 16px;" class="mobile-padding">
+        <p style="margin: 0; color: #374151; font-size: 15px; line-height: 1.6;">
+            Hi {{ user_name }} 👋
+        </p>
+        <p style="margin: 12px 0 0; color: #6b7280; font-size: 14px; line-height: 1.7;">
+            You've completed your profile, but you haven't created any job alerts yet! 
+            Set up alerts now and never miss opportunities that match your preferences.
+        </p>
+    </td>
+</tr>
+
+<!-- Jobs matching your preferences -->
+{% if jobs and jobs|length > 0 %}
+<tr>
+    <td style="padding: 0 32px 8px;" class="mobile-padding">
+        <p style="margin: 0; color: #374151; font-weight: 600; font-size: 15px;">
+            🎯 Jobs matching your preferences:
+        </p>
+    </td>
+</tr>
+
+<!-- Jobs List -->
+<tr>
+    <td style="padding: 0 32px;" class="mobile-padding">
+        {% for job in jobs[:5] %}
+        <!-- Job Card -->
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: #ffffff; border: 1px solid #e5e7eb; border-radius: 12px; margin-bottom: 12px;">
+            <tr>
+                <td style="padding: 16px;">
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td style="width: 44px; vertical-align: top;">
+                                <div style="width: 44px; height: 44px; background: #f3f4f6; border-radius: 10px; text-align: center; line-height: 44px; font-size: 18px;">
+                                    {% if loop.index % 3 == 1 %}🏢{% elif loop.index % 3 == 2 %}🚀{% else %}💼{% endif %}
+                                </div>
+                            </td>
+                            <td style="padding-left: 12px; vertical-align: top;">
+                                <a href="{{ base_url }}/position/{{ job.id }}" style="color: #1f2937; text-decoration: none; font-weight: 600; font-size: 16px; display: block;">
+                                    {{ job.title }}
+                                </a>
+                                <span style="color: #6b7280; font-size: 14px; display: block; margin-top: 2px;">
+                                    {{ job.company_name }}
+                                </span>
+                                <table role="presentation" cellspacing="0" cellpadding="0" border="0" style="margin-top: 8px;">
+                                    <tr>
+                                        <td style="padding-right: 12px;">
+                                            <span style="color: #9ca3af; font-size: 12px;">📍 {{ job.location }}</span>
+                                        </td>
+                                        {% if job.posted_date %}
+                                        <td>
+                                            <span style="color: #9ca3af; font-size: 12px;">{{ job.posted_date }}</span>
+                                        </td>
+                                        {% endif %}
+                                    </tr>
+                                </table>
+                            </td>
+                            <td style="width: 32px; vertical-align: top; text-align: right;">
+                                <a href="{{ base_url }}/position/{{ job.id }}" style="display: inline-block; width: 32px; height: 32px; background: #f5f3ff; border-radius: 8px; text-align: center; line-height: 32px; text-decoration: none;">
+                                    <span style="color: #7c3aed; font-size: 14px;">→</span>
+                                </a>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+        {% endfor %}
+    </td>
+</tr>
+{% endif %}
+
+<!-- Benefits of Creating Alerts -->
+<tr>
+    <td style="padding: 16px 32px;" class="mobile-padding">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%" style="background: #f9fafb; border-radius: 12px;">
+            <tr>
+                <td style="padding: 20px;">
+                    <p style="margin: 0 0 12px; color: #374151; font-weight: 600; font-size: 14px;">Why create alerts?</p>
+                    <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+                        <tr>
+                            <td style="padding: 6px 0;">
+                                <span style="color: #10b981; margin-right: 8px;">✓</span>
+                                <span style="color: #4b5563; font-size: 14px;">Get notified instantly when new jobs match</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0;">
+                                <span style="color: #10b981; margin-right: 8px;">✓</span>
+                                <span style="color: #4b5563; font-size: 14px;">Never miss opportunities at your dream companies</span>
+                            </td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 6px 0;">
+                                <span style="color: #10b981; margin-right: 8px;">✓</span>
+                                <span style="color: #4b5563; font-size: 14px;">Save time - jobs come to you automatically</span>
+                            </td>
+                        </tr>
+                    </table>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>
+
+<!-- CTA Button -->
+<tr>
+    <td style="padding: 8px 32px 24px;" class="mobile-padding">
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0" width="100%">
+            <tr>
+                <td align="center">
+                    <a href="{{ base_url }}/alerts" style="display: inline-block; background: linear-gradient(135deg, #7C3AED 0%, #9333EA 100%); color: #ffffff; padding: 16px 40px; border-radius: 12px; text-decoration: none; font-weight: 600; font-size: 16px; box-shadow: 0 4px 14px 0 rgba(124, 58, 237, 0.4);">
+                        Create My First Alert →
+                    </a>
+                </td>
+            </tr>
+        </table>
+    </td>
+</tr>
+{% endblock %}
+
+{% block footer_text %}You're receiving this because you completed onboarding but haven't created any job alerts yet.{% endblock %}
+

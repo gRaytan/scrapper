@@ -281,3 +281,78 @@ def delete_user(
             detail="Failed to delete user"
         )
 
+
+@router.post("/me/unsubscribe", response_model=UserResponse)
+def unsubscribe_from_emails(
+    email_type: str,
+    current_user: User = Depends(get_current_active_user),
+    session: Session = Depends(get_db_session)
+):
+    """
+    Unsubscribe from specific email types.
+
+    - **email_type**: Type of email to unsubscribe from:
+        - "all" - Disable all notifications
+        - "onboarding_reminders" - Disable onboarding reminder emails
+        - "alert_reminders" - Disable alert creation reminder emails
+        - "job_alerts" - Disable job alert notifications
+
+    Requires JWT authentication.
+    """
+    try:
+        # Track unsubscribe event in Mixpanel
+        from src.services.onesignal_email_service import track_email_event
+        track_email_event(
+            event_name="Email Unsubscribed",
+            user_email=current_user.email,
+            user_name=current_user.full_name or current_user.email.split('@')[0],
+            properties={
+                "email_type": email_type,
+                "user_id": str(current_user.id)
+            }
+        )
+
+        # Update user preferences based on email type
+        preferences = current_user.preferences.copy()
+
+        if email_type == "all":
+            preferences["notifications_enabled"] = False
+            preferences["onboarding_reminders_enabled"] = False
+            preferences["alert_reminders_enabled"] = False
+            logger.info(f"User {current_user.email} unsubscribed from all emails")
+        elif email_type == "onboarding_reminders":
+            preferences["onboarding_reminders_enabled"] = False
+            logger.info(f"User {current_user.email} unsubscribed from onboarding reminders")
+        elif email_type == "alert_reminders":
+            preferences["alert_reminders_enabled"] = False
+            logger.info(f"User {current_user.email} unsubscribed from alert creation reminders")
+        elif email_type == "job_alerts":
+            preferences["notifications_enabled"] = False
+            logger.info(f"User {current_user.email} unsubscribed from job alerts")
+        else:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"Invalid email_type: {email_type}. Must be one of: all, onboarding_reminders, alert_reminders, job_alerts"
+            )
+
+        # Update user
+        service = UserService(session)
+        update_data = UserUpdate(preferences=preferences)
+        user = service.update_user(current_user.id, update_data)
+
+        if not user:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="User not found"
+            )
+
+        return user
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error unsubscribing user: {e}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to unsubscribe"
+        )
+

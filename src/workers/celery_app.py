@@ -155,6 +155,16 @@ celery_app.conf.update(
             }
         },
 
+        # Send alert creation reminder emails - daily at 9:00 AM UTC (11:00 AM Israel time)
+        # Sent every 3 days to users who completed onboarding but haven't created alerts
+        'daily-alert-creation-reminders': {
+            'task': 'src.workers.tasks.send_alert_creation_reminder_emails',
+            'schedule': crontab(hour=9, minute=0),  # 9:00 AM UTC daily
+            'options': {
+                'expires': 3600,  # 1 hour
+            }
+        },
+
         # Cleanup old scraping sessions every week
         'weekly-cleanup': {
             'task': 'src.workers.tasks.cleanup_old_sessions',
