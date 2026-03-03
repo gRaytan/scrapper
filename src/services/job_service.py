@@ -166,9 +166,9 @@ class JobService:
             filters_applied["departments"] = departments
 
         if titles:
-            # Use partial match (contains) so "DevOps Engineer" matches "Senior DevOps Engineer"
-            title_filters = [func.lower(JobPosition.title).contains(t.lower()) for t in titles]
-            filters.append(or_(*title_filters))
+            # Filter by normalized_title for better grouping
+            # Use exact match since normalized titles are already standardized
+            filters.append(JobPosition.normalized_title.in_(titles))
             filters_applied["titles"] = titles
 
         if job_families:
@@ -421,16 +421,16 @@ class JobService:
             .all()
         )
 
-        # Get job title counts (distinct titles from job_positions) - no limit, return all
+        # Get job title counts (distinct normalized titles from job_positions) - no limit, return all
         job_title_counts = (
             self.session.query(
-                JobPosition.title,
+                JobPosition.normalized_title,
                 func.count(JobPosition.id).label('count')
             )
             .filter(JobPosition.is_active == True)
-            .filter(JobPosition.title.isnot(None))
-            .filter(JobPosition.title != '')
-            .group_by(JobPosition.title)
+            .filter(JobPosition.normalized_title.isnot(None))
+            .filter(JobPosition.normalized_title != '')
+            .group_by(JobPosition.normalized_title)
             .order_by(func.count(JobPosition.id).desc())
             .all()
         )
