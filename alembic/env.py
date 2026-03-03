@@ -15,9 +15,12 @@ from src.models.company import Company
 from src.models.job_position import JobPosition
 from src.models.scraping_session import ScrapingSession
 from src.models.alert import Alert
-from src.models.user_job_application import UserJobApplication
+from src.models.user_job_application import UserJobApplication, ApplicationInterview
 from src.models.alert_notification import AlertNotification
 from src.models.saved_filter import SavedFilter
+from src.models.interview_question import InterviewQuestion
+from src.models.user_job_interaction import UserJobInteraction
+from src.models.job_embedding import JobEmbedding
 
 # this is the Alembic Config object, which provides
 # access to the values within the .ini file in use.
