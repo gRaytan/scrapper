@@ -6,7 +6,7 @@ from uuid import UUID
 from datetime import datetime
 from collections import defaultdict
 
-from sqlalchemy.orm import Session, joinedload
+from sqlalchemy.orm import Session, joinedload, selectinload
 from sqlalchemy import and_, or_, func
 
 from src.storage.repositories.job_repo import JobPositionRepository
@@ -108,8 +108,9 @@ class JobService:
         Returns:
             Dictionary with jobs, pagination info, and applied filters
         """
-        # Build query
-        query = self.session.query(JobPosition).options(joinedload(JobPosition.company))
+        # Build query with selectinload for better performance (avoids N+1 queries)
+        # selectinload executes 2 queries instead of 1 JOIN, but is more efficient with filters
+        query = self.session.query(JobPosition).options(selectinload(JobPosition.company))
 
         # Apply filters
         filters = []

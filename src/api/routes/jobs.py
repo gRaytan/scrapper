@@ -287,18 +287,36 @@ def list_jobs(
 
 @router.get("/filters", response_model=JobFiltersResponse)
 def get_job_filters(
-    current_user: User = Depends(get_current_active_user),
     session: Session = Depends(get_db_session)
 ):
     """
     Get available filter options (facets) for job listings.
 
+    This endpoint does NOT require authentication (public endpoint).
     Returns distinct values and counts for each filter category.
     Only includes active jobs.
+
+    **Response is cached in Redis for 12 hours to improve performance.**
+
+    This allows the landing page to pre-fetch filters before user authentication,
+    significantly improving dashboard load time.
     """
     try:
+        # Check cache first
+        cache = get_cache_service()
+        cached_data = cache.get_public_filters()
+        if cached_data:
+            logger.debug("Returning cached filters")
+            return JobFiltersResponse(**cached_data)
+
+        # Fetch from database
         service = JobService(session)
         filters = service.get_filter_options()
+
+        # Cache the response for 12 hours
+        cache.set_public_filters(filters)
+        logger.info("Cached filters response")
+
         return JobFiltersResponse(**filters)
     except Exception as e:
         logger.error(f"Error getting job filters: {e}")

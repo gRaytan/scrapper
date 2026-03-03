@@ -32,9 +32,10 @@ def get_redis_client() -> Optional[redis.Redis]:
 
 class CacheService:
     """Service for caching API responses in Redis."""
-    
+
     # Cache TTLs in seconds
     PUBLIC_JOBS_TTL = 6 * 60 * 60  # 6 hours
+    PUBLIC_FILTERS_TTL = 12 * 60 * 60  # 12 hours (filters change less frequently)
     
     def __init__(self):
         self.client = get_redis_client()
@@ -103,6 +104,21 @@ class CacheService:
         except Exception as e:
             logger.warning(f"Cache invalidation error: {e}")
             return False
+
+    def get_public_filters(self) -> Optional[dict]:
+        """Get cached public filters response."""
+        key = self._make_key("public_filters")
+        return self.get(key)
+
+    def set_public_filters(self, data: dict) -> bool:
+        """Cache public filters response for 12 hours."""
+        key = self._make_key("public_filters")
+        return self.set(key, data, self.PUBLIC_FILTERS_TTL)
+
+    def invalidate_public_filters(self) -> bool:
+        """Invalidate public filters cache."""
+        key = self._make_key("public_filters")
+        return self.delete(key)
 
 
 # Singleton instance
