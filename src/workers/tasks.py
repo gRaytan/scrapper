@@ -1720,6 +1720,12 @@ def send_onboarding_reminder_emails(self: Task) -> Dict[str, Any]:
                 try:
                     # Check if user has completed onboarding
                     preferences = user.preferences or {}
+
+                    # Check if onboarding reminders are enabled
+                    if not user.onboarding_reminders_enabled:
+                        logger.debug(f"User {user.email} has disabled onboarding reminders, skipping")
+                        continue
+
                     onboarding_completed = preferences.get("onboarding_completed", False)
 
                     # Fallback check: if user has job_titles or locations, they've completed
