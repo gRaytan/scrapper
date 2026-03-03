@@ -2208,3 +2208,49 @@ companies:
     selectors:
       job_list: null
       job_item: null
+
+- name: Viz.ai
+  website: https://www.viz.ai/
+  careers_url: https://www.viz.ai/careers
+  industry: Medical AI / Healthcare Tech
+  size: 201-500
+  location: Tel Aviv, Israel
+  is_active: true
+  scraping_frequency: 0 0 * * *
+  location_filter:
+    enabled: true
+    countries:
+    - Israel
+    match_keywords:
+    - Israel
+    - Tel Aviv
+    - Tel-Aviv
+    - Herzliya
+    - IL
+  scraping_config:
+    scraper_type: api
+    api_endpoint: https://boards-api.greenhouse.io/v1/boards/vizai/jobs
+    api_method: GET
+    pagination_type: none
+    wait_time: 1
+    response_structure:
+      jobs_key: jobs
+    field_mapping:
+      external_id: id
+      title: title
+      description: content
+      location: location.name
+      department: null
+      employment_type: null
+      posted_date: updated_at
+      job_url: absolute_url
+      is_remote:
+        field: location.name
+        transform: contains_keywords
+        keywords:
+        - remote
+        - virtual
+        - work from home
+    selectors:
+      job_list: null
+      job_item: null
