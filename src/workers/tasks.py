@@ -1896,6 +1896,11 @@ def send_alert_creation_reminder_emails(self: Task) -> Dict[str, Any]:
                     locations = preferences.get("locations", [])
                     industries = preferences.get("industries", [])
 
+                    # Filter out placeholder values that don't represent actual data
+                    job_titles = [t for t in job_titles if t and t.lower() not in ['all job titles', 'all']]
+                    locations = [l for l in locations if l and l.lower() not in ['all israel', 'all locations', 'all']]
+                    industries = [i for i in industries if i and i.lower() not in ['all industries', 'all']]
+
                     # Build job query
                     job_query = session.query(JobPosition).options(
                         joinedload(JobPosition.company)
@@ -1905,22 +1910,16 @@ def send_alert_creation_reminder_emails(self: Task) -> Dict[str, Any]:
                         JobPosition.posted_date >= (start_time - timedelta(days=30))  # Last 30 days
                     )
 
-                    # Apply filters based on user preferences
-                    filters = []
-
+                    # Apply filters based on user preferences (use AND logic - all conditions must match)
                     if job_titles:
                         # Match job titles (case-insensitive partial match)
                         title_filters = [JobPosition.title.ilike(f"%{title}%") for title in job_titles]
-                        filters.append(or_(*title_filters))
+                        job_query = job_query.filter(or_(*title_filters))
 
                     if locations:
                         # Match locations (case-insensitive partial match)
                         location_filters = [JobPosition.location.ilike(f"%{loc}%") for loc in locations]
-                        filters.append(or_(*location_filters))
-
-                    # If we have filters, apply them
-                    if filters:
-                        job_query = job_query.filter(or_(*filters))
+                        job_query = job_query.filter(or_(*location_filters))
 
                     # If user has industry preferences, try to match those too
                     if industries:
