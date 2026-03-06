@@ -157,12 +157,13 @@ def extract_seniority(title: str) -> Tuple[Optional[str], str]:
 
     for seniority in SENIORITY_LEVELS:
         seniority_lower = seniority.lower()
-        # Match at word boundaries, including optional period after abbreviations
-        pattern = r'\b' + re.escape(seniority_lower) + r'\.?\b'
+        # Match at word boundaries, including optional period and space after abbreviations
+        # This handles "Sr. Engineer", "Sr Engineer", "Senior Engineer" all correctly
+        pattern = r'\b' + re.escape(seniority_lower) + r'\.?\s*'
         if re.search(pattern, title_lower):
-            # Remove seniority from title (including optional period)
+            # Remove seniority from title (including optional period and space)
             title_without = re.sub(pattern, '', title, flags=re.IGNORECASE).strip()
-            # Clean up any leftover periods or spaces
+            # Clean up any leftover periods or multiple spaces
             title_without = re.sub(r'^\.\s*', '', title_without)
             title_without = re.sub(r'\s+', ' ', title_without).strip()
             # Normalize seniority
