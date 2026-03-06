@@ -149,23 +149,26 @@ TECH_STACK_KEYWORDS = [
 def extract_seniority(title: str) -> Tuple[Optional[str], str]:
     """
     Extract seniority level from title.
-    
+
     Returns:
         Tuple of (seniority_level, title_without_seniority)
     """
     title_lower = title.lower()
-    
+
     for seniority in SENIORITY_LEVELS:
         seniority_lower = seniority.lower()
-        # Match at word boundaries
-        pattern = r'\b' + re.escape(seniority_lower) + r'\b'
+        # Match at word boundaries, including optional period after abbreviations
+        pattern = r'\b' + re.escape(seniority_lower) + r'\.?\b'
         if re.search(pattern, title_lower):
-            # Remove seniority from title
+            # Remove seniority from title (including optional period)
             title_without = re.sub(pattern, '', title, flags=re.IGNORECASE).strip()
+            # Clean up any leftover periods or spaces
+            title_without = re.sub(r'^\.\s*', '', title_without)
+            title_without = re.sub(r'\s+', ' ', title_without).strip()
             # Normalize seniority
             normalized_seniority = SENIORITY_MAPPING.get(seniority, seniority)
             return normalized_seniority, title_without
-    
+
     return None, title
 
 
