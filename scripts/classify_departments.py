@@ -28,7 +28,9 @@ DEPARTMENT_PATTERNS = {
         'cloud architect', 'ai developer', 'application engineer', 'bi developer',
         'simulator developer', 'prompt engineer', 'mlops', 'chief architect',
         'node.js developer', 'c# developer', 'founding engineer', 'mobile engineer',
-        'c++ engineer', 'linux driver', 'wifi developer', 'radio frequency design'
+        'c++ engineer', 'linux driver', 'wifi developer', 'radio frequency design',
+        'native engineer', 'performance engineer', 'release manager', 'software release',
+        'ui / ux engineer', 'ui animator', 'navigation engineer', 'product engineer'
     ],
     'Hardware Engineering': [
         'hardware engineer', 'hardware developer', 'fpga engineer', 'asic engineer',
@@ -41,7 +43,9 @@ DEPARTMENT_PATTERNS = {
         'field testing engineer', 'automotive engineer', 'data center engineer', 'datacenter',
         'logic design', 'npi engineer', 'mechanical design', 'physicist', 'bim modeler',
         'electronic engineer', 'ate engineer', 'silicon quality', 'new product introduction',
-        'control engineer', 'manufacturing engineer', 'lab technician', 'production engineer'
+        'control engineer', 'manufacturing engineer', 'lab technician', 'production engineer',
+        'hw engineer', 'board design engineer', 'vlsi architect', 'equipment maintenance',
+        'hardware test', 'cable design', 'real-time embedded firmware'
     ],
     'DevOps & Infrastructure': [
         'devops', 'sre', 'site reliability', 'platform engineer', 'infrastructure engineer',
@@ -52,7 +56,8 @@ DEPARTMENT_PATTERNS = {
         'system engineer', 'devsecops', 'secops engineer', 'it manager', 'global it',
         'information technology', 'help desk', 'it support', 'network operations', 'cloud ops',
         'it cloud', 'system virtualization', 'it technician', 'network security specialist',
-        'finops engineer', 'collaboration engineer'
+        'finops engineer', 'collaboration engineer', 'infrastructure manager', 'it helpdesk',
+        'network specialist', 'noc ', 'operations engineer', 'radio frequency technician'
     ],
     'Data Engineering': [
         'data engineer', 'data platform', 'etl developer', 'analytics engineer',
@@ -98,7 +103,9 @@ DEPARTMENT_PATTERNS = {
         'vp engineering', 'director of engineering', 'head of engineering', 'cto',
         'engineering director', 'development manager', 'r&d director', 'chief technology',
         'r&d team lead', 'technical lead', 'head of development', 'vp research',
-        'vice president research', 'cio', 'chief information officer'
+        'vice president research', 'cio', 'chief information officer', 'vp of product',
+        'vp of engineering', 'head of r&d', 'engineering group lead', 'engineering map lead',
+        'research and development team manager', 'backend team leader', 'software team leader'
     ],
     'Sales': [
         'sales engineer', 'sales representative', 'account executive', 'account manager',
@@ -176,24 +183,26 @@ def main(dry_run: bool = True):
         jobs = session.query(JobPosition).filter(
             (JobPosition.department == None) | (JobPosition.department == '')
         ).all()
-        
+
         print(f"Found {len(jobs)} jobs without department classification")
-        
+
         classifications = {}
         updates = []
-        
+
         for job in jobs:
-            new_dept = classify_department(job.title)
+            # Use normalized_title if available, otherwise fall back to title
+            title_to_classify = job.normalized_title if job.normalized_title else job.title
+            new_dept = classify_department(title_to_classify)
             classifications[new_dept] = classifications.get(new_dept, 0) + 1
             if new_dept != 'Other':
                 updates.append((job.id, new_dept))
-        
+
         print("\nClassification results:")
         for dept, count in sorted(classifications.items(), key=lambda x: -x[1]):
             print(f"  {dept}: {count}")
-        
+
         print(f"\nTotal jobs that can be classified (not Other): {len(updates)}")
-        
+
         if not dry_run and updates:
             print("\nUpdating database...")
             for job_id, dept in updates:
