@@ -225,19 +225,29 @@ def singularize(title: str) -> str:
 
 def normalize_title(title: str) -> str:
     """
-    Simplified normalization function that preserves more context.
+    Balanced normalization function.
 
     Steps:
-    1. Normalize seniority abbreviations (Sr. → Senior, Jr. → Junior)
-    2. Normalize common synonyms (Developer → Engineer, Back End → Backend)
-    3. Clean up whitespace
-
-    This keeps tech stacks, locations, and other context intact for better grouping.
+    1. Remove content in parentheses (team names, codes, etc.)
+    2. Remove suffixes after dash (team names, locations, etc.)
+    3. Normalize seniority abbreviations (Sr. → Senior, Jr. → Junior)
+    4. Normalize common synonyms (Developer → Engineer, Back End → Backend)
+    5. Clean up whitespace
     """
     if not title:
         return ""
 
-    # Step 1: Normalize seniority abbreviations in place
+    # Step 1: Remove content in parentheses
+    # Examples: "(Falcon Cloud Security)", "(24410)", "(BigBrain)"
+    title = re.sub(r'\s*\([^)]*\)', '', title)
+
+    # Step 2: Remove suffixes after dash (but keep core role descriptions)
+    # Remove team names, locations, and other context after dash
+    # Examples: "- CWPP Team", "- Israel", "- JFrog Security"
+    # But keep things like "Full-Stack" or "Back-End"
+    title = re.sub(r'\s*[-–]\s+[A-Z][^-]*$', '', title)
+
+    # Step 3: Normalize seniority abbreviations in place
     # Replace Sr. with Senior, Jr. with Junior, etc.
     for seniority in SENIORITY_LEVELS:
         if seniority in ['Sr', 'Sr.']:
@@ -252,7 +262,7 @@ def normalize_title(title: str) -> str:
             pattern = r'\bVice President\b'
             title = re.sub(pattern, 'VP', title, flags=re.IGNORECASE)
 
-    # Step 2: Normalize common synonyms
+    # Step 4: Normalize common synonyms
     synonyms = {
         r'\bDeveloper\b': 'Engineer',
         r'\bBack End\b': 'Backend',
@@ -271,8 +281,9 @@ def normalize_title(title: str) -> str:
     for pattern, replacement in synonyms.items():
         title = re.sub(pattern, replacement, title, flags=re.IGNORECASE)
 
-    # Step 3: Clean up whitespace
+    # Step 5: Clean up whitespace and trailing punctuation
     title = re.sub(r'\s+', ' ', title)
+    title = re.sub(r'[,\-–]+$', '', title)  # Remove trailing commas, dashes
     title = title.strip()
 
     return title
