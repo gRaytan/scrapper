@@ -178,13 +178,20 @@ def classify_department(title: str) -> str:
     return 'Other'
 
 
-def main(dry_run: bool = True):
+def main(dry_run: bool = True, reclassify_all: bool = False):
     with db.get_session() as session:
-        jobs = session.query(JobPosition).filter(
-            (JobPosition.department == None) | (JobPosition.department == '')
-        ).all()
-
-        print(f"Found {len(jobs)} jobs without department classification")
+        if reclassify_all:
+            # Reclassify ALL jobs, including those with existing departments
+            jobs = session.query(JobPosition).filter(
+                JobPosition.is_active == True
+            ).all()
+            print(f"Found {len(jobs)} active jobs to reclassify")
+        else:
+            # Only classify jobs without departments
+            jobs = session.query(JobPosition).filter(
+                (JobPosition.department == None) | (JobPosition.department == '')
+            ).all()
+            print(f"Found {len(jobs)} jobs without department classification")
 
         classifications = {}
         updates = []
@@ -194,8 +201,14 @@ def main(dry_run: bool = True):
             title_to_classify = job.normalized_title if job.normalized_title else job.title
             new_dept = classify_department(title_to_classify)
             classifications[new_dept] = classifications.get(new_dept, 0) + 1
-            if new_dept != 'Other':
-                updates.append((job.id, new_dept))
+
+            # Update if department changed or is missing
+            if reclassify_all:
+                if new_dept != 'Other' and job.department != new_dept:
+                    updates.append((job.id, new_dept))
+            else:
+                if new_dept != 'Other':
+                    updates.append((job.id, new_dept))
 
         print("\nClassification results:")
         for dept, count in sorted(classifications.items(), key=lambda x: -x[1]):
@@ -217,4 +230,5 @@ def main(dry_run: bool = True):
 
 if __name__ == "__main__":
     dry_run = "--apply" not in sys.argv
-    main(dry_run=dry_run)
+    reclassify_all = "--reclassify-all" in sys.argv
+    main(dry_run=dry_run, reclassify_all=reclassify_all)
