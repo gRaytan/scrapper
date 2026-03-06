@@ -225,44 +225,57 @@ def singularize(title: str) -> str:
 
 def normalize_title(title: str) -> str:
     """
-    Main normalization function.
+    Simplified normalization function that preserves more context.
 
     Steps:
-    1. Remove company suffixes and codes
-    2. Extract seniority level
-    3. Remove tech stack keywords
-    4. Normalize synonyms
-    5. Singularize
-    6. Clean up whitespace
-    7. Reconstruct with seniority
+    1. Normalize seniority abbreviations (Sr. → Senior, Jr. → Junior)
+    2. Normalize common synonyms (Developer → Engineer, Back End → Backend)
+    3. Clean up whitespace
+
+    This keeps tech stacks, locations, and other context intact for better grouping.
     """
     if not title:
         return ""
 
-    # Step 1: Remove company suffixes
-    title = remove_company_suffixes(title)
+    # Step 1: Normalize seniority abbreviations in place
+    # Replace Sr. with Senior, Jr. with Junior, etc.
+    for seniority in SENIORITY_LEVELS:
+        if seniority in ['Sr', 'Sr.']:
+            # Match Sr. or Sr followed by space
+            pattern = r'\bSr\.?\s+'
+            title = re.sub(pattern, 'Senior ', title, flags=re.IGNORECASE)
+        elif seniority in ['Jr', 'Jr.']:
+            pattern = r'\bJr\.?\s+'
+            title = re.sub(pattern, 'Junior ', title, flags=re.IGNORECASE)
+        elif seniority == 'Vice President':
+            # Normalize "Vice President" to "VP"
+            pattern = r'\bVice President\b'
+            title = re.sub(pattern, 'VP', title, flags=re.IGNORECASE)
 
-    # Step 2: Extract seniority
-    seniority, base_title = extract_seniority(title)
+    # Step 2: Normalize common synonyms
+    synonyms = {
+        r'\bDeveloper\b': 'Engineer',
+        r'\bBack End\b': 'Backend',
+        r'\bBack-End\b': 'Backend',
+        r'\bFront End\b': 'Frontend',
+        r'\bFront-End\b': 'Frontend',
+        r'\bFull Stack\b': 'Full Stack',
+        r'\bFull-Stack\b': 'Full Stack',
+        r'\bFullstack\b': 'Full Stack',
+        r'\bDevOps\b': 'DevOps',
+        r'\bDev Ops\b': 'DevOps',
+        r'\bML\b': 'Machine Learning',
+        r'\bAI\b': 'AI',
+    }
 
-    # Step 3: Remove tech stack
-    base_title = remove_tech_stack(base_title)
+    for pattern, replacement in synonyms.items():
+        title = re.sub(pattern, replacement, title, flags=re.IGNORECASE)
 
-    # Step 4: Normalize synonyms
-    base_title = normalize_synonyms(base_title)
+    # Step 3: Clean up whitespace
+    title = re.sub(r'\s+', ' ', title)
+    title = title.strip()
 
-    # Step 5: Singularize
-    base_title = singularize(base_title)
-
-    # Step 6: Clean up whitespace and extra characters
-    base_title = re.sub(r'\s+', ' ', base_title)
-    base_title = re.sub(r'\s*:\s*', ': ', base_title)
-    base_title = base_title.strip()
-
-    # Step 7: Reconstruct with seniority
-    if seniority:
-        return f"{seniority} {base_title}"
-    return base_title
+    return title
 
 
 # ============================================================================
