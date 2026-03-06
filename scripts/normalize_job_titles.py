@@ -225,14 +225,17 @@ def singularize(title: str) -> str:
 
 def normalize_title(title: str) -> str:
     """
-    Balanced normalization function.
+    Aggressive normalization function to reduce title variations.
 
     Steps:
     1. Remove content in parentheses (team names, codes, etc.)
-    2. Remove suffixes after dash (team names, locations, etc.)
-    3. Normalize seniority abbreviations (Sr. → Senior, Jr. → Junior)
-    4. Normalize common synonyms (Developer → Engineer, Back End → Backend)
-    5. Clean up whitespace
+    2. Remove content after comma (specializations, team names)
+    3. Remove suffixes after dash (team names, locations, etc.)
+    4. Remove technology/language prefixes (Python, Java, C++, etc.)
+    5. Normalize seniority abbreviations (Sr. → Senior, Jr. → Junior)
+    6. Normalize common synonyms (Developer → Engineer, Back End → Backend)
+    7. Normalize role variations (Team Lead → Team Leader, etc.)
+    8. Clean up whitespace
     """
     if not title:
         return ""
@@ -241,13 +244,27 @@ def normalize_title(title: str) -> str:
     # Examples: "(Falcon Cloud Security)", "(24410)", "(BigBrain)"
     title = re.sub(r'\s*\([^)]*\)', '', title)
 
-    # Step 2: Remove suffixes after dash (but keep core role descriptions)
+    # Step 2: Remove content after comma (specializations, team names, locations)
+    # Examples: ", Platform", ", Machine Learning", ", AWS Annapurna Labs"
+    title = re.sub(r'\s*,.*$', '', title)
+
+    # Step 3: Remove suffixes after dash (but keep core role descriptions)
     # Remove team names, locations, and other context after dash
     # Examples: "- CWPP Team", "- Israel", "- JFrog Security"
     # But keep things like "Full-Stack" or "Back-End"
     title = re.sub(r'\s*[-–]\s+[A-Z][^-]*$', '', title)
 
-    # Step 3: Normalize seniority abbreviations in place
+    # Step 4: Remove technology/language prefixes
+    # Examples: "Python Engineer" → "Engineer", "C++ Software Engineer" → "Software Engineer"
+    tech_patterns = [
+        r'\b(Python|Java|JavaScript|TypeScript|C\+\+|C#|Ruby|Go|Rust|Kotlin|Swift|PHP|Scala|R)\s+',
+        r'\b(React|Angular|Vue|Node\.?js|Django|Flask|Spring|\.NET)\s+',
+        r'\b(AWS|Azure|GCP|Cloud)\s+',
+    ]
+    for pattern in tech_patterns:
+        title = re.sub(pattern, '', title, flags=re.IGNORECASE)
+
+    # Step 5: Normalize seniority abbreviations in place
     # Replace Sr. with Senior, Jr. with Junior, etc.
     for seniority in SENIORITY_LEVELS:
         if seniority in ['Sr', 'Sr.']:
@@ -262,7 +279,7 @@ def normalize_title(title: str) -> str:
             pattern = r'\bVice President\b'
             title = re.sub(pattern, 'VP', title, flags=re.IGNORECASE)
 
-    # Step 4: Normalize common synonyms
+    # Step 6: Normalize common synonyms
     synonyms = {
         r'\bDeveloper\b': 'Engineer',
         r'\bBack End\b': 'Backend',
@@ -281,7 +298,18 @@ def normalize_title(title: str) -> str:
     for pattern, replacement in synonyms.items():
         title = re.sub(pattern, replacement, title, flags=re.IGNORECASE)
 
-    # Step 5: Clean up whitespace and trailing punctuation
+    # Step 7: Normalize role variations
+    role_variations = {
+        r'\bTeam Lead\b': 'Team Leader',
+        r'\bTech Lead\b': 'Technical Leader',
+        r'\bEngineering Manager\b': 'Engineering Manager',
+        r'\bSoftware Engineering\b': 'Software Engineering',
+    }
+
+    for pattern, replacement in role_variations.items():
+        title = re.sub(pattern, replacement, title, flags=re.IGNORECASE)
+
+    # Step 8: Clean up whitespace and trailing punctuation
     title = re.sub(r'\s+', ' ', title)
     title = re.sub(r'[,\-–]+$', '', title)  # Remove trailing commas, dashes
     title = title.strip()
