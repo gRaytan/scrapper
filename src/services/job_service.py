@@ -125,16 +125,23 @@ class JobService:
             filters_applied["is_active"] = is_active
 
         if search:
-            # Search primarily in job title for more relevant results
+            # Search in both job title and normalized_title for better matching
             # Also search in company name via join
             search_terms = search.strip().split()
             if len(search_terms) == 1:
-                # Single word search - look in title only for better relevance
-                search_filter = JobPosition.title.ilike(f"%{search}%")
+                # Single word search - look in both title and normalized_title
+                search_filter = or_(
+                    JobPosition.title.ilike(f"%{search}%"),
+                    JobPosition.normalized_title.ilike(f"%{search}%")
+                )
             else:
-                # Multi-word search - match all words in title
+                # Multi-word search - match all words in either title or normalized_title
                 title_filters = [JobPosition.title.ilike(f"%{term}%") for term in search_terms]
-                search_filter = and_(*title_filters)
+                normalized_filters = [JobPosition.normalized_title.ilike(f"%{term}%") for term in search_terms]
+                search_filter = or_(
+                    and_(*title_filters),
+                    and_(*normalized_filters)
+                )
             filters.append(search_filter)
             filters_applied["search"] = search
 
