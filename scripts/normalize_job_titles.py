@@ -324,7 +324,9 @@ def main(dry_run: bool = True):
             updated = 0
             for job in jobs:
                 normalized = normalize_title(job.title)
-                if normalized != job.title:
+                # Always update normalized_title, even if it's the same as the original
+                # This ensures all jobs have a normalized_title value
+                if job.normalized_title != normalized:
                     job.normalized_title = normalized
                     updated += 1
 
