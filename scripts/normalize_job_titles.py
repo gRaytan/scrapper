@@ -258,9 +258,24 @@ def normalize_title(title: str) -> str:
     # Remove codes in the middle
     title = re.sub(r'\s+\d{4,}\s+', ' ', title)
 
+    # Step 2b: Remove alphanumeric job codes (like JB-533, JB533, ABC-1234)
+    # Examples: "Head of Cybersecurity Engineering Group - JB-533" → "Head of Cybersecurity Engineering Group"
+    title = re.sub(r'\s*-?\s*[A-Z]{1,4}-?\d{2,5}$', '', title)
+    title = re.sub(r'\s*-?\s*[A-Z]{1,4}\s*-\s*\d{2,5}$', '', title)
+
     # Step 3: Remove year prefixes
     # Examples: "2026 Software Engineer" → "Software Engineer"
     title = re.sub(r'\b20\d{2}\s+', '', title)
+
+    # Step 3b: Remove content after pipe |
+    # Examples: "Head of IT | Multi-Site Operational Environment" → "Head of IT"
+    # Examples: "Data Engineer | Leading Financial Organization" → "Data Engineer"
+    title = re.sub(r'\s*\|.*$', '', title)
+
+    # Step 3c: Normalize ampersand & to space
+    # Examples: "Hardware & Integration Engineer" → "Hardware Integration Engineer"
+    # Examples: "Security & Network Expert" → "Security Network Expert"
+    title = re.sub(r'\s*&\s*', ' ', title)
 
     # Step 4: Remove group/team identifiers
     # Examples: "AI Product Analyst student for AI Solutions Group" → "AI Product Analyst student"
