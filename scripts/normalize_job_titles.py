@@ -249,9 +249,14 @@ def normalize_title(title: str) -> str:
     title = re.sub(r'^[*&\-\s]+', '', title)
     title = re.sub(r'[*&\-\s]+$', '', title)
 
-    # Step 2: Remove job codes (pure numeric IDs)
-    # Examples: "16636", "21005 - QA Tester" → "QA Tester"
-    title = re.sub(r'\b\d{4,6}\b\s*-?\s*', '', title)
+    # Step 2: Remove job codes (pure numeric IDs of any length)
+    # Examples: "16636", "21005 - QA Tester" → "QA Tester", "Accountant - 50059204" → "Accountant"
+    # Remove codes at the beginning with optional dash
+    title = re.sub(r'^\d{4,}\s*-?\s*', '', title)
+    # Remove codes at the end with optional dash
+    title = re.sub(r'\s*-?\s*\d{4,}$', '', title)
+    # Remove codes in the middle
+    title = re.sub(r'\s+\d{4,}\s+', ' ', title)
 
     # Step 3: Remove year prefixes
     # Examples: "2026 Software Engineer" → "Software Engineer"
